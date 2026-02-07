@@ -6257,6 +6257,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "squalr-tests"
+version = "0.1.0"
+dependencies = [
+ "crossbeam-channel",
+ "squalr-engine-api",
+ "structopt",
+]
+
+[[package]]
 name = "squalr-tui"
 version = "0.1.1"
 dependencies = [
