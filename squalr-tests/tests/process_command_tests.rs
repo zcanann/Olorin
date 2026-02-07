@@ -5,6 +5,8 @@ use squalr_engine_api::commands::memory::write::memory_write_response::MemoryWri
 use squalr_engine_api::commands::privileged_command::PrivilegedCommand;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
+use squalr_engine_api::commands::process::close::process_close_request::ProcessCloseRequest;
+use squalr_engine_api::commands::process::close::process_close_response::ProcessCloseResponse;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::process::open::process_open_response::ProcessOpenResponse;
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
@@ -224,6 +226,79 @@ fn process_open_request_dispatches_open_command_and_invokes_typed_callback() {
             assert_eq!(captured_process_open_request.search_name, Some("calc".to_string()));
             assert!(captured_process_open_request.match_case);
         }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn process_close_request_dispatches_close_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ProcessCloseResponse {
+            process_info: Some(squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo::new(
+                1337,
+                "game.exe".to_string(),
+                0xBEEF,
+                Bitness::Bit64,
+                None,
+            )),
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let process_close_request = ProcessCloseRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    process_close_request.send_unprivileged(&bindings, move |process_close_response| {
+        if let Some(closed_process_info) = process_close_response.process_info {
+            let was_expected_process = closed_process_info.get_process_id_raw() == 1337
+                && closed_process_info.get_name() == "game.exe"
+                && closed_process_info.get_handle() == 0xBEEF
+                && closed_process_info.get_bitness() == Bitness::Bit64;
+            callback_invoked_clone.store(was_expected_process, Ordering::SeqCst);
+        }
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Process(ProcessCommand::Close { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn process_close_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        ProcessOpenResponse { opened_process_info: None }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let process_close_request = ProcessCloseRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    process_close_request.send_unprivileged(&bindings, move |_process_close_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Process(ProcessCommand::Close { .. }) => {}
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }
