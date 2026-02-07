@@ -77,6 +77,7 @@ If this starts to become sprawling, compact this.
 - Contract coverage now includes privileged typed-response mismatch handling for `results refresh` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variants while preserving command dispatch capture.
 - Contract coverage now includes privileged typed-response mismatch handling for `results query`, `results freeze`, `results delete`, `results add-to-project`, and `results set-property` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variants while preserving command dispatch capture.
 - `squalr-tests` integration coverage is now split into per-command suites under `squalr-tests/tests/*_command_tests.rs` to avoid single-file test sprawl.
+- `squalr-tests` per-command suites had bulk unused imports/helpers removed after the test-suite split, reducing test-target warning noise without changing command/response assertions.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
@@ -139,6 +140,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Added privileged `scan-results` contract coverage for `results list`, `results query`, `results freeze`, and `results delete` to assert typed callback decode, request payload propagation, and callback suppression on wrong typed response variants for list dispatch through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `scan-results` contract coverage for `results refresh`, `results add-to-project`, and `results set-property` to assert typed callback decode and request payload propagation, plus wrong-variant callback suppression for `results refresh` through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged typed-response mismatch contract coverage for `scan-results` `results query`, `results freeze`, `results delete`, `results add-to-project`, and `results set-property` to assert callback suppression on wrong response variants while preserving command dispatch capture.
+- `pr/unit-tests`: Cleaned `squalr-tests` per-command integration suites to remove split-era unused imports and unused mock helper getters; validated with `cargo test -p squalr-tests`.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.

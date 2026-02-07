@@ -1,34 +1,8 @@
 use crossbeam_channel::{Receiver, unbounded};
-use squalr_engine_api::commands::memory::memory_command::MemoryCommand;
-use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;
-use squalr_engine_api::commands::memory::write::memory_write_response::MemoryWriteResponse;
 use squalr_engine_api::commands::privileged_command::PrivilegedCommand;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
-use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
-use squalr_engine_api::commands::process::process_command::ProcessCommand;
-use squalr_engine_api::commands::project::close::project_close_request::ProjectCloseRequest;
-use squalr_engine_api::commands::project::close::project_close_response::ProjectCloseResponse;
-use squalr_engine_api::commands::project::create::project_create_request::ProjectCreateRequest;
-use squalr_engine_api::commands::project::create::project_create_response::ProjectCreateResponse;
-use squalr_engine_api::commands::project::delete::project_delete_request::ProjectDeleteRequest;
-use squalr_engine_api::commands::project::delete::project_delete_response::ProjectDeleteResponse;
-use squalr_engine_api::commands::project::export::project_export_request::ProjectExportRequest;
-use squalr_engine_api::commands::project::export::project_export_response::ProjectExportResponse;
-use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
-use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest as UnprivilegedProjectOpenRequest;
-use squalr_engine_api::commands::project::open::project_open_response::ProjectOpenResponse;
-use squalr_engine_api::commands::project::project_command::ProjectCommand;
-use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
-use squalr_engine_api::commands::project::rename::project_rename_response::ProjectRenameResponse;
-use squalr_engine_api::commands::project::save::project_save_request::ProjectSaveRequest;
-use squalr_engine_api::commands::project::save::project_save_response::ProjectSaveResponse;
-use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
-use squalr_engine_api::commands::project_items::activate::project_items_activate_response::ProjectItemsActivateResponse;
-use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
-use squalr_engine_api::commands::project_items::list::project_items_list_response::ProjectItemsListResponse;
-use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_response::ScanCollectValuesResponse;
 use squalr_engine_api::commands::scan::element_scan::element_scan_request::ElementScanRequest;
@@ -42,30 +16,19 @@ use squalr_engine_api::commands::scan::reset::scan_reset_response::ScanResetResp
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
 use squalr_engine_api::commands::scan::struct_scan::struct_scan_request::StructScanRequest;
 use squalr_engine_api::commands::scan::struct_scan::struct_scan_response::StructScanResponse;
-use squalr_engine_api::commands::scan_results::scan_results_command::ScanResultsCommand;
-use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
-use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
-use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSettingsCommand;
-use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
-use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
-use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::commands::unprivileged_command_response::{TypedUnprivilegedCommandResponse, UnprivilegedCommandResponse};
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
 use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
-use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
-use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 use squalr_engine_api::structures::scanning::constraints::anonymous_scan_constraint::AnonymousScanConstraint;
-use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 
 struct MockEngineBindings {
@@ -90,10 +53,6 @@ impl MockEngineBindings {
 
     fn get_dispatched_commands(&self) -> Arc<Mutex<Vec<PrivilegedCommand>>> {
         self.dispatched_commands.clone()
-    }
-
-    fn get_dispatched_unprivileged_commands(&self) -> Arc<Mutex<Vec<UnprivilegedCommand>>> {
-        self.dispatched_unprivileged_commands.clone()
     }
 }
 
