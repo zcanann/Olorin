@@ -8,31 +8,31 @@ use structopt::StructOpt;
 
 #[derive(Clone, StructOpt, Debug, Default, Serialize, Deserialize)]
 pub struct MemorySettingsSetRequest {
-    #[structopt(short = "m_n", long)]
+    #[structopt(short = "n", long)]
     pub memory_type_none: Option<bool>,
-    #[structopt(short = "m_p", long)]
+    #[structopt(short = "p", long)]
     pub memory_type_private: Option<bool>,
-    #[structopt(short = "m_i", long)]
+    #[structopt(short = "i", long)]
     pub memory_type_image: Option<bool>,
-    #[structopt(short = "m_m", long)]
+    #[structopt(short = "m", long)]
     pub memory_type_mapped: Option<bool>,
-    #[structopt(short = "r_w", long)]
+    #[structopt(short = "w", long)]
     pub required_write: Option<bool>,
-    #[structopt(short = "r_e", long)]
+    #[structopt(short = "x", long)]
     pub required_execute: Option<bool>,
-    #[structopt(short = "r_cow", long)]
+    #[structopt(short = "c", long)]
     pub required_copy_on_write: Option<bool>,
-    #[structopt(short = "e_w", long)]
+    #[structopt(short = "W", long)]
     pub excluded_write: Option<bool>,
-    #[structopt(short = "e_e", long)]
+    #[structopt(short = "X", long)]
     pub excluded_execute: Option<bool>,
-    #[structopt(short = "e_cow", long)]
+    #[structopt(short = "C", long)]
     pub excluded_copy_on_write: Option<bool>,
-    #[structopt(short = "s_adr", long)]
+    #[structopt(short = "s", long)]
     pub start_address: Option<u64>,
-    #[structopt(short = "e_adr", long)]
+    #[structopt(short = "e", long)]
     pub end_address: Option<u64>,
-    #[structopt(short = "usr", long)]
+    #[structopt(short = "u", long)]
     pub only_query_usermode: Option<bool>,
 }
 

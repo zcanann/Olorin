@@ -20,6 +20,7 @@
                 }
             },
             "args": [],
+            "terminal": "external",
             "cwd": "${workspaceFolder}"
         },
         {
@@ -39,6 +40,7 @@
                 }
             },
             "args": [],
+            "terminal": "external",
             "cwd": "${workspaceFolder}"
         },
         {
@@ -58,6 +60,7 @@
                 }
             },
             "args": [],
+            "terminal": "external",
             "cwd": "${workspaceFolder}",
             "env": {
                 "RUSTFLAGS": "-g"

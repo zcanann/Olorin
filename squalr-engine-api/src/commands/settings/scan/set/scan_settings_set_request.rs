@@ -11,23 +11,23 @@ use structopt::StructOpt;
 
 #[derive(Clone, StructOpt, Debug, Default, Serialize, Deserialize)]
 pub struct ScanSettingsSetRequest {
-    #[structopt(short = "psize", long)]
+    #[structopt(short = "p", long)]
     pub results_page_size: Option<u32>,
-    #[structopt(short = "r_read_interval", long)]
+    #[structopt(short = "r", long)]
     pub results_read_interval_ms: Option<u64>,
-    #[structopt(short = "p_read_interval", long)]
+    #[structopt(short = "j", long)]
     pub project_read_interval_ms: Option<u64>,
-    #[structopt(short = "f_interval", long)]
+    #[structopt(short = "f", long)]
     pub freeze_interval_ms: Option<u64>,
-    #[structopt(short = "m_align", long)]
+    #[structopt(short = "a", long)]
     pub memory_alignment: Option<MemoryAlignment>,
-    #[structopt(short = "m_read", long)]
+    #[structopt(short = "m", long)]
     pub memory_read_mode: Option<MemoryReadMode>,
-    #[structopt(short = "f_tol", long)]
+    #[structopt(short = "t", long)]
     pub floating_point_tolerance: Option<FloatingPointTolerance>,
-    #[structopt(short = "st", long)]
+    #[structopt(short = "s", long)]
     pub is_single_threaded_scan: Option<bool>,
-    #[structopt(short = "dbg", long)]
+    #[structopt(short = "d", long)]
     pub debug_perform_validation_scan: Option<bool>,
 }
 

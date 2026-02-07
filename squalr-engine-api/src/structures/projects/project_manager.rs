@@ -1,10 +1,11 @@
 use crate::structures::projects::{project::Project, project_info::ProjectInfo, project_manifest::ProjectManifest};
+use crate::structures::settings::project_settings::ProjectSettings;
 use notify::{
     Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher,
     event::{CreateKind, ModifyKind, RemoveKind, RenameMode},
 };
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         Arc, RwLock,
         mpsc::{self, Receiver, Sender},
@@ -57,7 +58,22 @@ impl ProjectManager {
         self.watcher = None;
 
         let (tx, rx): (Sender<Result<Event, notify::Error>>, Receiver<Result<Event, notify::Error>>) = mpsc::channel();
-        let projects_root: PathBuf = PathBuf::new(); // ProjectSettingsConfig::get_projects_root();
+        let projects_root = Self::get_projects_root_path();
+        if !Self::is_valid_watch_root(&projects_root) {
+            log::warn!(
+                "Projects watcher disabled because the projects root is invalid: {}",
+                projects_root.display()
+            );
+            return Ok(());
+        }
+        if let Err(error) = std::fs::create_dir_all(&projects_root) {
+            log::error!(
+                "Failed to create projects root directory '{}': {}",
+                projects_root.display(),
+                error
+            );
+            return Ok(());
+        }
         let mut watcher = notify::recommended_watcher(tx)?;
 
         // Watch only the top-level directory (not recursive) for project changes.
@@ -126,6 +142,14 @@ impl ProjectManager {
         self.watcher = Some(watcher);
 
         Ok(())
+    }
+
+    fn get_projects_root_path() -> PathBuf {
+        ProjectSettings::default().projects_root
+    }
+
+    fn is_valid_watch_root(projects_root: &Path) -> bool {
+        !projects_root.as_os_str().is_empty()
     }
 
     fn create_project_info(path: &PathBuf) -> ProjectInfo {
