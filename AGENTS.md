@@ -43,6 +43,7 @@ If this starts to become sprawling, compact this.
 - Parser coverage now includes `results refresh` long-form flags and validates parsed `scan_result_refs` extraction.
 - Parser coverage now includes `results add-to-project` long-form flags and validates parsed `scan_result_refs` extraction.
 - Parser coverage now includes privileged `memory read`, `scan reset`, `scan collect-values`, and `tasks cancel` command shapes.
+- Parser coverage now includes privileged `scan new` subcommand shape.
 - Parser coverage now includes privileged `memory write`, `scan struct-scan`, `process close`, and settings `general|memory|scan list` command shapes, with field extraction checks for memory write and struct scan payloads.
 - Parser coverage now includes unprivileged `project create`, `project rename`, and `project-items activate` long-form flags and validates field extraction.
 - Parser coverage now includes unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list` command shapes, with long-form field extraction checks where applicable.
@@ -62,6 +63,8 @@ If this starts to become sprawling, compact this.
 - Contract coverage now includes privileged `tasks list` and `tasks cancel` request dispatch through `send_unprivileged(...)`, with typed response decode verification and captured cancel payload checks.
 - Contract coverage now includes privileged typed-response mismatch handling for `tasks cancel` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variant while preserving command dispatch capture.
 - Contract coverage now includes privileged `scan reset` and `scan collect-values` request dispatch through `send_unprivileged(...)`, with typed response decode verification and command dispatch capture checks.
+- Contract coverage now includes privileged `scan new`, `scan element-scan`, `scan pointer-scan`, and `scan struct-scan` request dispatch through `send_unprivileged(...)`, with typed response decode verification and payload propagation checks for scan request fields.
+- Contract coverage now includes privileged typed-response mismatch handling for `scan new` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variants while preserving command dispatch capture.
 - Contract coverage now includes privileged typed-response mismatch handling for `scan collect-values` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variants while preserving command dispatch capture.
 - Contract coverage now includes privileged `memory read` and `memory write` request dispatch through `send_unprivileged(...)`, with typed response decode verification, request payload propagation checks, and wrong-variant callback suppression coverage.
 - Contract coverage now includes privileged `settings general set`, `settings memory list`, and `settings scan set` request dispatch through `send_unprivileged(...)`, with typed response decode verification, settings payload propagation checks, and wrong-variant callback suppression coverage for general settings set.
@@ -89,6 +92,8 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 - Phase 1 (extended): validate privileged trackable-task list/cancel dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode and cancel payload propagation.
 - Phase 1 (extended): validate privileged typed-response mismatch behavior for trackable-task cancel request callbacks in `send_unprivileged(...)` coverage.
 - Phase 1 (extended): validate privileged scan reset/collect-values dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode and wrong-variant callback suppression for collect-values.
+- Phase 1 (extended): validate remaining privileged scan dispatch contract coverage for `send_unprivileged(...)` (`new`, `element-scan`, `pointer-scan`, `struct-scan`), including typed callback decode and request payload propagation.
+- Phase 1 (extended): validate privileged typed-response mismatch behavior for scan-new request callbacks in `send_unprivileged(...)` coverage.
 - Phase 1 (extended): validate privileged memory read/write dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode, payload propagation, and wrong-variant callback suppression.
 - Phase 1 (extended): validate privileged settings command dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode, payload propagation, and wrong-variant callback suppression for set requests.
 - Phase 1 (extended): validate remaining privileged settings list/set dispatch command paths for `send_unprivileged(...)` (`general list`, `memory set`, and `scan list`) to complete basic settings command-response contract coverage.
@@ -114,6 +119,9 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Added privileged `process list` contract coverage to assert typed callback decode for returned process metadata, request payload propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `tasks list` and `tasks cancel` contract coverage to assert typed callback decode, cancel request payload propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `scan reset` and `scan collect-values` contract coverage to assert typed callback decode, command dispatch propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
+- `pr/unit-tests`: Added privileged `scan new`, `scan element-scan`, `scan pointer-scan`, and `scan struct-scan` contract coverage to assert typed callback decode, command dispatch propagation, and scan payload propagation through `send_unprivileged(...)`.
+- `pr/unit-tests`: Added privileged `scan new` typed-response mismatch contract coverage to assert callback suppression when the engine returns a different scan response variant while still capturing command dispatch.
+- `pr/unit-tests`: Added privileged parser regression coverage for `scan new` subcommand shape.
 - `pr/unit-tests`: Added privileged `memory read` and `memory write` contract coverage to assert typed callback decode, payload propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `settings general set`, `settings memory list`, and `settings scan set` contract coverage to assert typed callback decode, payload propagation for set requests, and callback suppression on wrong typed response variants for general settings set through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `settings general list`, `settings memory set`, and `settings scan list` contract coverage to assert typed callback decode and command payload propagation for `send_unprivileged(...)` settings request paths.
