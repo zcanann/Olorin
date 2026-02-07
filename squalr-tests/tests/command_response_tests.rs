@@ -7,6 +7,10 @@ use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRe
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
+use squalr_engine_api::commands::project::create::project_create_request::ProjectCreateRequest;
+use squalr_engine_api::commands::project::create::project_create_response::ProjectCreateResponse;
+use squalr_engine_api::commands::project::delete::project_delete_request::ProjectDeleteRequest;
+use squalr_engine_api::commands::project::delete::project_delete_response::ProjectDeleteResponse;
 use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
 use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest as UnprivilegedProjectOpenRequest;
@@ -273,6 +277,108 @@ fn project_open_request_dispatches_unprivileged_command_and_invokes_typed_callba
                 Some("C:\\Projects\\ContractProject".to_string())
             );
             assert_eq!(captured_project_open_request.project_name, Some("ContractProject".to_string()));
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_create_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectCreateResponse {
+            success: true,
+            new_project_path: PathBuf::from("C:\\Projects\\ContractCreateProject"),
+        }
+        .to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_create_request = ProjectCreateRequest {
+        project_directory_path: Some(PathBuf::from("C:\\Projects")),
+        project_name: Some("ContractCreateProject".to_string()),
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_create_request.send_unprivileged(&bindings, &execution_context, move |project_create_response| {
+        let callback_should_mark_success =
+            project_create_response.success && project_create_response.new_project_path == PathBuf::from("C:\\Projects\\ContractCreateProject");
+        callback_invoked_clone.store(callback_should_mark_success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Create {
+            project_create_request: captured_project_create_request,
+        }) => {
+            assert_eq!(
+                captured_project_create_request
+                    .project_directory_path
+                    .as_ref()
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects".to_string())
+            );
+            assert_eq!(captured_project_create_request.project_name, Some("ContractCreateProject".to_string()));
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_delete_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectDeleteResponse { success: true }.to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_delete_request = ProjectDeleteRequest {
+        project_directory_path: Some(PathBuf::from("C:\\Projects\\ContractDeleteProject")),
+        project_name: Some("ContractDeleteProject".to_string()),
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_delete_request.send_unprivileged(&bindings, &execution_context, move |project_delete_response| {
+        callback_invoked_clone.store(project_delete_response.success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Delete {
+            project_delete_request: captured_project_delete_request,
+        }) => {
+            assert_eq!(
+                captured_project_delete_request
+                    .project_directory_path
+                    .as_ref()
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects\\ContractDeleteProject".to_string())
+            );
+            assert_eq!(captured_project_delete_request.project_name, Some("ContractDeleteProject".to_string()));
         }
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
