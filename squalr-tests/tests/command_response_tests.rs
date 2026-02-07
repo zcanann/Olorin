@@ -10,6 +10,7 @@ use squalr_engine_api::commands::process::process_command::ProcessCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
+use squalr_engine_api::commands::scan_results::scan_results_command::ScanResultsCommand;
 use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
 use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
 use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSettingsCommand;
@@ -445,6 +446,23 @@ fn privileged_command_parser_accepts_element_scan_with_long_flags() {
 
             assert_eq!(element_scan_request.data_type_refs[0].get_data_type_id(), "i32");
             assert_eq!(element_scan_request.data_type_refs[1].get_data_type_id(), "f32");
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_list_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "results", "list", "--page-index", "2"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::List { results_list_request }) => {
+            assert_eq!(results_list_request.page_index, 2);
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
