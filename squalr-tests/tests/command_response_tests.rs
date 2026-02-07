@@ -10,6 +10,7 @@ use squalr_engine_api::commands::process::process_command::ProcessCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
+use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
 use squalr_engine_api::commands::unprivileged_command_response::UnprivilegedCommandResponse;
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
@@ -17,6 +18,7 @@ use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedStat
 use squalr_engine_api::events::engine_event::EngineEvent;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use structopt::StructOpt;
 
 struct MockEngineBindings {
     dispatched_commands: Arc<Mutex<Vec<PrivilegedCommand>>>,
@@ -163,4 +165,19 @@ fn typed_response_round_trip_for_scan_new_response() {
     let typed_response_result = ScanNewResponse::from_engine_response(engine_response);
 
     assert!(typed_response_result.is_ok());
+}
+
+#[test]
+fn privileged_command_parser_accepts_trackable_tasks_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "tasks", "list"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::TrackableTasks(TrackableTasksCommand::List { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
 }
