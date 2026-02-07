@@ -379,6 +379,37 @@ fn element_scan_request_dispatches_element_scan_command_and_invokes_typed_callba
 }
 
 #[test]
+fn element_scan_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        ScanResetResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let element_scan_request = ElementScanRequest {
+        scan_constraints: vec![AnonymousScanConstraint::from_str("==").expect("scan constraint should parse")],
+        data_type_refs: vec![DataTypeRef::new("i32")],
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    element_scan_request.send_unprivileged(&bindings, move |_element_scan_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Scan(ScanCommand::ElementScan { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
 fn pointer_scan_request_dispatches_pointer_scan_command_and_invokes_typed_callback() {
     let bindings = MockEngineBindings::new(
         PointerScanResponse { trackable_task_handle: None }.to_engine_response(),
@@ -430,6 +461,40 @@ fn pointer_scan_request_dispatches_pointer_scan_command_and_invokes_typed_callba
 }
 
 #[test]
+fn pointer_scan_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        ScanCollectValuesResponse { trackable_task_handle: None }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let pointer_scan_request = PointerScanRequest {
+        target_address: squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString::from_str("4096;address;")
+            .expect("anonymous value string should parse"),
+        pointer_data_type_ref: DataTypeRef::new("u64"),
+        max_depth: 5,
+        offset_size: 8,
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    pointer_scan_request.send_unprivileged(&bindings, move |_pointer_scan_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Scan(ScanCommand::PointerScan { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
 fn struct_scan_request_dispatches_struct_scan_command_and_invokes_typed_callback() {
     let bindings = MockEngineBindings::new(
         StructScanResponse { trackable_task_handle: None }.to_engine_response(),
@@ -475,6 +540,41 @@ fn struct_scan_request_dispatches_struct_scan_command_and_invokes_typed_callback
                 ScanCompareType::Immediate(ScanCompareTypeImmediate::Equal)
             );
         }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn struct_scan_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        PointerScanResponse { trackable_task_handle: None }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let struct_scan_request = StructScanRequest {
+        scan_value: Some(
+            squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString::from_str("12;dec;")
+                .expect("anonymous value string should parse"),
+        ),
+        data_type_ids: vec!["u32".to_string(), "f32".to_string()],
+        compare_type: ScanCompareType::Immediate(ScanCompareTypeImmediate::Equal),
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    struct_scan_request.send_unprivileged(&bindings, move |_struct_scan_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Scan(ScanCommand::StructScan { .. }) => {}
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }
