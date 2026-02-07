@@ -1,0 +1,326 @@
+use crossbeam_channel::{Receiver, unbounded};
+use squalr_engine_api::commands::memory::memory_command::MemoryCommand;
+use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;
+use squalr_engine_api::commands::memory::write::memory_write_response::MemoryWriteResponse;
+use squalr_engine_api::commands::privileged_command::PrivilegedCommand;
+use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
+use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
+use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
+use squalr_engine_api::commands::process::process_command::ProcessCommand;
+use squalr_engine_api::commands::project::close::project_close_request::ProjectCloseRequest;
+use squalr_engine_api::commands::project::close::project_close_response::ProjectCloseResponse;
+use squalr_engine_api::commands::project::create::project_create_request::ProjectCreateRequest;
+use squalr_engine_api::commands::project::create::project_create_response::ProjectCreateResponse;
+use squalr_engine_api::commands::project::delete::project_delete_request::ProjectDeleteRequest;
+use squalr_engine_api::commands::project::delete::project_delete_response::ProjectDeleteResponse;
+use squalr_engine_api::commands::project::export::project_export_request::ProjectExportRequest;
+use squalr_engine_api::commands::project::export::project_export_response::ProjectExportResponse;
+use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
+use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
+use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest as UnprivilegedProjectOpenRequest;
+use squalr_engine_api::commands::project::open::project_open_response::ProjectOpenResponse;
+use squalr_engine_api::commands::project::project_command::ProjectCommand;
+use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
+use squalr_engine_api::commands::project::rename::project_rename_response::ProjectRenameResponse;
+use squalr_engine_api::commands::project::save::project_save_request::ProjectSaveRequest;
+use squalr_engine_api::commands::project::save::project_save_response::ProjectSaveResponse;
+use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
+use squalr_engine_api::commands::project_items::activate::project_items_activate_response::ProjectItemsActivateResponse;
+use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
+use squalr_engine_api::commands::project_items::list::project_items_list_response::ProjectItemsListResponse;
+use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
+use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
+use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
+use squalr_engine_api::commands::scan::scan_command::ScanCommand;
+use squalr_engine_api::commands::scan_results::scan_results_command::ScanResultsCommand;
+use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
+use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
+use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSettingsCommand;
+use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
+use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
+use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
+use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
+use squalr_engine_api::commands::unprivileged_command_response::{TypedUnprivilegedCommandResponse, UnprivilegedCommandResponse};
+use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
+use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
+use squalr_engine_api::events::engine_event::EngineEvent;
+use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
+use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
+use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
+use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
+use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
+use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
+use structopt::StructOpt;
+
+struct MockEngineBindings {
+    dispatched_commands: Arc<Mutex<Vec<PrivilegedCommand>>>,
+    dispatched_unprivileged_commands: Arc<Mutex<Vec<UnprivilegedCommand>>>,
+    response_to_return: PrivilegedCommandResponse,
+    unprivileged_response_to_return: UnprivilegedCommandResponse,
+}
+
+impl MockEngineBindings {
+    fn new(
+        response_to_return: PrivilegedCommandResponse,
+        unprivileged_response_to_return: UnprivilegedCommandResponse,
+    ) -> Self {
+        Self {
+            dispatched_commands: Arc::new(Mutex::new(Vec::new())),
+            dispatched_unprivileged_commands: Arc::new(Mutex::new(Vec::new())),
+            response_to_return,
+            unprivileged_response_to_return,
+        }
+    }
+
+    fn get_dispatched_commands(&self) -> Arc<Mutex<Vec<PrivilegedCommand>>> {
+        self.dispatched_commands.clone()
+    }
+
+    fn get_dispatched_unprivileged_commands(&self) -> Arc<Mutex<Vec<UnprivilegedCommand>>> {
+        self.dispatched_unprivileged_commands.clone()
+    }
+}
+
+impl EngineApiUnprivilegedBindings for MockEngineBindings {
+    fn dispatch_privileged_command(
+        &self,
+        engine_command: PrivilegedCommand,
+        callback: Box<dyn FnOnce(PrivilegedCommandResponse) + Send + Sync + 'static>,
+    ) -> Result<(), String> {
+        match self.dispatched_commands.lock() {
+            Ok(mut dispatched_commands) => {
+                dispatched_commands.push(engine_command);
+            }
+            Err(error) => {
+                return Err(format!("Failed to capture dispatched command: {}", error));
+            }
+        }
+
+        callback(self.response_to_return.clone());
+
+        Ok(())
+    }
+
+    fn dispatch_unprivileged_command(
+        &self,
+        engine_command: UnprivilegedCommand,
+        _engine_unprivileged_state: &Arc<EngineUnprivilegedState>,
+        callback: Box<dyn FnOnce(UnprivilegedCommandResponse) + Send + Sync + 'static>,
+    ) -> Result<(), String> {
+        match self.dispatched_unprivileged_commands.lock() {
+            Ok(mut dispatched_unprivileged_commands) => {
+                dispatched_unprivileged_commands.push(engine_command);
+            }
+            Err(error) => {
+                return Err(format!("Failed to capture dispatched unprivileged command: {}", error));
+            }
+        }
+
+        callback(self.unprivileged_response_to_return.clone());
+
+        Ok(())
+    }
+
+    fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, String> {
+        let (_event_sender, event_receiver) = unbounded();
+
+        Ok(event_receiver)
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_list_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "results", "list", "--page-index", "2"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::List { results_list_request }) => {
+            assert_eq!(results_list_request.page_index, 2);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_query_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "results", "query", "--page-index", "5"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Query { results_query_request }) => {
+            assert_eq!(results_query_request.page_index, 5);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_refresh_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "refresh",
+            "--scan-result-refs",
+            "13",
+            "--scan-result-refs",
+            "21",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Refresh { results_refresh_request }) => {
+            assert_eq!(results_refresh_request.scan_result_refs.len(), 2);
+            assert_eq!(results_refresh_request.scan_result_refs[0].get_scan_result_global_index(), 13);
+            assert_eq!(results_refresh_request.scan_result_refs[1].get_scan_result_global_index(), 21);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_add_to_project_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "add-to-project",
+            "--scan-result-refs",
+            "8",
+            "--scan-result-refs",
+            "34",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::AddToProject {
+            results_add_to_project_request,
+        }) => {
+            assert_eq!(results_add_to_project_request.scan_result_refs.len(), 2);
+            assert_eq!(results_add_to_project_request.scan_result_refs[0].get_scan_result_global_index(), 8);
+            assert_eq!(results_add_to_project_request.scan_result_refs[1].get_scan_result_global_index(), 34);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_set_property_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "set-property",
+            "--scan-result-refs",
+            "7",
+            "--scan-result-refs",
+            "11",
+            "--anonymous-value-string",
+            "255;dec;",
+            "--field-namespace",
+            "value",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::SetProperty { results_set_property_request }) => {
+            assert_eq!(results_set_property_request.scan_result_refs.len(), 2);
+            assert_eq!(results_set_property_request.scan_result_refs[0].get_scan_result_global_index(), 7);
+            assert_eq!(results_set_property_request.scan_result_refs[1].get_scan_result_global_index(), 11);
+            assert_eq!(
+                results_set_property_request
+                    .anonymous_value_string
+                    .get_anonymous_value_string(),
+                "255"
+            );
+            assert_eq!(results_set_property_request.field_namespace, "value".to_string());
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_delete_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "delete",
+            "--scan-result-refs",
+            "17",
+            "--scan-result-refs",
+            "29",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Delete { results_delete_request }) => {
+            assert_eq!(results_delete_request.scan_result_refs.len(), 2);
+            assert_eq!(results_delete_request.scan_result_refs[0].get_scan_result_global_index(), 17);
+            assert_eq!(results_delete_request.scan_result_refs[1].get_scan_result_global_index(), 29);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_freeze_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "freeze",
+            "--scan-result-refs",
+            "3",
+            "--scan-result-refs",
+            "9",
+            "--is-frozen",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Freeze { results_freeze_request }) => {
+            assert_eq!(results_freeze_request.scan_result_refs.len(), 2);
+            assert_eq!(results_freeze_request.scan_result_refs[0].get_scan_result_global_index(), 3);
+            assert_eq!(results_freeze_request.scan_result_refs[1].get_scan_result_global_index(), 9);
+            assert!(results_freeze_request.is_frozen);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}

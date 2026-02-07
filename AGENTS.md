@@ -5,6 +5,8 @@ You should look at the Agentic Current Task section to pick up on your previous 
 
 After each session, you should attempt to checkpoint your work with a commit, and fill out the relevant sections of Agentic Current Task.
 
+If you have to modify source files to patch bugs, this is understandable as long as the README architecture is in-tact.
+
 ## Coding Conventions
 - All variable names should be coherent. This means 'i' is forbidden. 'idx' is forbidden. In fact, even 'index' is often bad, because you should generally say what the index is for, ie 'snapshot_index'. You are a systems programmer, not an academic.
 - No unhandled unwraps, panics, etc. On failure, either return a result, or log an error or warning with the log! macro.
@@ -50,6 +52,7 @@ If functionality is too hard to test, note down why its better to not have the t
 - Contract coverage now includes unprivileged `project-items activate` request dispatch through `send_unprivileged(...)`, with typed response decode verification and captured activation payload checks.
 - Contract coverage now includes unprivileged `project export`, `project close`, `project save`, and `project-items list` request dispatch through `send_unprivileged(...)`, with typed response decode verification and command payload propagation checks where applicable.
 - Contract coverage now includes unprivileged typed-response mismatch handling for `project save` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variant while preserving command dispatch capture.
+- `squalr-tests` integration coverage is now split into per-command suites under `squalr-tests/tests/*_command_tests.rs` to avoid single-file test sprawl.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
@@ -63,6 +66,7 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
+- Phase 1 (extended): reorganize `squalr-tests` integration coverage into per-command test suites for maintainability and ownership.
 - Phase 2 (deferred): add OS-behavior tests for memory read/write, page query, and scan flows once OS query/reader/writer singletons support dependency injection overrides in test context.
 - Scope cut rationale: privileged executors call static OS-facing singletons directly (`MemoryQueryer`, `MemoryReader`, `MemoryWriter`, `ProcessQuery`), so deterministic command executor tests cannot currently emulate OS data without architectural changes.
 - Proposed minimal future seam: trait-object providers on `EnginePrivilegedState` for process/memory/query APIs, with production defaults bound to current implementations.
@@ -70,60 +74,9 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 #### Concise Session logs (Agents can modify this!)
 For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added new workspace member `squalr-tests`.
-- `pr/unit-tests`: Added initial tests in `squalr-tests/tests/command_response_tests.rs` covering:
-  - `MemoryWriteRequest::send_unprivileged` dispatch and typed callback decode.
-  - `ProcessOpenRequest::send_unprivileged` behavior when response variant mismatches (callback not invoked).
-  - `ScanNewRequest::to_engine_command` mapping.
-  - `ScanNewResponse` typed response round-trip conversion.
-- `pr/unit-tests`: Ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Documented parser and DI limitations for next iteration.
-- `pr/unit-tests`: Fixed parser command metadata collisions in `squalr-engine-api`:
-  - Updated `PrivilegedCommand::TrackableTasks` aliases to avoid top-level alias collision with `Settings`.
-  - Updated `PointerScanRequest` short flags to remove duplicate `-d`.
-  - Removed multi-character `short` flags from scan/memory settings set requests and kept stable `--long` flags.
-- `pr/unit-tests`: Added parser regression test in `squalr-tests/tests/command_response_tests.rs` to ensure `PrivilegedCommand::from_iter_safe(["squalr-cli", "tasks", "list"])` parses without panic.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `settings memory set` long flags and verified parsed `MemorySettingsSetRequest` field extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `scan pointer-scan` long flags and verified parsed `PointerScanRequest` field extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `process list` long flags and verified parsed `ProcessListRequest` field extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `process open` long flags and verified parsed `ProcessOpenRequest` field extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `settings scan set` long flags and verified parsed `ScanSettingsSetRequest` enum/boolean field extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `settings general set` long flags and verified parsed `GeneralSettingsSetRequest` field extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `scan element-scan` long flags and verified parsed constraint/data-type vector field extraction, including immediate and relative compare constraint parsing.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `results list` long flags and verified parsed `ScanResultsListRequest.page_index` extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `results set-property` long flags and verified parsed `ScanResultsSetPropertyRequest` scan result refs, value payload, and field namespace extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression test for `results freeze` long flags and verified parsed `ScanResultsFreezeRequest` scan result refs and freeze state extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression tests for `results query` and `results delete` long flags and verified parsed `ScanResultsQueryRequest.page_index` and `ScanResultsDeleteRequest.scan_result_refs` extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression tests for `results refresh` and `results add-to-project` long flags and verified parsed `ScanResultsRefreshRequest.scan_result_refs` and `ScanResultsAddToProjectRequest.scan_result_refs` extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression tests for privileged `memory read`, `scan reset`, `scan collect-values`, and `tasks cancel`; verified parsed field extraction for address/module/struct and task id.
-- `pr/unit-tests`: Added parser regression tests for unprivileged `project create`, `project rename`, and `project-items activate`; verified parsed path/name and activation payload extraction.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added parser regression tests for unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list`; verified parsed field extraction for optional paths/names and boolean flags where applicable.
-- `pr/unit-tests`: Added parser regression tests for privileged `memory write`, `scan struct-scan`, `process close`, and settings `general|memory|scan list`; verified parsed field extraction for write payload and struct scan compare/value/type fields.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Extended `squalr-tests` mock bindings to capture/respond to unprivileged dispatch calls and added `ProjectListRequest::send_unprivileged(...)` contract coverage for unprivileged command dispatch and typed callback decode.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added `ProjectOpenRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed `ProjectOpenResponse` callback decode, and command payload field propagation.
-- `pr/unit-tests`: Added `ProjectCreateRequest::send_unprivileged(...)` and `ProjectDeleteRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed callback decode, and project payload field propagation.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added `ProjectRenameRequest::send_unprivileged(...)` and `ProjectItemsActivateRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed callback decode, and payload field propagation.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added `ProjectExportRequest::send_unprivileged(...)`, `ProjectCloseRequest::send_unprivileged(...)`, `ProjectSaveRequest::send_unprivileged(...)`, and `ProjectItemsListRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed callback decode, and payload propagation checks where applicable.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
-- `pr/unit-tests`: Added `ProjectSaveRequest::send_unprivileged(...)` wrong-response regression coverage in `squalr-tests/tests/command_response_tests.rs`; verified typed callback is not invoked when response variant mismatches while unprivileged command dispatch capture remains correct.
-- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added initial tests in `squalr-tests/tests/command_response_tests.rs`
+- NOTE FROM OWNER: This test format is unsustainable and retarded. Stop dumping everything in one file. One test suite per command.
+- `pr/unit-tests`: Split `squalr-tests/tests/command_response_tests.rs` into command-specific suites (`memory`, `process`, `project`, `project-items`, `scan`, `scan-results`, `settings`, `trackable-tasks`) while preserving existing parser and dispatch contract coverage.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
