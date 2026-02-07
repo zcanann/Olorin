@@ -9,6 +9,8 @@ use squalr_engine_api::commands::process::open::process_open_request::ProcessOpe
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
 use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
+use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest as UnprivilegedProjectOpenRequest;
+use squalr_engine_api::commands::project::open::project_open_response::ProjectOpenResponse;
 use squalr_engine_api::commands::project::project_command::ProjectCommand;
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
@@ -32,6 +34,7 @@ use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::Sca
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use structopt::StructOpt;
@@ -221,6 +224,56 @@ fn project_list_request_dispatches_unprivileged_command_and_invokes_typed_callba
 
     match &dispatched_unprivileged_commands_guard[0] {
         UnprivilegedCommand::Project(ProjectCommand::List { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_open_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectOpenResponse { success: true }.to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_open_request = UnprivilegedProjectOpenRequest {
+        open_file_browser: true,
+        project_directory_path: Some(PathBuf::from("C:\\Projects\\ContractProject")),
+        project_name: Some("ContractProject".to_string()),
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_open_request.send_unprivileged(&bindings, &execution_context, move |project_open_response| {
+        callback_invoked_clone.store(project_open_response.success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Open {
+            project_open_request: captured_project_open_request,
+        }) => {
+            assert!(captured_project_open_request.open_file_browser);
+            assert_eq!(
+                captured_project_open_request
+                    .project_directory_path
+                    .as_ref()
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects\\ContractProject".to_string())
+            );
+            assert_eq!(captured_project_open_request.project_name, Some("ContractProject".to_string()));
+        }
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }

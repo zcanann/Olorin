@@ -43,11 +43,13 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes unprivileged `project create`, `project rename`, and `project-items activate` long-form flags and validates field extraction.
 - Parser coverage now includes unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list` command shapes, with long-form field extraction checks where applicable.
 - Contract coverage now includes unprivileged `project list` request dispatch through `send_unprivileged(...)`, with typed response decode and callback invocation verification via `EngineApiUnprivilegedBindings` mocks.
+- Contract coverage now includes unprivileged `project open` request dispatch through `send_unprivileged(...)`, with typed response decode, callback invocation verification, and captured payload checks for file-browser toggle, project path, and project name.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
 - Phase 1 (implemented): validate command request dispatch and typed response extraction through `EngineApiUnprivilegedBindings` mocks.
 - Phase 1 (extended): validate unprivileged request dispatch and typed response extraction through `UnprivilegedCommandRequest::send_unprivileged(...)` mock bindings.
+- Phase 1 (extended): expand unprivileged dispatch contract coverage beyond `project list` by validating typed callback decode and payload propagation for additional project commands.
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
@@ -103,6 +105,7 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Extended `squalr-tests` mock bindings to capture/respond to unprivileged dispatch calls and added `ProjectListRequest::send_unprivileged(...)` contract coverage for unprivileged command dispatch and typed callback decode.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added `ProjectOpenRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed `ProjectOpenResponse` callback decode, and command payload field propagation.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
