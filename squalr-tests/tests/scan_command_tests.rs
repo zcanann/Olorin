@@ -29,10 +29,10 @@ use squalr_engine_api::commands::project_items::activate::project_items_activate
 use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
 use squalr_engine_api::commands::project_items::list::project_items_list_response::ProjectItemsListResponse;
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
-use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
-use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_response::ScanCollectValuesResponse;
+use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
+use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::reset::scan_reset_request::ScanResetRequest;
 use squalr_engine_api::commands::scan::reset::scan_reset_response::ScanResetResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
@@ -187,10 +187,7 @@ fn scan_reset_request_dispatches_reset_command_and_invokes_typed_callback() {
 #[test]
 fn scan_collect_values_request_dispatches_collect_values_command_and_invokes_typed_callback() {
     let bindings = MockEngineBindings::new(
-        ScanCollectValuesResponse {
-            trackable_task_handle: None,
-        }
-        .to_engine_response(),
+        ScanCollectValuesResponse { trackable_task_handle: None }.to_engine_response(),
         ProjectListResponse::default().to_engine_response(),
     );
     let dispatched_commands = bindings.get_dispatched_commands();
