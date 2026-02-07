@@ -11,11 +11,16 @@ use squalr_engine_api::commands::project::create::project_create_request::Projec
 use squalr_engine_api::commands::project::create::project_create_response::ProjectCreateResponse;
 use squalr_engine_api::commands::project::delete::project_delete_request::ProjectDeleteRequest;
 use squalr_engine_api::commands::project::delete::project_delete_response::ProjectDeleteResponse;
+use squalr_engine_api::commands::project::export::project_export_response::ProjectExportResponse;
 use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
 use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest as UnprivilegedProjectOpenRequest;
 use squalr_engine_api::commands::project::open::project_open_response::ProjectOpenResponse;
 use squalr_engine_api::commands::project::project_command::ProjectCommand;
+use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
+use squalr_engine_api::commands::project::rename::project_rename_response::ProjectRenameResponse;
+use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
+use squalr_engine_api::commands::project_items::activate::project_items_activate_response::ProjectItemsActivateResponse;
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
@@ -379,6 +384,111 @@ fn project_delete_request_dispatches_unprivileged_command_and_invokes_typed_call
                 Some("C:\\Projects\\ContractDeleteProject".to_string())
             );
             assert_eq!(captured_project_delete_request.project_name, Some("ContractDeleteProject".to_string()));
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_rename_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectRenameResponse {
+            success: true,
+            new_project_path: PathBuf::from("C:\\Projects\\RenamedProject"),
+        }
+        .to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_rename_request = ProjectRenameRequest {
+        project_directory_path: PathBuf::from("C:\\Projects\\OriginalProject"),
+        new_project_name: "RenamedProject".to_string(),
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_rename_request.send_unprivileged(&bindings, &execution_context, move |project_rename_response| {
+        let callback_should_mark_success =
+            project_rename_response.success && project_rename_response.new_project_path == PathBuf::from("C:\\Projects\\RenamedProject");
+        callback_invoked_clone.store(callback_should_mark_success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Rename {
+            project_rename_request: captured_project_rename_request,
+        }) => {
+            assert_eq!(
+                captured_project_rename_request
+                    .project_directory_path
+                    .display()
+                    .to_string(),
+                "C:\\Projects\\OriginalProject".to_string()
+            );
+            assert_eq!(captured_project_rename_request.new_project_name, "RenamedProject".to_string());
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_items_activate_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectItemsActivateResponse {}.to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectExportResponse::default().to_engine_response(),
+    ))));
+
+    let project_items_activate_request = ProjectItemsActivateRequest {
+        project_item_paths: vec![
+            "Addresses.Player.Health".to_string(),
+            "Addresses.Player.Ammo".to_string(),
+        ],
+        is_activated: true,
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_items_activate_request.send_unprivileged(&bindings, &execution_context, move |_project_items_activate_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::ProjectItems(ProjectItemsCommand::Activate {
+            project_items_activate_request: captured_project_items_activate_request,
+        }) => {
+            assert_eq!(
+                captured_project_items_activate_request.project_item_paths,
+                vec![
+                    "Addresses.Player.Health".to_string(),
+                    "Addresses.Player.Ammo".to_string(),
+                ]
+            );
+            assert!(captured_project_items_activate_request.is_activated);
         }
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
