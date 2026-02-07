@@ -53,6 +53,7 @@ If functionality is too hard to test, note down why its better to not have the t
 - Contract coverage now includes unprivileged `project export`, `project close`, `project save`, and `project-items list` request dispatch through `send_unprivileged(...)`, with typed response decode verification and command payload propagation checks where applicable.
 - Contract coverage now includes unprivileged typed-response mismatch handling for `project save` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variant while preserving command dispatch capture.
 - Contract coverage now includes unprivileged typed-response mismatch handling for `project-items list` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variant while preserving command dispatch capture.
+- Contract coverage now includes privileged `process open` request dispatch through `send_unprivileged(...)`, with typed response decode verification and captured payload checks for process id, search name, and match-case.
 - `squalr-tests` integration coverage is now split into per-command suites under `squalr-tests/tests/*_command_tests.rs` to avoid single-file test sprawl.
 
 #### Architecture Plan (Agents can modify this!)
@@ -65,6 +66,7 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 - Phase 1 (extended): validate unprivileged dispatch contract coverage for `project export`, `project close`, `project save`, and `project-items list` command paths.
 - Phase 1 (extended): validate unprivileged typed-response mismatch behavior for `send_unprivileged(...)` request callbacks (wrong response variant should not invoke typed callback).
 - Phase 1 (extended): validate unprivileged typed-response mismatch behavior for `project-items` request callbacks in `send_unprivileged(...)` coverage.
+- Phase 1 (extended): validate privileged process-open dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode and request payload propagation.
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
@@ -80,6 +82,7 @@ For each PR, append to this section a summary of the work accomplished.
 - NOTE FROM OWNER: This test format is unsustainable and retarded. Stop dumping everything in one file. One test suite per command.
 - `pr/unit-tests`: Split `squalr-tests/tests/command_response_tests.rs` into command-specific suites (`memory`, `process`, `project`, `project-items`, `scan`, `scan-results`, `settings`, `trackable-tasks`) while preserving existing parser and dispatch contract coverage.
 - `pr/unit-tests`: Added `project-items list` unprivileged typed-response mismatch contract coverage to assert callback suppression when the engine returns a different response variant while still capturing command dispatch.
+- `pr/unit-tests`: Added privileged `process open` success-path contract coverage to assert typed callback decode and request payload propagation through `send_unprivileged(...)`.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
