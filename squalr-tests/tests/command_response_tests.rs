@@ -7,6 +7,8 @@ use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRe
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
+use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
+use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
 use squalr_engine_api::commands::project::project_command::ProjectCommand;
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
@@ -19,7 +21,8 @@ use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSett
 use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
 use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
-use squalr_engine_api::commands::unprivileged_command_response::UnprivilegedCommandResponse;
+use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
+use squalr_engine_api::commands::unprivileged_command_response::{TypedUnprivilegedCommandResponse, UnprivilegedCommandResponse};
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
@@ -30,24 +33,35 @@ use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_imme
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use structopt::StructOpt;
 
 struct MockEngineBindings {
     dispatched_commands: Arc<Mutex<Vec<PrivilegedCommand>>>,
+    dispatched_unprivileged_commands: Arc<Mutex<Vec<UnprivilegedCommand>>>,
     response_to_return: PrivilegedCommandResponse,
+    unprivileged_response_to_return: UnprivilegedCommandResponse,
 }
 
 impl MockEngineBindings {
-    fn new(response_to_return: PrivilegedCommandResponse) -> Self {
+    fn new(
+        response_to_return: PrivilegedCommandResponse,
+        unprivileged_response_to_return: UnprivilegedCommandResponse,
+    ) -> Self {
         Self {
             dispatched_commands: Arc::new(Mutex::new(Vec::new())),
+            dispatched_unprivileged_commands: Arc::new(Mutex::new(Vec::new())),
             response_to_return,
+            unprivileged_response_to_return,
         }
     }
 
     fn get_dispatched_commands(&self) -> Arc<Mutex<Vec<PrivilegedCommand>>> {
         self.dispatched_commands.clone()
+    }
+
+    fn get_dispatched_unprivileged_commands(&self) -> Arc<Mutex<Vec<UnprivilegedCommand>>> {
+        self.dispatched_unprivileged_commands.clone()
     }
 }
 
@@ -73,11 +87,22 @@ impl EngineApiUnprivilegedBindings for MockEngineBindings {
 
     fn dispatch_unprivileged_command(
         &self,
-        _engine_command: UnprivilegedCommand,
+        engine_command: UnprivilegedCommand,
         _engine_unprivileged_state: &Arc<EngineUnprivilegedState>,
-        _callback: Box<dyn FnOnce(UnprivilegedCommandResponse) + Send + Sync + 'static>,
+        callback: Box<dyn FnOnce(UnprivilegedCommandResponse) + Send + Sync + 'static>,
     ) -> Result<(), String> {
-        Err("Unprivileged command dispatch is not used by this test suite.".to_string())
+        match self.dispatched_unprivileged_commands.lock() {
+            Ok(mut dispatched_unprivileged_commands) => {
+                dispatched_unprivileged_commands.push(engine_command);
+            }
+            Err(error) => {
+                return Err(format!("Failed to capture dispatched unprivileged command: {}", error));
+            }
+        }
+
+        callback(self.unprivileged_response_to_return.clone());
+
+        Ok(())
     }
 
     fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, String> {
@@ -89,7 +114,10 @@ impl EngineApiUnprivilegedBindings for MockEngineBindings {
 
 #[test]
 fn memory_write_request_dispatches_write_command_and_invokes_typed_callback() {
-    let bindings = MockEngineBindings::new(MemoryWriteResponse { success: true }.to_engine_response());
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
     let dispatched_commands = bindings.get_dispatched_commands();
 
     let memory_write_request = MemoryWriteRequest {
@@ -125,7 +153,10 @@ fn memory_write_request_dispatches_write_command_and_invokes_typed_callback() {
 
 #[test]
 fn process_open_request_does_not_invoke_callback_when_response_variant_is_wrong() {
-    let bindings = MockEngineBindings::new(MemoryWriteResponse { success: true }.to_engine_response());
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
     let dispatched_commands = bindings.get_dispatched_commands();
 
     let process_open_request = ProcessOpenRequest {
@@ -156,6 +187,40 @@ fn process_open_request_does_not_invoke_callback_when_response_variant_is_wrong(
             assert_eq!(captured_process_open_request.search_name, None);
             assert!(!captured_process_open_request.match_case);
         }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_list_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_list_request = ProjectListRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_list_request.send_unprivileged(&bindings, &execution_context, move |project_list_response| {
+        callback_invoked_clone.store(project_list_response.projects_info.is_empty(), Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::List { .. }) => {}
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }

@@ -42,10 +42,12 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes privileged `memory write`, `scan struct-scan`, `process close`, and settings `general|memory|scan list` command shapes, with field extraction checks for memory write and struct scan payloads.
 - Parser coverage now includes unprivileged `project create`, `project rename`, and `project-items activate` long-form flags and validates field extraction.
 - Parser coverage now includes unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list` command shapes, with long-form field extraction checks where applicable.
+- Contract coverage now includes unprivileged `project list` request dispatch through `send_unprivileged(...)`, with typed response decode and callback invocation verification via `EngineApiUnprivilegedBindings` mocks.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
 - Phase 1 (implemented): validate command request dispatch and typed response extraction through `EngineApiUnprivilegedBindings` mocks.
+- Phase 1 (extended): validate unprivileged request dispatch and typed response extraction through `UnprivilegedCommandRequest::send_unprivileged(...)` mock bindings.
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
@@ -98,6 +100,8 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression tests for unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list`; verified parsed field extraction for optional paths/names and boolean flags where applicable.
 - `pr/unit-tests`: Added parser regression tests for privileged `memory write`, `scan struct-scan`, `process close`, and settings `general|memory|scan list`; verified parsed field extraction for write payload and struct scan compare/value/type fields.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Extended `squalr-tests` mock bindings to capture/respond to unprivileged dispatch calls and added `ProjectListRequest::send_unprivileged(...)` contract coverage for unprivileged command dispatch and typed callback decode.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 
 ## Agentic Eventually TODO list
