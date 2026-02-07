@@ -251,3 +251,37 @@ fn privileged_command_parser_accepts_pointer_scan_with_long_flags() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn privileged_command_parser_accepts_process_list_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "process",
+            "list",
+            "--require-windowed",
+            "--search-name",
+            "calc",
+            "--match-case",
+            "--limit",
+            "10",
+            "--fetch-icons",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Process(ProcessCommand::List { process_list_request }) => {
+            assert!(process_list_request.require_windowed);
+            assert_eq!(process_list_request.search_name, Some("calc".to_string()));
+            assert!(process_list_request.match_case);
+            assert_eq!(process_list_request.limit, Some(10));
+            assert!(process_list_request.fetch_icons);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
