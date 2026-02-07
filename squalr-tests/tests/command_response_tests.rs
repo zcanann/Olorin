@@ -467,3 +467,74 @@ fn privileged_command_parser_accepts_scan_results_list_with_long_flags() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_set_property_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "set-property",
+            "--scan-result-refs",
+            "7",
+            "--scan-result-refs",
+            "11",
+            "--anonymous-value-string",
+            "255;dec;",
+            "--field-namespace",
+            "value",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::SetProperty { results_set_property_request }) => {
+            assert_eq!(results_set_property_request.scan_result_refs.len(), 2);
+            assert_eq!(results_set_property_request.scan_result_refs[0].get_scan_result_global_index(), 7);
+            assert_eq!(results_set_property_request.scan_result_refs[1].get_scan_result_global_index(), 11);
+            assert_eq!(
+                results_set_property_request
+                    .anonymous_value_string
+                    .get_anonymous_value_string(),
+                "255"
+            );
+            assert_eq!(results_set_property_request.field_namespace, "value".to_string());
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_freeze_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "freeze",
+            "--scan-result-refs",
+            "3",
+            "--scan-result-refs",
+            "9",
+            "--is-frozen",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Freeze { results_freeze_request }) => {
+            assert_eq!(results_freeze_request.scan_result_refs.len(), 2);
+            assert_eq!(results_freeze_request.scan_result_refs[0].get_scan_result_global_index(), 3);
+            assert_eq!(results_freeze_request.scan_result_refs[1].get_scan_result_global_index(), 9);
+            assert!(results_freeze_request.is_frozen);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}

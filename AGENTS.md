@@ -33,6 +33,8 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes `settings general set` long-form flags and validates parsed field extraction for engine request delay.
 - Parser coverage now includes `scan element-scan` long-form flags and validates parsed field extraction for vectorized scan constraints and data type refs.
 - Parser coverage now includes `results list` long-form flags and validates parsed `page_index` field extraction.
+- Parser coverage now includes `results set-property` long-form flags and validates parsed `scan_result_refs`, `anonymous_value_string`, and `field_namespace` extraction.
+- Parser coverage now includes `results freeze` long-form flags and validates parsed `scan_result_refs` and `is_frozen` extraction.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
@@ -73,6 +75,10 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added parser regression test for `scan element-scan` long flags and verified parsed constraint/data-type vector field extraction, including immediate and relative compare constraint parsing.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression test for `results list` long flags and verified parsed `ScanResultsListRequest.page_index` extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression test for `results set-property` long flags and verified parsed `ScanResultsSetPropertyRequest` scan result refs, value payload, and field namespace extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression test for `results freeze` long flags and verified parsed `ScanResultsFreezeRequest` scan result refs and freeze state extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 
 ## Agentic Eventually TODO list
