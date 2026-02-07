@@ -7,6 +7,8 @@ use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRe
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
 use squalr_engine_api::commands::process::close::process_close_request::ProcessCloseRequest;
 use squalr_engine_api::commands::process::close::process_close_response::ProcessCloseResponse;
+use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
+use squalr_engine_api::commands::process::list::process_list_response::ProcessListResponse;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::process::open::process_open_response::ProcessOpenResponse;
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
@@ -50,6 +52,7 @@ use squalr_engine_api::events::engine_event::EngineEvent;
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::bitness::Bitness;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
+use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
@@ -132,6 +135,107 @@ impl EngineApiUnprivilegedBindings for MockEngineBindings {
         let (_event_sender, event_receiver) = unbounded();
 
         Ok(event_receiver)
+    }
+}
+
+#[test]
+fn process_list_request_dispatches_list_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ProcessListResponse {
+            processes: vec![
+                ProcessInfo::new(1776, "first.exe".to_string(), true, None),
+                ProcessInfo::new(9001, "second.exe".to_string(), false, None),
+            ],
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let process_list_request = ProcessListRequest {
+        require_windowed: true,
+        search_name: Some("first".to_string()),
+        match_case: true,
+        limit: Some(25),
+        fetch_icons: true,
+    };
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    process_list_request.send_unprivileged(&bindings, move |process_list_response| {
+        let callback_should_mark_success = process_list_response.processes.len() == 2
+            && process_list_response.processes[0].get_process_id_raw() == 1776
+            && process_list_response.processes[0].get_name() == "first.exe"
+            && process_list_response.processes[0].get_is_windowed()
+            && process_list_response.processes[1].get_process_id_raw() == 9001
+            && process_list_response.processes[1].get_name() == "second.exe"
+            && !process_list_response.processes[1].get_is_windowed();
+        callback_invoked_clone.store(callback_should_mark_success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Process(ProcessCommand::List {
+            process_list_request: captured_process_list_request,
+        }) => {
+            assert!(captured_process_list_request.require_windowed);
+            assert_eq!(captured_process_list_request.search_name, Some("first".to_string()));
+            assert!(captured_process_list_request.match_case);
+            assert_eq!(captured_process_list_request.limit, Some(25));
+            assert!(captured_process_list_request.fetch_icons);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn process_list_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        ProcessOpenResponse { opened_process_info: None }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let process_list_request = ProcessListRequest {
+        require_windowed: false,
+        search_name: Some("calc".to_string()),
+        match_case: false,
+        limit: Some(2),
+        fetch_icons: false,
+    };
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    process_list_request.send_unprivileged(&bindings, move |_process_list_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Process(ProcessCommand::List {
+            process_list_request: captured_process_list_request,
+        }) => {
+            assert!(!captured_process_list_request.require_windowed);
+            assert_eq!(captured_process_list_request.search_name, Some("calc".to_string()));
+            assert!(!captured_process_list_request.match_case);
+            assert_eq!(captured_process_list_request.limit, Some(2));
+            assert!(!captured_process_list_request.fetch_icons);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }
 
