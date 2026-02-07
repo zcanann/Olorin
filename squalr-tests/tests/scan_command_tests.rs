@@ -31,6 +31,10 @@ use squalr_engine_api::commands::project_items::list::project_items_list_respons
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
+use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
+use squalr_engine_api::commands::scan::collect_values::scan_collect_values_response::ScanCollectValuesResponse;
+use squalr_engine_api::commands::scan::reset::scan_reset_request::ScanResetRequest;
+use squalr_engine_api::commands::scan::reset::scan_reset_response::ScanResetResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
 use squalr_engine_api::commands::scan_results::scan_results_command::ScanResultsCommand;
 use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
@@ -149,6 +153,100 @@ fn typed_response_round_trip_for_scan_new_response() {
     let typed_response_result = ScanNewResponse::from_engine_response(engine_response);
 
     assert!(typed_response_result.is_ok());
+}
+
+#[test]
+fn scan_reset_request_dispatches_reset_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanResetResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let scan_reset_request = ScanResetRequest {};
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    scan_reset_request.send_unprivileged(&bindings, move |scan_reset_response| {
+        callback_invoked_clone.store(scan_reset_response.success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Scan(ScanCommand::Reset { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_collect_values_request_dispatches_collect_values_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanCollectValuesResponse {
+            trackable_task_handle: None,
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let scan_collect_values_request = ScanCollectValuesRequest {};
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    scan_collect_values_request.send_unprivileged(&bindings, move |_scan_collect_values_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Scan(ScanCommand::CollectValues {
+            scan_value_collector_request: _,
+        }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_collect_values_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        ScanResetResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let scan_collect_values_request = ScanCollectValuesRequest {};
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    scan_collect_values_request.send_unprivileged(&bindings, move |_scan_collect_values_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Scan(ScanCommand::CollectValues {
+            scan_value_collector_request: _,
+        }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
 }
 
 #[test]
