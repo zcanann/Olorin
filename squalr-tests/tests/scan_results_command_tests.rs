@@ -32,6 +32,14 @@ use squalr_engine_api::commands::project_items::project_items_command::ProjectIt
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
+use squalr_engine_api::commands::scan_results::delete::scan_results_delete_request::ScanResultsDeleteRequest;
+use squalr_engine_api::commands::scan_results::delete::scan_results_delete_response::ScanResultsDeleteResponse;
+use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_request::ScanResultsFreezeRequest;
+use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_response::ScanResultsFreezeResponse;
+use squalr_engine_api::commands::scan_results::list::scan_results_list_request::ScanResultsListRequest;
+use squalr_engine_api::commands::scan_results::list::scan_results_list_response::ScanResultsListResponse;
+use squalr_engine_api::commands::scan_results::query::scan_results_query_request::ScanResultsQueryRequest;
+use squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse;
 use squalr_engine_api::commands::scan_results::scan_results_command::ScanResultsCommand;
 use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
 use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
@@ -46,6 +54,7 @@ use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedStat
 use squalr_engine_api::events::engine_event::EngineEvent;
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
+use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
@@ -128,6 +137,219 @@ impl EngineApiUnprivilegedBindings for MockEngineBindings {
         let (_event_sender, event_receiver) = unbounded();
 
         Ok(event_receiver)
+    }
+}
+
+#[test]
+fn scan_results_list_request_dispatches_list_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanResultsListResponse {
+            scan_results: vec![],
+            page_index: 4,
+            last_page_index: 12,
+            page_size: 22,
+            result_count: 264,
+            total_size_in_bytes: 4096,
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let scan_results_list_request = ScanResultsListRequest { page_index: 4 };
+    let callback_page_index = Arc::new(RwLock::new(None::<u64>));
+    let callback_page_index_clone = callback_page_index.clone();
+
+    scan_results_list_request.send_unprivileged(&bindings, move |scan_results_list_response| {
+        if let Ok(mut callback_page_index_guard) = callback_page_index_clone.write() {
+            *callback_page_index_guard = Some(scan_results_list_response.page_index);
+        }
+    });
+
+    let callback_page_index_guard = callback_page_index
+        .read()
+        .expect("callback capture lock should be available");
+    assert_eq!(*callback_page_index_guard, Some(4));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Results(ScanResultsCommand::List {
+            results_list_request: captured_scan_results_list_request,
+        }) => {
+            assert_eq!(captured_scan_results_list_request.page_index, 4);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_results_list_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        ScanResultsQueryResponse::default().to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let scan_results_list_request = ScanResultsListRequest { page_index: 9 };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    scan_results_list_request.send_unprivileged(&bindings, move |_scan_results_list_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Results(ScanResultsCommand::List {
+            results_list_request: captured_scan_results_list_request,
+        }) => {
+            assert_eq!(captured_scan_results_list_request.page_index, 9);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_results_query_request_dispatches_query_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanResultsQueryResponse {
+            scan_results: vec![],
+            page_index: 3,
+            last_page_index: 8,
+            page_size: 20,
+            result_count: 160,
+            total_size_in_bytes: 2048,
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let scan_results_query_request = ScanResultsQueryRequest { page_index: 3 };
+    let callback_page_size = Arc::new(RwLock::new(None::<u64>));
+    let callback_page_size_clone = callback_page_size.clone();
+
+    scan_results_query_request.send_unprivileged(&bindings, move |scan_results_query_response| {
+        if let Ok(mut callback_page_size_guard) = callback_page_size_clone.write() {
+            *callback_page_size_guard = Some(scan_results_query_response.page_size);
+        }
+    });
+
+    let callback_page_size_guard = callback_page_size
+        .read()
+        .expect("callback capture lock should be available");
+    assert_eq!(*callback_page_size_guard, Some(20));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Results(ScanResultsCommand::Query {
+            results_query_request: captured_scan_results_query_request,
+        }) => {
+            assert_eq!(captured_scan_results_query_request.page_index, 3);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_results_freeze_request_dispatches_freeze_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanResultsFreezeResponse {
+            failed_freeze_toggle_scan_result_refs: vec![ScanResultRef::new(91)],
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let scan_results_freeze_request = ScanResultsFreezeRequest {
+        scan_result_refs: vec![ScanResultRef::new(8), ScanResultRef::new(13)],
+        is_frozen: true,
+    };
+    let callback_failed_ref_count = Arc::new(RwLock::new(None::<usize>));
+    let callback_failed_ref_count_clone = callback_failed_ref_count.clone();
+
+    scan_results_freeze_request.send_unprivileged(&bindings, move |scan_results_freeze_response| {
+        if let Ok(mut callback_failed_ref_count_guard) = callback_failed_ref_count_clone.write() {
+            *callback_failed_ref_count_guard = Some(
+                scan_results_freeze_response
+                    .failed_freeze_toggle_scan_result_refs
+                    .len(),
+            );
+        }
+    });
+
+    let callback_failed_ref_count_guard = callback_failed_ref_count
+        .read()
+        .expect("callback capture lock should be available");
+    assert_eq!(*callback_failed_ref_count_guard, Some(1));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Results(ScanResultsCommand::Freeze {
+            results_freeze_request: captured_scan_results_freeze_request,
+        }) => {
+            assert_eq!(captured_scan_results_freeze_request.scan_result_refs.len(), 2);
+            assert!(captured_scan_results_freeze_request.is_frozen);
+            assert_eq!(captured_scan_results_freeze_request.scan_result_refs[0].get_scan_result_global_index(), 8);
+            assert_eq!(captured_scan_results_freeze_request.scan_result_refs[1].get_scan_result_global_index(), 13);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_results_delete_request_dispatches_delete_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanResultsDeleteResponse::default().to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+
+    let scan_results_delete_request = ScanResultsDeleteRequest {
+        scan_result_refs: vec![ScanResultRef::new(17), ScanResultRef::new(29)],
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    scan_results_delete_request.send_unprivileged(&bindings, move |_scan_results_delete_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Results(ScanResultsCommand::Delete {
+            results_delete_request: captured_scan_results_delete_request,
+        }) => {
+            assert_eq!(captured_scan_results_delete_request.scan_result_refs.len(), 2);
+            assert_eq!(captured_scan_results_delete_request.scan_result_refs[0].get_scan_result_global_index(), 17);
+            assert_eq!(captured_scan_results_delete_request.scan_result_refs[1].get_scan_result_global_index(), 29);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }
 
