@@ -24,6 +24,7 @@ pub struct MockOsState {
     pub process_query_requests: Vec<RecordedProcessQueryOptions>,
     pub close_process_handles: Vec<u64>,
     pub open_process_requests: Vec<u32>,
+    pub memory_read_addresses: Vec<u64>,
     pub memory_struct_read_addresses: Vec<u64>,
     pub memory_write_requests: Vec<(u64, Vec<u8>)>,
     pub processes: Vec<ProcessInfo>,
@@ -252,11 +253,14 @@ impl MemoryReadProvider for MockMemoryReadProvider {
     fn read(
         &self,
         _process_info: &OpenedProcessInfo,
-        _address: u64,
+        address: u64,
         _data_value: &mut DataValue,
     ) -> bool {
         match self.state.lock() {
-            Ok(state_guard) => state_guard.read_success,
+            Ok(mut state_guard) => {
+                state_guard.memory_read_addresses.push(address);
+                state_guard.read_success
+            }
             Err(_error) => false,
         }
     }

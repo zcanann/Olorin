@@ -7,11 +7,23 @@ use squalr_engine_api::commands::process::close::process_close_request::ProcessC
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
+use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_request::ScanResultsFreezeRequest;
+use squalr_engine_api::commands::scan_results::list::scan_results_list_request::ScanResultsListRequest;
+use squalr_engine_api::commands::scan_results::query::scan_results_query_request::ScanResultsQueryRequest;
+use squalr_engine_api::commands::scan_results::refresh::scan_results_refresh_request::ScanResultsRefreshRequest;
+use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
 use squalr_engine_api::structures::memory::bitness::Bitness;
+use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::memory::normalized_module::NormalizedModule;
 use squalr_engine_api::structures::memory::normalized_region::NormalizedRegion;
+use squalr_engine_api::structures::memory::pointer::Pointer;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
+use squalr_engine_api::structures::results::snapshot_region_scan_results::SnapshotRegionScanResults;
+use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
+use squalr_engine_api::structures::scanning::filters::snapshot_region_filter::SnapshotRegionFilter;
+use squalr_engine_api::structures::scanning::filters::snapshot_region_filter_collection::SnapshotRegionFilterCollection;
+use squalr_engine_api::structures::snapshots::snapshot_region::SnapshotRegion;
 use squalr_engine_api::structures::structs::symbolic_struct_definition::SymbolicStructDefinition;
 use squalr_tests::mocks::mock_os::MockEngineOs;
 
@@ -25,6 +37,25 @@ fn create_test_state() -> (MockEngineOs, std::sync::Arc<EnginePrivilegedState>) 
 
 fn create_opened_process_info() -> OpenedProcessInfo {
     OpenedProcessInfo::new(std::process::id(), "test-process.exe".to_string(), 0xABC0, Bitness::Bit64, None)
+}
+
+fn seed_snapshot_with_single_scan_result(
+    engine_privileged_state: &std::sync::Arc<EnginePrivilegedState>,
+    result_address: u64,
+) {
+    let region_base = result_address & !0xFF;
+    let mut snapshot_region = SnapshotRegion::new(NormalizedRegion::new(region_base, 0x100), Vec::new());
+    snapshot_region.current_values = vec![0u8; 0x100];
+    snapshot_region.previous_values = vec![0u8; 0x100];
+
+    let snapshot_filter = SnapshotRegionFilter::new(result_address, 4);
+    let snapshot_filter_collection = SnapshotRegionFilterCollection::new(vec![vec![snapshot_filter]], DataTypeRef::new("u32"), MemoryAlignment::Alignment1);
+    snapshot_region.set_scan_results(SnapshotRegionScanResults::new(vec![snapshot_filter_collection]));
+
+    let snapshot_ref = engine_privileged_state.get_snapshot();
+    if let Ok(mut snapshot_guard) = snapshot_ref.write() {
+        snapshot_guard.set_snapshot_regions(vec![snapshot_region]);
+    }
 }
 
 #[test]
@@ -160,4 +191,113 @@ fn scan_new_executor_uses_injected_memory_page_bounds() {
     assert_eq!(snapshot_regions[0].page_boundaries, vec![0x2000]);
     assert_eq!(snapshot_regions[1].get_base_address(), 0x5000);
     assert_eq!(snapshot_regions[1].get_region_size(), 0x1000);
+}
+
+#[test]
+fn scan_results_list_executor_uses_injected_providers() {
+    let (mock_engine_os, engine_privileged_state) = create_test_state();
+    mock_engine_os.set_modules(vec![NormalizedModule::new("game.exe", 0x1000, 0x1000)]);
+    engine_privileged_state
+        .get_process_manager()
+        .set_opened_process(create_opened_process_info());
+    seed_snapshot_with_single_scan_result(&engine_privileged_state, 0x1010);
+
+    let scan_results_list_response = ScanResultsListRequest { page_index: 0 }.execute(&engine_privileged_state);
+
+    assert_eq!(scan_results_list_response.scan_results.len(), 1);
+    assert_eq!(scan_results_list_response.scan_results[0].get_module(), "game.exe");
+    assert_eq!(scan_results_list_response.scan_results[0].get_module_offset(), 0x10);
+
+    let mock_os_state = mock_engine_os.get_state();
+    let state_guard = match mock_os_state.lock() {
+        Ok(state_guard) => state_guard,
+        Err(error) => panic!("failed to lock mock state: {}", error),
+    };
+    assert_eq!(state_guard.memory_read_addresses, vec![0x1010]);
+}
+
+#[test]
+fn scan_results_query_executor_uses_injected_providers() {
+    let (mock_engine_os, engine_privileged_state) = create_test_state();
+    mock_engine_os.set_modules(vec![NormalizedModule::new("engine.dll", 0x4000, 0x1000)]);
+    engine_privileged_state
+        .get_process_manager()
+        .set_opened_process(create_opened_process_info());
+    seed_snapshot_with_single_scan_result(&engine_privileged_state, 0x4014);
+
+    let scan_results_query_response = ScanResultsQueryRequest { page_index: 0 }.execute(&engine_privileged_state);
+
+    assert_eq!(scan_results_query_response.scan_results.len(), 1);
+    assert_eq!(scan_results_query_response.scan_results[0].get_module(), "engine.dll");
+    assert_eq!(scan_results_query_response.scan_results[0].get_module_offset(), 0x14);
+
+    let mock_os_state = mock_engine_os.get_state();
+    let state_guard = match mock_os_state.lock() {
+        Ok(state_guard) => state_guard,
+        Err(error) => panic!("failed to lock mock state: {}", error),
+    };
+    assert_eq!(state_guard.memory_read_addresses, vec![0x4014]);
+}
+
+#[test]
+fn scan_results_refresh_executor_uses_injected_providers() {
+    let (mock_engine_os, engine_privileged_state) = create_test_state();
+    mock_engine_os.set_modules(vec![NormalizedModule::new("refresh.exe", 0x6000, 0x1000)]);
+    engine_privileged_state
+        .get_process_manager()
+        .set_opened_process(create_opened_process_info());
+    seed_snapshot_with_single_scan_result(&engine_privileged_state, 0x6020);
+
+    let scan_results_refresh_response = ScanResultsRefreshRequest {
+        scan_result_refs: vec![ScanResultRef::new(0)],
+    }
+    .execute(&engine_privileged_state);
+
+    assert_eq!(scan_results_refresh_response.scan_results.len(), 1);
+    assert_eq!(scan_results_refresh_response.scan_results[0].get_module(), "refresh.exe");
+    assert_eq!(scan_results_refresh_response.scan_results[0].get_module_offset(), 0x20);
+
+    let mock_os_state = mock_engine_os.get_state();
+    let state_guard = match mock_os_state.lock() {
+        Ok(state_guard) => state_guard,
+        Err(error) => panic!("failed to lock mock state: {}", error),
+    };
+    assert_eq!(state_guard.memory_read_addresses, vec![0x6020]);
+}
+
+#[test]
+fn scan_results_freeze_executor_uses_injected_providers() {
+    let (mock_engine_os, engine_privileged_state) = create_test_state();
+    mock_engine_os.set_modules(vec![NormalizedModule::new("freeze.exe", 0x8000, 0x1000)]);
+    engine_privileged_state
+        .get_process_manager()
+        .set_opened_process(create_opened_process_info());
+    seed_snapshot_with_single_scan_result(&engine_privileged_state, 0x8018);
+
+    let scan_results_freeze_response = ScanResultsFreezeRequest {
+        scan_result_refs: vec![ScanResultRef::new(0)],
+        is_frozen: true,
+    }
+    .execute(&engine_privileged_state);
+
+    assert!(
+        scan_results_freeze_response
+            .failed_freeze_toggle_scan_result_refs
+            .is_empty()
+    );
+
+    let frozen_pointer = Pointer::new(0x18, Vec::new(), "freeze.exe".to_string());
+    let freeze_list_registry = engine_privileged_state.get_freeze_list_registry();
+    let freeze_list_registry_guard = match freeze_list_registry.read() {
+        Ok(freeze_list_registry_guard) => freeze_list_registry_guard,
+        Err(error) => panic!("failed to lock freeze list registry: {}", error),
+    };
+    assert!(freeze_list_registry_guard.is_address_frozen(&frozen_pointer));
+
+    let mock_os_state = mock_engine_os.get_state();
+    let state_guard = match mock_os_state.lock() {
+        Ok(state_guard) => state_guard,
+        Err(error) => panic!("failed to lock mock state: {}", error),
+    };
+    assert_eq!(state_guard.memory_read_addresses, vec![0x8018]);
 }

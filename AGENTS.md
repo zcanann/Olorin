@@ -37,8 +37,10 @@ We need deterministic tests for privileged executors that currently call static 
 - Tests are split by command under `squalr-tests/tests/*_command_tests.rs`.
 - Phase 1 covers all currently exposed `PrivilegedCommand` + `UnprivilegedCommand` variants with contract tests.
 - `EnginePrivilegedState` now supports injected OS providers (process query + memory query/read/write), with production defaults bound to existing singletons.
-- Deterministic OS-behavior tests exist in `squalr-tests/tests/os_behavior_command_tests.rs` for memory read/write, process list/open/close, and scan-new page bounds merge flow.
-- `cargo test -p squalr-tests` is currently passing (101 integration tests).
+- `scan_results` privileged executors (`query`, `list`, `refresh`, `freeze`, `set_property`) now route memory operations through injected OS providers.
+- `MockEngineBindings` is centralized in `squalr-tests/src/mocks/mock_engine_bindings.rs` and reused by all command contract suites.
+- Deterministic OS-behavior tests exist in `squalr-tests/tests/os_behavior_command_tests.rs` for memory read/write, process list/open/close, scan-new page bounds merge flow, and scan-results query/list/refresh/freeze flows.
+- `cargo test -p squalr-tests` is currently passing (105 integration tests).
 
 ### If something is too hard to test
 - Stub the test, and write down **why** (architecture limitation) + what would need to change.
@@ -47,11 +49,8 @@ We need deterministic tests for privileged executors that currently call static 
 ## Agent Scratchpad and Notes
 
 ### Current Tasklist (Remove as things are completed, add remaining tangible tasks)
-- **MockEngineBindings must not exist in multiple places.** Create **one canonical location** for mocked structures / bindings and re-use it everywhere.
-  - Put all shared mocks in a single module (ex: `squalr-tests/src/mocks/` or `squalr-tests/src/mock/`) and import from there.
-- Clean up unused imports aggressively. Warnings/noise slow iteration.
-- Expand DI seam coverage to remaining privileged executors that still call static OS singletons directly (`scan_results/*` paths).
-- Add OS-behavior tests for scan-results query/list/refresh/freeze flows after those executors are wired to providers.
+- Add deterministic OS-behavior coverage for `scan_results set_property` write + freeze toggle path now that executor wiring uses providers.
+- Confirm whether `scan_results add_to_project` should stay stubbed in this branch or gain testable behavior hooks.
 
 ### Architecture Plan (Modify sparringly as new information is learned. Keep minimal and simple)
 - Phase 1: command parsing + request dispatch + typed response decode via engine API mocks. [done]
@@ -64,7 +63,9 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Added broad parser + command/response contract coverage.
 - `pr/unit-tests`: Added `EnginePrivilegedState` OS provider DI seam (process query + memory query/read/write) with production defaults.
 - `pr/unit-tests`: Added canonical OS mock surface in `squalr-tests/src/mocks/mock_os.rs`.
-- `pr/unit-tests`: Added deterministic OS-behavior tests (`os_behavior_command_tests`) for memory read/write, process list/open/close, and scan-new memory-page flow.
+- `pr/unit-tests`: Centralized `MockEngineBindings` in `squalr-tests/src/mocks/mock_engine_bindings.rs` and updated all command contract suites to reuse it.
+- `pr/unit-tests`: Wired `scan_results` executors (`query/list/refresh/freeze/set_property`) to injected OS providers instead of static OS singletons.
+- `pr/unit-tests`: Expanded deterministic OS-behavior tests (`os_behavior_command_tests`) to cover scan-results query/list/refresh/freeze provider usage.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
