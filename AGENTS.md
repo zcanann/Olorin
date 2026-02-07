@@ -13,6 +13,8 @@ If you have to modify source files to patch bugs, this is understandable as long
 - Comments end with a period.
 - All code is to be formatted by the default rust formatter. This project already has a bundled .rustfmt.toml, so this should get picked up automatically by tooling.
 - Commenting functions with intellisense friendly comments is preferred when possible.
+- Unused includes should be removed.
+- Abide by single responsibility principle where possible.
 
 ## Agentic Current Task
 We are working on a pr/unit-tests branch, to create squalr-tests as a project within this repository. The goal is to test the commands sent by the gui/cli. In other words, we are testing our command/response system, and ensuring the commands do what we expect them to.
@@ -25,6 +27,8 @@ If functionality is too hard to test, note down why its better to not have the t
 
 #### Scratchpad (Agents can modify this!)
 If this starts to become sprawling, compact this.
+
+NOTE FROM OWNER: MockEngineBindings should not be in multiple places. We should have a separate location for mocked structures and things.
 
 - `squalr-tests` crate now exists in the workspace.
 - Initial scope is command/response contract tests that do not require real OS process handles.
