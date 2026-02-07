@@ -684,6 +684,39 @@ fn privileged_command_parser_accepts_memory_read_with_short_flags() {
 }
 
 #[test]
+fn privileged_command_parser_accepts_memory_write_with_short_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "memory",
+            "write",
+            "--address",
+            "8192",
+            "-m",
+            "game.exe",
+            "-v",
+            "255",
+            "17",
+            "42",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Memory(MemoryCommand::Write { memory_write_request }) => {
+            assert_eq!(memory_write_request.address, 8192);
+            assert_eq!(memory_write_request.module_name, "game.exe".to_string());
+            assert_eq!(memory_write_request.value, vec![255, 17, 42]);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
 fn privileged_command_parser_accepts_scan_reset_subcommand() {
     let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "scan", "reset"]));
 
@@ -714,6 +747,45 @@ fn privileged_command_parser_accepts_scan_collect_values_subcommand() {
 }
 
 #[test]
+fn privileged_command_parser_accepts_scan_struct_scan_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "scan",
+            "struct-scan",
+            "--scan-value",
+            "12;dec;",
+            "--data-type-ids",
+            "u32",
+            "--data-type-ids",
+            "f32",
+            "--compare-type",
+            "==",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Scan(ScanCommand::StructScan { struct_scan_request }) => {
+            assert_eq!(
+                struct_scan_request
+                    .scan_value
+                    .as_ref()
+                    .map(|scan_value| scan_value.get_anonymous_value_string()),
+                Some("12")
+            );
+            assert_eq!(struct_scan_request.data_type_ids, vec!["u32".to_string(), "f32".to_string()]);
+            assert_eq!(struct_scan_request.compare_type, ScanCompareType::Immediate(ScanCompareTypeImmediate::Equal));
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
 fn privileged_command_parser_accepts_trackable_tasks_cancel_with_long_flags() {
     let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "tasks", "cancel", "--task-id", "scan-123"]));
 
@@ -728,6 +800,21 @@ fn privileged_command_parser_accepts_trackable_tasks_cancel_with_long_flags() {
         }) => {
             assert_eq!(trackable_tasks_cancel_request.task_id, "scan-123".to_string());
         }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_process_close_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "process", "close"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Process(ProcessCommand::Close { .. }) => {}
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
@@ -976,6 +1063,57 @@ fn unprivileged_command_parser_accepts_project_save_subcommand() {
 
     match parsed_command_result.expect("command should parse successfully") {
         UnprivilegedCommand::Project(ProjectCommand::Save { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_general_settings_list_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "settings", "general", "list"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Settings(SettingsCommand::General {
+            general_settings_command: GeneralSettingsCommand::List { .. },
+        }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_memory_settings_list_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "settings", "memory", "list"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Settings(SettingsCommand::Memory {
+            memory_settings_command: MemorySettingsCommand::List { .. },
+        }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_settings_list_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "settings", "scan", "list"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Settings(SettingsCommand::Scan {
+            scan_settings_command: ScanSettingsCommand::List { .. },
+        }) => {}
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
