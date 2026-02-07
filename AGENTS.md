@@ -31,6 +31,7 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes `process open` long-form flags and validates parsed field extraction for process-id, search-name, and match-case.
 - Parser coverage now includes `settings scan set` long-form flags and validates parsed field extraction for page size, memory alignment, read mode, floating-point tolerance, and single-threaded mode.
 - Parser coverage now includes `settings general set` long-form flags and validates parsed field extraction for engine request delay.
+- Parser coverage now includes `scan element-scan` long-form flags and validates parsed field extraction for vectorized scan constraints and data type refs.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
@@ -67,6 +68,8 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added parser regression test for `settings scan set` long flags and verified parsed `ScanSettingsSetRequest` enum/boolean field extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression test for `settings general set` long flags and verified parsed `GeneralSettingsSetRequest` field extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression test for `scan element-scan` long flags and verified parsed constraint/data-type vector field extraction, including immediate and relative compare constraint parsing.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 
 ## Agentic Eventually TODO list

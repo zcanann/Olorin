@@ -22,6 +22,9 @@ use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedStat
 use squalr_engine_api::events::engine_event::EngineEvent;
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
+use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
+use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
+use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -387,6 +390,61 @@ fn privileged_command_parser_accepts_general_settings_set_with_long_flags() {
             general_settings_command: GeneralSettingsCommand::Set { general_settings_set_request },
         }) => {
             assert_eq!(general_settings_set_request.engine_request_delay, Some(250));
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_element_scan_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "scan",
+            "element-scan",
+            "--scan-constraints",
+            ">=5;dec;",
+            "--scan-constraints",
+            "==",
+            "--data-type-refs",
+            "i32",
+            "--data-type-refs",
+            "f32",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Scan(ScanCommand::ElementScan { element_scan_request }) => {
+            assert_eq!(element_scan_request.scan_constraints.len(), 2);
+            assert_eq!(element_scan_request.data_type_refs.len(), 2);
+
+            let first_constraint = &element_scan_request.scan_constraints[0];
+            assert_eq!(
+                first_constraint.get_scan_compare_type(),
+                ScanCompareType::Immediate(ScanCompareTypeImmediate::GreaterThanOrEqual)
+            );
+            assert_eq!(
+                first_constraint
+                    .get_anonymous_value_string()
+                    .as_ref()
+                    .map(|anonymous_value_string| anonymous_value_string.get_anonymous_value_string()),
+                Some("5")
+            );
+
+            let second_constraint = &element_scan_request.scan_constraints[1];
+            assert_eq!(
+                second_constraint.get_scan_compare_type(),
+                ScanCompareType::Relative(ScanCompareTypeRelative::Unchanged)
+            );
+            assert_eq!(second_constraint.get_anonymous_value_string(), &None);
+
+            assert_eq!(element_scan_request.data_type_refs[0].get_data_type_id(), "i32");
+            assert_eq!(element_scan_request.data_type_refs[1].get_data_type_id(), "f32");
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
