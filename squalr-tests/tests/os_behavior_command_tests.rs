@@ -11,7 +11,11 @@ use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_reque
 use squalr_engine_api::commands::scan_results::list::scan_results_list_request::ScanResultsListRequest;
 use squalr_engine_api::commands::scan_results::query::scan_results_query_request::ScanResultsQueryRequest;
 use squalr_engine_api::commands::scan_results::refresh::scan_results_refresh_request::ScanResultsRefreshRequest;
+use squalr_engine_api::commands::scan_results::set_property::scan_results_set_property_request::ScanResultsSetPropertyRequest;
 use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
+use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
+use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
+use squalr_engine_api::structures::data_values::container_type::ContainerType;
 use squalr_engine_api::structures::memory::bitness::Bitness;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::memory::normalized_module::NormalizedModule;
@@ -20,6 +24,7 @@ use squalr_engine_api::structures::memory::pointer::Pointer;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 use squalr_engine_api::structures::results::snapshot_region_scan_results::SnapshotRegionScanResults;
+use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::structures::scanning::filters::snapshot_region_filter::SnapshotRegionFilter;
 use squalr_engine_api::structures::scanning::filters::snapshot_region_filter_collection::SnapshotRegionFilterCollection;
@@ -300,4 +305,75 @@ fn scan_results_freeze_executor_uses_injected_providers() {
         Err(error) => panic!("failed to lock mock state: {}", error),
     };
     assert_eq!(state_guard.memory_read_addresses, vec![0x8018]);
+}
+
+#[test]
+fn scan_results_set_property_value_executor_uses_injected_memory_writer() {
+    let (mock_engine_os, engine_privileged_state) = create_test_state();
+    engine_privileged_state
+        .get_process_manager()
+        .set_opened_process(create_opened_process_info());
+    seed_snapshot_with_single_scan_result(&engine_privileged_state, 0x901C);
+
+    let scan_results_set_property_request = ScanResultsSetPropertyRequest {
+        scan_result_refs: vec![ScanResultRef::new(0)],
+        anonymous_value_string: AnonymousValueString::new("42".to_string(), AnonymousValueStringFormat::Decimal, ContainerType::None),
+        field_namespace: ScanResult::PROPERTY_NAME_VALUE.to_string(),
+    };
+    let _scan_results_set_property_response = scan_results_set_property_request.execute(&engine_privileged_state);
+
+    let mock_os_state = mock_engine_os.get_state();
+    let state_guard = match mock_os_state.lock() {
+        Ok(state_guard) => state_guard,
+        Err(error) => panic!("failed to lock mock state: {}", error),
+    };
+    assert_eq!(state_guard.memory_write_requests.len(), 1);
+    assert_eq!(state_guard.memory_write_requests[0].0, 0x901C);
+    assert_eq!(state_guard.memory_write_requests[0].1, vec![42, 0, 0, 0]);
+}
+
+#[test]
+fn scan_results_set_property_freeze_toggle_executor_uses_injected_providers() {
+    let (mock_engine_os, engine_privileged_state) = create_test_state();
+    mock_engine_os.set_modules(vec![NormalizedModule::new("toggle.exe", 0xA000, 0x1000)]);
+    engine_privileged_state
+        .get_process_manager()
+        .set_opened_process(create_opened_process_info());
+    seed_snapshot_with_single_scan_result(&engine_privileged_state, 0xA024);
+
+    let freeze_scan_results_set_property_request = ScanResultsSetPropertyRequest {
+        scan_result_refs: vec![ScanResultRef::new(0)],
+        anonymous_value_string: AnonymousValueString::new("true".to_string(), AnonymousValueStringFormat::Bool, ContainerType::None),
+        field_namespace: ScanResult::PROPERTY_NAME_IS_FROZEN.to_string(),
+    };
+    let _freeze_scan_results_set_property_response = freeze_scan_results_set_property_request.execute(&engine_privileged_state);
+
+    let frozen_pointer = Pointer::new(0x24, Vec::new(), "toggle.exe".to_string());
+    let freeze_list_registry = engine_privileged_state.get_freeze_list_registry();
+    let freeze_list_registry_guard = match freeze_list_registry.read() {
+        Ok(freeze_list_registry_guard) => freeze_list_registry_guard,
+        Err(error) => panic!("failed to lock freeze list registry: {}", error),
+    };
+    assert!(freeze_list_registry_guard.is_address_frozen(&frozen_pointer));
+    drop(freeze_list_registry_guard);
+
+    let unfreeze_scan_results_set_property_request = ScanResultsSetPropertyRequest {
+        scan_result_refs: vec![ScanResultRef::new(0)],
+        anonymous_value_string: AnonymousValueString::new("false".to_string(), AnonymousValueStringFormat::Bool, ContainerType::None),
+        field_namespace: ScanResult::PROPERTY_NAME_IS_FROZEN.to_string(),
+    };
+    let _unfreeze_scan_results_set_property_response = unfreeze_scan_results_set_property_request.execute(&engine_privileged_state);
+
+    let freeze_list_registry_guard = match freeze_list_registry.read() {
+        Ok(freeze_list_registry_guard) => freeze_list_registry_guard,
+        Err(error) => panic!("failed to lock freeze list registry: {}", error),
+    };
+    assert!(!freeze_list_registry_guard.is_address_frozen(&frozen_pointer));
+
+    let mock_os_state = mock_engine_os.get_state();
+    let state_guard = match mock_os_state.lock() {
+        Ok(state_guard) => state_guard,
+        Err(error) => panic!("failed to lock mock state: {}", error),
+    };
+    assert_eq!(state_guard.memory_read_addresses, vec![0xA024]);
 }
