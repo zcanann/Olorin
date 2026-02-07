@@ -7,6 +7,8 @@ use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRe
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
+use squalr_engine_api::commands::project::project_command::ProjectCommand;
+use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
@@ -486,6 +488,66 @@ fn privileged_command_parser_accepts_scan_results_query_with_long_flags() {
 }
 
 #[test]
+fn privileged_command_parser_accepts_scan_results_refresh_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "refresh",
+            "--scan-result-refs",
+            "13",
+            "--scan-result-refs",
+            "21",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Refresh { results_refresh_request }) => {
+            assert_eq!(results_refresh_request.scan_result_refs.len(), 2);
+            assert_eq!(results_refresh_request.scan_result_refs[0].get_scan_result_global_index(), 13);
+            assert_eq!(results_refresh_request.scan_result_refs[1].get_scan_result_global_index(), 21);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_add_to_project_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "add-to-project",
+            "--scan-result-refs",
+            "8",
+            "--scan-result-refs",
+            "34",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::AddToProject {
+            results_add_to_project_request,
+        }) => {
+            assert_eq!(results_add_to_project_request.scan_result_refs.len(), 2);
+            assert_eq!(results_add_to_project_request.scan_result_refs[0].get_scan_result_global_index(), 8);
+            assert_eq!(results_add_to_project_request.scan_result_refs[1].get_scan_result_global_index(), 34);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
 fn privileged_command_parser_accepts_scan_results_set_property_with_long_flags() {
     let parse_result = std::panic::catch_unwind(|| {
         PrivilegedCommand::from_iter_safe([
@@ -580,6 +642,191 @@ fn privileged_command_parser_accepts_scan_results_freeze_with_long_flags() {
             assert_eq!(results_freeze_request.scan_result_refs[0].get_scan_result_global_index(), 3);
             assert_eq!(results_freeze_request.scan_result_refs[1].get_scan_result_global_index(), 9);
             assert!(results_freeze_request.is_frozen);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_memory_read_with_short_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "memory",
+            "read",
+            "--address",
+            "4096",
+            "-m",
+            "kernel32.dll",
+            "-v",
+            "u32",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Memory(MemoryCommand::Read { memory_read_request }) => {
+            assert_eq!(memory_read_request.address, 4096);
+            assert_eq!(memory_read_request.module_name, "kernel32.dll".to_string());
+            assert_eq!(
+                memory_read_request
+                    .symbolic_struct_definition
+                    .get_symbol_namespace(),
+                ""
+            );
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_reset_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "scan", "reset"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Scan(ScanCommand::Reset { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_collect_values_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "scan", "collect-values"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Scan(ScanCommand::CollectValues { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_trackable_tasks_cancel_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "tasks", "cancel", "--task-id", "scan-123"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::TrackableTasks(TrackableTasksCommand::Cancel {
+            trackable_tasks_cancel_request,
+        }) => {
+            assert_eq!(trackable_tasks_cancel_request.task_id, "scan-123".to_string());
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_create_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project",
+            "create",
+            "--project-directory-path",
+            "C:\\Projects",
+            "--project-name",
+            "UnitTestProject",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Create { project_create_request }) => {
+            assert_eq!(
+                project_create_request
+                    .project_directory_path
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects".to_string())
+            );
+            assert_eq!(project_create_request.project_name, Some("UnitTestProject".to_string()));
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_rename_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project",
+            "rename",
+            "--project-directory-path",
+            "C:\\Projects\\OldProject",
+            "--new-project-name",
+            "RenamedProject",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Rename { project_rename_request }) => {
+            assert_eq!(
+                project_rename_request
+                    .project_directory_path
+                    .display()
+                    .to_string(),
+                "C:\\Projects\\OldProject".to_string()
+            );
+            assert_eq!(project_rename_request.new_project_name, "RenamedProject".to_string());
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_items_activate_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project-items",
+            "activate",
+            "--project-item-paths",
+            "Addresses.Player.Health",
+            "--project-item-paths",
+            "Addresses.Player.Ammo",
+            "--is-activated",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::ProjectItems(ProjectItemsCommand::Activate {
+            project_items_activate_request,
+        }) => {
+            assert_eq!(project_items_activate_request.project_item_paths.len(), 2);
+            assert_eq!(project_items_activate_request.project_item_paths[0], "Addresses.Player.Health".to_string());
+            assert_eq!(project_items_activate_request.project_item_paths[1], "Addresses.Player.Ammo".to_string());
+            assert!(project_items_activate_request.is_activated);
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }

@@ -36,11 +36,16 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes `results set-property` long-form flags and validates parsed `scan_result_refs`, `anonymous_value_string`, and `field_namespace` extraction.
 - Parser coverage now includes `results freeze` long-form flags and validates parsed `scan_result_refs` and `is_frozen` extraction.
 - Parser coverage now includes `results query` and `results delete` long-form flags and validates parsed `page_index` and `scan_result_refs` extraction.
+- Parser coverage now includes `results refresh` long-form flags and validates parsed `scan_result_refs` extraction.
+- Parser coverage now includes `results add-to-project` long-form flags and validates parsed `scan_result_refs` extraction.
+- Parser coverage now includes privileged `memory read`, `scan reset`, `scan collect-values`, and `tasks cancel` command shapes.
+- Parser coverage now includes unprivileged `project create`, `project rename`, and `project-items activate` long-form flags and validates field extraction.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
 - Phase 1 (implemented): validate command request dispatch and typed response extraction through `EngineApiUnprivilegedBindings` mocks.
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
+- Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 2 (deferred): add OS-behavior tests for memory read/write, page query, and scan flows once OS query/reader/writer singletons support dependency injection overrides in test context.
 - Scope cut rationale: privileged executors call static OS-facing singletons directly (`MemoryQueryer`, `MemoryReader`, `MemoryWriter`, `ProcessQuery`), so deterministic command executor tests cannot currently emulate OS data without architectural changes.
 - Proposed minimal future seam: trait-object providers on `EnginePrivilegedState` for process/memory/query APIs, with production defaults bound to current implementations.
@@ -82,6 +87,11 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added parser regression test for `results freeze` long flags and verified parsed `ScanResultsFreezeRequest` scan result refs and freeze state extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression tests for `results query` and `results delete` long flags and verified parsed `ScanResultsQueryRequest.page_index` and `ScanResultsDeleteRequest.scan_result_refs` extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression tests for `results refresh` and `results add-to-project` long flags and verified parsed `ScanResultsRefreshRequest.scan_result_refs` and `ScanResultsAddToProjectRequest.scan_result_refs` extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression tests for privileged `memory read`, `scan reset`, `scan collect-values`, and `tasks cancel`; verified parsed field extraction for address/module/struct and task id.
+- `pr/unit-tests`: Added parser regression tests for unprivileged `project create`, `project rename`, and `project-items activate`; verified parsed path/name and activation payload extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 
 ## Agentic Eventually TODO list
