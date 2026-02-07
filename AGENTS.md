@@ -256,4 +256,3 @@ For each PR, append to this section a summary of the work accomplished. If this 
 These are not ready to be picked up yet.
 - pr/tui - We want a TUI project at some point. Would be good to get this working loosely based on both the cli and
 
-
