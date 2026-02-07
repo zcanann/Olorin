@@ -125,6 +125,8 @@ If this starts to become sprawling, compact this.
 - Re-validation refresh (February 7, 2026): re-ran `cargo test -p squalr-tests` on `pr/unit-tests`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 - Re-validation refresh (February 7, 2026): re-ran `cargo test -p squalr-tests` on `pr/unit-tests` while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
+- Re-validation refresh (February 7, 2026): from a clean `pr/unit-tests` worktree, re-ran `cargo test -p squalr-tests`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
 
@@ -233,6 +235,8 @@ For each PR, append to this section a summary of the work accomplished. If this 
 
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+- `pr/unit-tests`: From a clean branch state on February 7, 2026, re-ran `cargo test -p squalr-tests`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 after re-reading `README.md` and `AGENTS.md`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
 ## Agentic Eventually TODO list
@@ -242,5 +246,5 @@ For each PR, append to this section a summary of the work accomplished. If this 
 
 ## Agentic Off Limits List
 These are not ready to be picked up yet.
-- pr/tui - We want a TUI project at some point. Would be good to get this working loosely based on both the cli and 
+- pr/tui - We want a TUI project at some point. Would be good to get this working loosely based on both the cli and
 
