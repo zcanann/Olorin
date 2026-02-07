@@ -49,6 +49,7 @@ If functionality is too hard to test, note down why its better to not have the t
 - Contract coverage now includes unprivileged `project rename` request dispatch through `send_unprivileged(...)`, with typed response decode verification for success and returned project path plus captured request payload checks.
 - Contract coverage now includes unprivileged `project-items activate` request dispatch through `send_unprivileged(...)`, with typed response decode verification and captured activation payload checks.
 - Contract coverage now includes unprivileged `project export`, `project close`, `project save`, and `project-items list` request dispatch through `send_unprivileged(...)`, with typed response decode verification and command payload propagation checks where applicable.
+- Contract coverage now includes unprivileged typed-response mismatch handling for `project save` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variant while preserving command dispatch capture.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
@@ -58,6 +59,7 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 - Phase 1 (extended): validate unprivileged dispatch contract coverage for `project create` and `project delete` command paths.
 - Phase 1 (extended): validate unprivileged dispatch contract coverage for `project rename` and `project-items activate` command paths.
 - Phase 1 (extended): validate unprivileged dispatch contract coverage for `project export`, `project close`, `project save`, and `project-items list` command paths.
+- Phase 1 (extended): validate unprivileged typed-response mismatch behavior for `send_unprivileged(...)` request callbacks (wrong response variant should not invoke typed callback).
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
@@ -119,6 +121,8 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added `ProjectRenameRequest::send_unprivileged(...)` and `ProjectItemsActivateRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed callback decode, and payload field propagation.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added `ProjectExportRequest::send_unprivileged(...)`, `ProjectCloseRequest::send_unprivileged(...)`, `ProjectSaveRequest::send_unprivileged(...)`, and `ProjectItemsListRequest::send_unprivileged(...)` contract coverage in `squalr-tests/tests/command_response_tests.rs`; verified unprivileged dispatch capture, typed callback decode, and payload propagation checks where applicable.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added `ProjectSaveRequest::send_unprivileged(...)` wrong-response regression coverage in `squalr-tests/tests/command_response_tests.rs`; verified typed callback is not invoked when response variant mismatches while unprivileged command dispatch capture remains correct.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 
 ## Agentic Eventually TODO list

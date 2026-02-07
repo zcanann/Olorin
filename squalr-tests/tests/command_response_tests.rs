@@ -655,6 +655,40 @@ fn project_items_list_request_dispatches_unprivileged_command_and_invokes_typed_
 }
 
 #[test]
+fn project_save_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_save_request = ProjectSaveRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_save_request.send_unprivileged(&bindings, &execution_context, move |_project_save_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Save { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
 fn scan_new_request_maps_to_scan_new_privileged_command() {
     match (ScanNewRequest {}).to_engine_command() {
         PrivilegedCommand::Scan(ScanCommand::New {
