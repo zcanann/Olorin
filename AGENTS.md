@@ -82,6 +82,7 @@ If this starts to become sprawling, compact this.
 - Command/response Phase 1 test suites currently cover all command enum variants exposed by `PrivilegedCommand` and `UnprivilegedCommand` trees; remaining untested work is the deferred OS-behavior seam in Phase 2.
 - Re-validation summary (February 7, 2026): repeatedly re-ran `cargo test -p squalr-tests` during AGENTS workflow; per-command suites consistently pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 stays deferred pending OS singleton DI seams.
 - Re-validation refresh (February 7, 2026): re-ran `cargo test -p squalr-tests`; per-command suites still pass (97 integration tests total), `squalr-engine-api` warnings are unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+- Re-validation refresh (February 7, 2026): re-ran `cargo test -p squalr-tests`; all per-command suites still pass (97 integration tests total), existing `squalr-engine-api` warnings are unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
@@ -149,6 +150,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Added a shared `squalr-tests::shared_execution_context()` helper and updated `project` plus `project-items` command suites to use it, eliminating repeated `LogDispatcher` initialization error spam while preserving existing dispatch assertions.
 - `pr/unit-tests`: Re-validated `squalr-tests` on branch head with `cargo test -p squalr-tests` (all suites passing) and confirmed current Phase 1 command/response coverage matches all presently exposed privileged/unprivileged command enum variants.
 - `pr/unit-tests`: Re-validation summary on February 7, 2026: repeated `cargo test -p squalr-tests` runs continued to pass (97 integration tests total), with existing `squalr-engine-api` warnings unchanged and no new Phase 1 scope changes.
+- `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
 ## Agentic Eventually TODO list
