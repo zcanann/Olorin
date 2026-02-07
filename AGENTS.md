@@ -131,6 +131,8 @@ If this starts to become sprawling, compact this.
 
 - Re-validation refresh (February 7, 2026): re-ran `cargo test -p squalr-tests` on `pr/unit-tests` while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
+- Re-validation refresh (February 7, 2026): re-ran `cargo test -p squalr-tests` on `pr/unit-tests` after re-reading `README.md` and `AGENTS.md`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
 
@@ -247,6 +249,8 @@ For each PR, append to this section a summary of the work accomplished. If this 
 
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 on `pr/unit-tests` while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
+- `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 on `pr/unit-tests` after re-reading `README.md` and `AGENTS.md`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
 - pr/error_handling - We currently have a mixed use of Result<(), String>, anyhow! based errors, and error enums. Update the project to the following: Within squalr-engine, errors should be struct based. Within squalr-cli and squalr, anyhow! based errors are fine (ignore squalr-android and squalr-tui for now).
@@ -255,4 +259,5 @@ For each PR, append to this section a summary of the work accomplished. If this 
 ## Agentic Off Limits List
 These are not ready to be picked up yet.
 - pr/tui - We want a TUI project at some point. Would be good to get this working loosely based on both the cli and
+
 
