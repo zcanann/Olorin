@@ -26,6 +26,7 @@ If functionality is too hard to test, note down why its better to not have the t
 - Initial scope is command/response contract tests that do not require real OS process handles.
 - Parser blocker resolved for current command set: duplicate aliases and duplicate short flags no longer panic `PrivilegedCommand::from_iter_safe(...)` in `squalr-tests` parser coverage.
 - Parser coverage now includes `settings memory set` with long-form flags to guard against future clap metadata regressions in settings request definitions.
+- Parser coverage now includes `scan pointer-scan` long-form flags and validates parsed field extraction for target address, pointer data type ref, max depth, and offset size.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
@@ -52,6 +53,8 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added parser regression test in `squalr-tests/tests/command_response_tests.rs` to ensure `PrivilegedCommand::from_iter_safe(["squalr-cli", "tasks", "list"])` parses without panic.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression test for `settings memory set` long flags and verified parsed `MemorySettingsSetRequest` field extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression test for `scan pointer-scan` long flags and verified parsed `PointerScanRequest` field extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 
 ## Agentic Eventually TODO list

@@ -217,3 +217,37 @@ fn privileged_command_parser_accepts_memory_settings_set_with_long_flags() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn privileged_command_parser_accepts_pointer_scan_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "scan",
+            "pointer-scan",
+            "--target-address",
+            "4096;address;",
+            "--pointer-data-type-ref",
+            "u64",
+            "--max-depth",
+            "5",
+            "--offset-size",
+            "8",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Scan(ScanCommand::PointerScan { pointer_scan_request }) => {
+            assert_eq!(pointer_scan_request.target_address.get_anonymous_value_string(), "4096");
+            assert_eq!(pointer_scan_request.pointer_data_type_ref.get_data_type_id(), "u64");
+            assert_eq!(pointer_scan_request.max_depth, 5);
+            assert_eq!(pointer_scan_request.offset_size, 8);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
