@@ -292,6 +292,36 @@ fn privileged_command_parser_accepts_process_list_with_long_flags() {
 }
 
 #[test]
+fn privileged_command_parser_accepts_process_open_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "process",
+            "open",
+            "--process-id",
+            "1337",
+            "--search-name",
+            "calc",
+            "--match-case",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Process(ProcessCommand::Open { process_open_request }) => {
+            assert_eq!(process_open_request.process_id, Some(1337));
+            assert_eq!(process_open_request.search_name, Some("calc".to_string()));
+            assert!(process_open_request.match_case);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
 fn privileged_command_parser_accepts_scan_settings_set_with_long_flags() {
     let parse_result = std::panic::catch_unwind(|| {
         PrivilegedCommand::from_iter_safe([

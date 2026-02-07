@@ -28,6 +28,7 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes `settings memory set` with long-form flags to guard against future clap metadata regressions in settings request definitions.
 - Parser coverage now includes `scan pointer-scan` long-form flags and validates parsed field extraction for target address, pointer data type ref, max depth, and offset size.
 - Parser coverage now includes `process list` long-form flags and validates parsed field extraction for require-windowed, search-name, match-case, limit, and fetch-icons.
+- Parser coverage now includes `process open` long-form flags and validates parsed field extraction for process-id, search-name, and match-case.
 - Parser coverage now includes `settings scan set` long-form flags and validates parsed field extraction for page size, memory alignment, read mode, floating-point tolerance, and single-threaded mode.
 - Parser coverage now includes `settings general set` long-form flags and validates parsed field extraction for engine request delay.
 
@@ -60,6 +61,8 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added parser regression test for `scan pointer-scan` long flags and verified parsed `PointerScanRequest` field extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression test for `process list` long flags and verified parsed `ProcessListRequest` field extraction.
+- `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression test for `process open` long flags and verified parsed `ProcessOpenRequest` field extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
 - `pr/unit-tests`: Added parser regression test for `settings scan set` long flags and verified parsed `ScanSettingsSetRequest` enum/boolean field extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
