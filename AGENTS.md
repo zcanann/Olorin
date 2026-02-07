@@ -233,6 +233,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md workflow; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+- `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 after re-reading `README.md` and `AGENTS.md`; all per-command command/response suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
