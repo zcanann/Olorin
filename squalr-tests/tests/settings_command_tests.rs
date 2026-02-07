@@ -34,8 +34,16 @@ use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
 use squalr_engine_api::commands::scan_results::scan_results_command::ScanResultsCommand;
 use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
+use squalr_engine_api::commands::settings::general::list::general_settings_list_request::GeneralSettingsListRequest;
+use squalr_engine_api::commands::settings::general::list::general_settings_list_response::GeneralSettingsListResponse;
+use squalr_engine_api::commands::settings::general::set::general_settings_set_request::GeneralSettingsSetRequest;
+use squalr_engine_api::commands::settings::general::set::general_settings_set_response::GeneralSettingsSetResponse;
+use squalr_engine_api::commands::settings::memory::list::memory_settings_list_request::MemorySettingsListRequest;
+use squalr_engine_api::commands::settings::memory::list::memory_settings_list_response::MemorySettingsListResponse;
 use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
 use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSettingsCommand;
+use squalr_engine_api::commands::settings::scan::set::scan_settings_set_request::ScanSettingsSetRequest;
+use squalr_engine_api::commands::settings::scan::set::scan_settings_set_response::ScanSettingsSetResponse;
 use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
 use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
@@ -128,6 +136,176 @@ impl EngineApiUnprivilegedBindings for MockEngineBindings {
         let (_event_sender, event_receiver) = unbounded();
 
         Ok(event_receiver)
+    }
+}
+
+#[test]
+fn general_settings_set_request_dispatches_set_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        GeneralSettingsSetResponse {}.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let general_settings_set_request = GeneralSettingsSetRequest {
+        engine_request_delay: Some(300),
+    };
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    general_settings_set_request.send_unprivileged(&bindings, move |_general_settings_set_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Settings(SettingsCommand::General {
+            general_settings_command:
+                GeneralSettingsCommand::Set {
+                    general_settings_set_request: captured_general_settings_set_request,
+                },
+        }) => {
+            assert_eq!(captured_general_settings_set_request.engine_request_delay, Some(300));
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn general_settings_set_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        GeneralSettingsListResponse {
+            general_settings: Err("settings unavailable".to_string()),
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let general_settings_set_request = GeneralSettingsSetRequest {
+        engine_request_delay: Some(900),
+    };
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    general_settings_set_request.send_unprivileged(&bindings, move |_general_settings_set_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Settings(SettingsCommand::General {
+            general_settings_command:
+                GeneralSettingsCommand::Set {
+                    general_settings_set_request: captured_general_settings_set_request,
+                },
+        }) => {
+            assert_eq!(captured_general_settings_set_request.engine_request_delay, Some(900));
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn memory_settings_list_request_dispatches_list_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemorySettingsListResponse {
+            memory_settings: Err("memory settings unavailable".to_string()),
+        }
+        .to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let memory_settings_list_request = MemorySettingsListRequest {};
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    memory_settings_list_request.send_unprivileged(&bindings, move |memory_settings_list_response| {
+        callback_invoked_clone.store(memory_settings_list_response.memory_settings.is_err(), Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Settings(SettingsCommand::Memory {
+            memory_settings_command: MemorySettingsCommand::List {
+                memory_settings_list_request: _,
+            },
+        }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn scan_settings_set_request_dispatches_set_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        ScanSettingsSetResponse {}.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let scan_settings_set_request = ScanSettingsSetRequest {
+        results_page_size: Some(256),
+        results_read_interval_ms: None,
+        project_read_interval_ms: None,
+        freeze_interval_ms: None,
+        memory_alignment: Some(MemoryAlignment::Alignment4),
+        memory_read_mode: Some(MemoryReadMode::ReadInterleavedWithScan),
+        floating_point_tolerance: Some(FloatingPointTolerance::Tolerance10E3),
+        is_single_threaded_scan: Some(false),
+        debug_perform_validation_scan: Some(true),
+    };
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    scan_settings_set_request.send_unprivileged(&bindings, move |_scan_settings_set_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::Settings(SettingsCommand::Scan {
+            scan_settings_command: ScanSettingsCommand::Set {
+                scan_settings_set_request: captured_scan_settings_set_request,
+            },
+        }) => {
+            assert_eq!(captured_scan_settings_set_request.results_page_size, Some(256));
+            assert_eq!(captured_scan_settings_set_request.memory_alignment, Some(MemoryAlignment::Alignment4));
+            assert_eq!(
+                captured_scan_settings_set_request.memory_read_mode,
+                Some(MemoryReadMode::ReadInterleavedWithScan)
+            );
+            assert_eq!(
+                captured_scan_settings_set_request.floating_point_tolerance,
+                Some(FloatingPointTolerance::Tolerance10E3)
+            );
+            assert_eq!(captured_scan_settings_set_request.debug_perform_validation_scan, Some(true));
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }
 
