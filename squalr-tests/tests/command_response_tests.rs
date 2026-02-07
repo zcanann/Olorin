@@ -7,10 +7,13 @@ use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRe
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use squalr_engine_api::commands::process::process_command::ProcessCommand;
+use squalr_engine_api::commands::project::close::project_close_request::ProjectCloseRequest;
+use squalr_engine_api::commands::project::close::project_close_response::ProjectCloseResponse;
 use squalr_engine_api::commands::project::create::project_create_request::ProjectCreateRequest;
 use squalr_engine_api::commands::project::create::project_create_response::ProjectCreateResponse;
 use squalr_engine_api::commands::project::delete::project_delete_request::ProjectDeleteRequest;
 use squalr_engine_api::commands::project::delete::project_delete_response::ProjectDeleteResponse;
+use squalr_engine_api::commands::project::export::project_export_request::ProjectExportRequest;
 use squalr_engine_api::commands::project::export::project_export_response::ProjectExportResponse;
 use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
@@ -19,8 +22,12 @@ use squalr_engine_api::commands::project::open::project_open_response::ProjectOp
 use squalr_engine_api::commands::project::project_command::ProjectCommand;
 use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
 use squalr_engine_api::commands::project::rename::project_rename_response::ProjectRenameResponse;
+use squalr_engine_api::commands::project::save::project_save_request::ProjectSaveRequest;
+use squalr_engine_api::commands::project::save::project_save_response::ProjectSaveResponse;
 use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
 use squalr_engine_api::commands::project_items::activate::project_items_activate_response::ProjectItemsActivateResponse;
+use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
+use squalr_engine_api::commands::project_items::list::project_items_list_response::ProjectItemsListResponse;
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
@@ -490,6 +497,159 @@ fn project_items_activate_request_dispatches_unprivileged_command_and_invokes_ty
             );
             assert!(captured_project_items_activate_request.is_activated);
         }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_export_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectExportResponse { success: true }.to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_export_request = ProjectExportRequest {
+        project_directory_path: Some(PathBuf::from("C:\\Projects\\ContractExportProject")),
+        project_name: Some("ContractExportProject".to_string()),
+        open_export_folder: true,
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_export_request.send_unprivileged(&bindings, &execution_context, move |project_export_response| {
+        callback_invoked_clone.store(project_export_response.success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Export {
+            project_export_request: captured_project_export_request,
+        }) => {
+            assert_eq!(
+                captured_project_export_request
+                    .project_directory_path
+                    .as_ref()
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects\\ContractExportProject".to_string())
+            );
+            assert_eq!(captured_project_export_request.project_name, Some("ContractExportProject".to_string()));
+            assert!(captured_project_export_request.open_export_folder);
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_close_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectCloseResponse { success: true }.to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_close_request = ProjectCloseRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_close_request.send_unprivileged(&bindings, &execution_context, move |project_close_response| {
+        callback_invoked_clone.store(project_close_response.success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Close { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_save_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectSaveResponse { success: true }.to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_save_request = ProjectSaveRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_save_request.send_unprivileged(&bindings, &execution_context, move |project_save_response| {
+        callback_invoked_clone.store(project_save_response.success, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::Project(ProjectCommand::Save { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_items_list_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectItemsListResponse::default().to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    ))));
+
+    let project_items_list_request = ProjectItemsListRequest {};
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_items_list_request.send_unprivileged(&bindings, &execution_context, move |project_items_list_response| {
+        let response_has_empty_project = project_items_list_response.opened_project_info.is_none() && project_items_list_response.opened_project_root.is_none();
+        callback_invoked_clone.store(response_has_empty_project, Ordering::SeqCst);
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::ProjectItems(ProjectItemsCommand::List { .. }) => {}
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
 }
