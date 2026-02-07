@@ -2,8 +2,6 @@ use crate::command_executors::privileged_request_executor::PrivilegedCommandRequ
 use crate::engine_privileged_state::EnginePrivilegedState;
 use squalr_engine_api::commands::scan_results::add_to_project::scan_results_add_to_project_request::ScanResultsAddToProjectRequest;
 use squalr_engine_api::commands::scan_results::add_to_project::scan_results_add_to_project_response::ScanResultsAddToProjectResponse;
-use squalr_engine_memory::memory_queryer::memory_queryer::MemoryQueryer;
-use squalr_engine_memory::memory_queryer::memory_queryer_trait::IMemoryQueryer;
 use std::sync::Arc;
 
 impl PrivilegedCommandRequestExecutor for ScanResultsAddToProjectRequest {

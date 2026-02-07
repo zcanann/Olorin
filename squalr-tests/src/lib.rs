@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+pub mod mocks;
+
 use crossbeam_channel::{Receiver, unbounded};
 use squalr_engine_api::commands::memory::write::memory_write_response::MemoryWriteResponse;
 use squalr_engine_api::commands::privileged_command::PrivilegedCommand;

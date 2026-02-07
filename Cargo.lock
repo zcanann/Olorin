@@ -6261,7 +6261,10 @@ name = "squalr-tests"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
+ "squalr-engine",
  "squalr-engine-api",
+ "squalr-engine-memory",
+ "squalr-engine-processes",
  "structopt",
 ]
 
