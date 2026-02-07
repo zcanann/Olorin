@@ -80,6 +80,7 @@ If this starts to become sprawling, compact this.
 - `squalr-tests` per-command suites had bulk unused imports/helpers removed after the test-suite split, reducing test-target warning noise without changing command/response assertions.
 - `squalr-tests` now exposes a shared `EngineUnprivilegedState` helper for integration tests, allowing project/project-items request suites to reuse one execution context and avoid repeated logger initialization errors in test output.
 - Command/response Phase 1 test suites currently cover all command enum variants exposed by `PrivilegedCommand` and `UnprivilegedCommand` trees; remaining untested work is the deferred OS-behavior seam in Phase 2.
+- Re-validated command/response Phase 1 coverage on `pr/unit-tests` with `cargo test -p squalr-tests` on February 7, 2026; all suites pass and Phase 2 remains deferred pending OS singleton DI seams.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
@@ -146,6 +147,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Cleaned `squalr-tests` per-command integration suites to remove split-era unused imports and unused mock helper getters; validated with `cargo test -p squalr-tests`.
 - `pr/unit-tests`: Added a shared `squalr-tests::shared_execution_context()` helper and updated `project` plus `project-items` command suites to use it, eliminating repeated `LogDispatcher` initialization error spam while preserving existing dispatch assertions.
 - `pr/unit-tests`: Re-validated `squalr-tests` on branch head with `cargo test -p squalr-tests` (all suites passing) and confirmed current Phase 1 command/response coverage matches all presently exposed privileged/unprivileged command enum variants.
+- `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS workflow; all command/response suites still pass and no new Phase 1 gaps were identified.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
