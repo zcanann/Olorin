@@ -10,6 +10,8 @@ use squalr_engine_api::commands::process::process_command::ProcessCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
+use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
+use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
 use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
 use squalr_engine_api::commands::unprivileged_command_response::UnprivilegedCommandResponse;
@@ -178,6 +180,40 @@ fn privileged_command_parser_accepts_trackable_tasks_subcommand() {
 
     match parsed_command_result.expect("command should parse successfully") {
         PrivilegedCommand::TrackableTasks(TrackableTasksCommand::List { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_memory_settings_set_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "settings",
+            "memory",
+            "set",
+            "--start-address",
+            "4096",
+            "--end-address",
+            "8192",
+            "--only-query-usermode",
+            "true",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Settings(SettingsCommand::Memory {
+            memory_settings_command: MemorySettingsCommand::Set { memory_settings_set_request },
+        }) => {
+            assert_eq!(memory_settings_set_request.start_address, Some(4096));
+            assert_eq!(memory_settings_set_request.end_address, Some(8192));
+            assert_eq!(memory_settings_set_request.only_query_usermode, Some(true));
+        }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
