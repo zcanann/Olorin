@@ -22,12 +22,27 @@ This should cover various cases like scanning for different data types, writing 
 If functionality is too hard to test, note down why its better to not have the test yet and instead wait for the implementation to change. Always cross-reference this with the Architecture Plan. If the plan seems too complicated, cut scope. If the tests can't comply due to poor architecture, just note it down and leave the test stubbed.
 
 #### Scratchpad (Agents can modify this!)
+- `squalr-tests` crate now exists in the workspace.
+- Initial scope is command/response contract tests that do not require real OS process handles.
+- Discovered parser blocker: `PrivilegedCommand::from_iter_safe(...)` currently panics in clap app construction due duplicate short flags in command definitions.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
+- Phase 1 (implemented): validate command request dispatch and typed response extraction through `EngineApiUnprivilegedBindings` mocks.
+- Phase 2 (deferred): add OS-behavior tests for memory read/write, page query, and scan flows once OS query/reader/writer singletons support dependency injection overrides in test context.
+- Scope cut rationale: privileged executors call static OS-facing singletons directly (`MemoryQueryer`, `MemoryReader`, `MemoryWriter`, `ProcessQuery`), so deterministic command executor tests cannot currently emulate OS data without architectural changes.
+- Proposed minimal future seam: trait-object providers on `EnginePrivilegedState` for process/memory/query APIs, with production defaults bound to current implementations.
 
 #### Concise Session logs (Agents can modify this!)
 For each PR, append to this section a summary of the work accomplished.
+- `pr/unit-tests`: Added new workspace member `squalr-tests`.
+- `pr/unit-tests`: Added initial tests in `squalr-tests/tests/command_response_tests.rs` covering:
+  - `MemoryWriteRequest::send_unprivileged` dispatch and typed callback decode.
+  - `ProcessOpenRequest::send_unprivileged` behavior when response variant mismatches (callback not invoked).
+  - `ScanNewRequest::to_engine_command` mapping.
+  - `ScanNewResponse` typed response round-trip conversion.
+- `pr/unit-tests`: Ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Documented parser and DI limitations for next iteration.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
