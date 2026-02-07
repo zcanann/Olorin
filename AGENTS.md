@@ -40,12 +40,14 @@ If functionality is too hard to test, note down why its better to not have the t
 - Parser coverage now includes `results add-to-project` long-form flags and validates parsed `scan_result_refs` extraction.
 - Parser coverage now includes privileged `memory read`, `scan reset`, `scan collect-values`, and `tasks cancel` command shapes.
 - Parser coverage now includes unprivileged `project create`, `project rename`, and `project-items activate` long-form flags and validates field extraction.
+- Parser coverage now includes unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list` command shapes, with long-form field extraction checks where applicable.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
 - Phase 1 (implemented): validate command request dispatch and typed response extraction through `EngineApiUnprivilegedBindings` mocks.
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
+- Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
 - Phase 2 (deferred): add OS-behavior tests for memory read/write, page query, and scan flows once OS query/reader/writer singletons support dependency injection overrides in test context.
 - Scope cut rationale: privileged executors call static OS-facing singletons directly (`MemoryQueryer`, `MemoryReader`, `MemoryWriter`, `ProcessQuery`), so deterministic command executor tests cannot currently emulate OS data without architectural changes.
 - Proposed minimal future seam: trait-object providers on `EnginePrivilegedState` for process/memory/query APIs, with production defaults bound to current implementations.
@@ -93,6 +95,7 @@ For each PR, append to this section a summary of the work accomplished.
 - `pr/unit-tests`: Added parser regression tests for privileged `memory read`, `scan reset`, `scan collect-values`, and `tasks cancel`; verified parsed field extraction for address/module/struct and task id.
 - `pr/unit-tests`: Added parser regression tests for unprivileged `project create`, `project rename`, and `project-items activate`; verified parsed path/name and activation payload extraction.
 - `pr/unit-tests`: Re-ran `cargo fmt --all` and `cargo test -p squalr-tests` (pass).
+- `pr/unit-tests`: Added parser regression tests for unprivileged `project open`, `project delete`, `project export`, `project list`, `project close`, `project save`, and `project-items list`; verified parsed field extraction for optional paths/names and boolean flags where applicable.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.

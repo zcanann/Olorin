@@ -831,3 +831,166 @@ fn unprivileged_command_parser_accepts_project_items_activate_with_long_flags() 
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn unprivileged_command_parser_accepts_project_open_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project",
+            "open",
+            "--open-file-browser",
+            "--project-directory-path",
+            "C:\\Projects\\OpenProject",
+            "--project-name",
+            "OpenProject",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Open { project_open_request }) => {
+            assert!(project_open_request.open_file_browser);
+            assert_eq!(
+                project_open_request
+                    .project_directory_path
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects\\OpenProject".to_string())
+            );
+            assert_eq!(project_open_request.project_name, Some("OpenProject".to_string()));
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_delete_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project",
+            "delete",
+            "--project-directory-path",
+            "C:\\Projects\\DeleteProject",
+            "--project-name",
+            "DeleteProject",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Delete { project_delete_request }) => {
+            assert_eq!(
+                project_delete_request
+                    .project_directory_path
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects\\DeleteProject".to_string())
+            );
+            assert_eq!(project_delete_request.project_name, Some("DeleteProject".to_string()));
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_export_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project",
+            "export",
+            "--project-directory-path",
+            "C:\\Projects\\ExportProject",
+            "--project-name",
+            "ExportProject",
+            "--open-export-folder",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Export { project_export_request }) => {
+            assert_eq!(
+                project_export_request
+                    .project_directory_path
+                    .map(|project_directory_path| project_directory_path.display().to_string()),
+                Some("C:\\Projects\\ExportProject".to_string())
+            );
+            assert_eq!(project_export_request.project_name, Some("ExportProject".to_string()));
+            assert!(project_export_request.open_export_folder);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_list_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| UnprivilegedCommand::from_iter_safe(["squalr-cli", "project", "list"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::List { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_close_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| UnprivilegedCommand::from_iter_safe(["squalr-cli", "project", "close"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Close { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_save_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| UnprivilegedCommand::from_iter_safe(["squalr-cli", "project", "save"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::Project(ProjectCommand::Save { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_items_list_subcommand() {
+    let parse_result = std::panic::catch_unwind(|| UnprivilegedCommand::from_iter_safe(["squalr-cli", "project-items", "list"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::ProjectItems(ProjectItemsCommand::List { .. }) => {}
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
