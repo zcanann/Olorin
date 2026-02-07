@@ -25,9 +25,10 @@ use squalr_engine_api::commands::unprivileged_command_response::{TypedUnprivileg
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
+use squalr_tests::shared_execution_context;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 
 struct MockEngineBindings {
@@ -110,10 +111,7 @@ fn project_list_request_dispatches_unprivileged_command_and_invokes_typed_callba
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_list_request = ProjectListRequest {};
     let callback_invoked = Arc::new(AtomicBool::new(false));
@@ -144,10 +142,7 @@ fn project_open_request_dispatches_unprivileged_command_and_invokes_typed_callba
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_open_request = UnprivilegedProjectOpenRequest {
         open_file_browser: true,
@@ -198,10 +193,7 @@ fn project_create_request_dispatches_unprivileged_command_and_invokes_typed_call
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_create_request = ProjectCreateRequest {
         project_directory_path: Some(PathBuf::from("C:\\Projects")),
@@ -248,10 +240,7 @@ fn project_delete_request_dispatches_unprivileged_command_and_invokes_typed_call
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_delete_request = ProjectDeleteRequest {
         project_directory_path: Some(PathBuf::from("C:\\Projects\\ContractDeleteProject")),
@@ -300,10 +289,7 @@ fn project_rename_request_dispatches_unprivileged_command_and_invokes_typed_call
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_rename_request = ProjectRenameRequest {
         project_directory_path: PathBuf::from("C:\\Projects\\OriginalProject"),
@@ -350,10 +336,7 @@ fn project_export_request_dispatches_unprivileged_command_and_invokes_typed_call
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_export_request = ProjectExportRequest {
         project_directory_path: Some(PathBuf::from("C:\\Projects\\ContractExportProject")),
@@ -400,10 +383,7 @@ fn project_close_request_dispatches_unprivileged_command_and_invokes_typed_callb
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_close_request = ProjectCloseRequest {};
     let callback_invoked = Arc::new(AtomicBool::new(false));
@@ -434,10 +414,7 @@ fn project_save_request_dispatches_unprivileged_command_and_invokes_typed_callba
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_save_request = ProjectSaveRequest {};
     let callback_invoked = Arc::new(AtomicBool::new(false));
@@ -468,10 +445,7 @@ fn project_save_request_does_not_invoke_callback_when_response_variant_is_wrong(
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_save_request = ProjectSaveRequest {};
     let callback_invoked = Arc::new(AtomicBool::new(false));

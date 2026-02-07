@@ -2,7 +2,6 @@ use crossbeam_channel::{Receiver, unbounded};
 use squalr_engine_api::commands::memory::write::memory_write_response::MemoryWriteResponse;
 use squalr_engine_api::commands::privileged_command::PrivilegedCommand;
 use squalr_engine_api::commands::privileged_command_response::{PrivilegedCommandResponse, TypedPrivilegedCommandResponse};
-use squalr_engine_api::commands::project::export::project_export_response::ProjectExportResponse;
 use squalr_engine_api::commands::project::list::project_list_response::ProjectListResponse;
 use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
 use squalr_engine_api::commands::project_items::activate::project_items_activate_response::ProjectItemsActivateResponse;
@@ -15,8 +14,9 @@ use squalr_engine_api::commands::unprivileged_command_response::{TypedUnprivileg
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
+use squalr_tests::shared_execution_context;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 
 struct MockEngineBindings {
@@ -99,10 +99,7 @@ fn project_items_activate_request_dispatches_unprivileged_command_and_invokes_ty
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectExportResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_items_activate_request = ProjectItemsActivateRequest {
         project_item_paths: vec![
@@ -150,10 +147,7 @@ fn project_items_list_request_dispatches_unprivileged_command_and_invokes_typed_
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_items_list_request = ProjectItemsListRequest {};
     let callback_invoked = Arc::new(AtomicBool::new(false));
@@ -185,10 +179,7 @@ fn project_items_list_request_does_not_invoke_callback_when_response_variant_is_
     );
     let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
 
-    let execution_context = EngineUnprivilegedState::new(Arc::new(RwLock::new(MockEngineBindings::new(
-        MemoryWriteResponse { success: true }.to_engine_response(),
-        ProjectListResponse::default().to_engine_response(),
-    ))));
+    let execution_context = shared_execution_context();
 
     let project_items_list_request = ProjectItemsListRequest {};
     let callback_invoked = Arc::new(AtomicBool::new(false));
