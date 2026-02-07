@@ -165,6 +165,35 @@ fn trackable_tasks_list_request_dispatches_list_command_and_invokes_typed_callba
 }
 
 #[test]
+fn trackable_tasks_list_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        TrackableTasksCancelResponse {}.to_engine_response(),
+        ProjectListResponse::default().to_engine_response(),
+    );
+    let dispatched_commands = bindings.get_dispatched_commands();
+    let trackable_tasks_list_request = TrackableTasksListRequest {};
+
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    trackable_tasks_list_request.send_unprivileged(&bindings, move |_trackable_tasks_list_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_commands_guard = dispatched_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_commands_guard.len(), 1);
+
+    match &dispatched_commands_guard[0] {
+        PrivilegedCommand::TrackableTasks(TrackableTasksCommand::List { .. }) => {}
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
 fn trackable_tasks_cancel_request_dispatches_cancel_command_and_invokes_typed_callback() {
     let bindings = MockEngineBindings::new(
         TrackableTasksCancelResponse {}.to_engine_response(),
