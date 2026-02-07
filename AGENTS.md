@@ -86,6 +86,7 @@ If this starts to become sprawling, compact this.
 - Re-validation rerun (February 7, 2026): executed `cargo test -p squalr-tests` after re-reading `README.md` and `AGENTS.md`; all per-command suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 - Re-validation rerun (February 7, 2026): executed `cargo test -p squalr-tests`; all per-command suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 - Re-validation rerun (February 7, 2026): executed `cargo test -p squalr-tests`; all per-command suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
+- Re-validation rerun (February 7, 2026): re-ran `cargo test -p squalr-tests` after re-reading `README.md` and `AGENTS.md`; all per-command suites still pass (97 integration tests total), existing `squalr-engine-api` warnings remain unchanged, and Phase 2 remains deferred pending OS singleton DI seams.
 
 #### Architecture Plan (Agents can modify this!)
 Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
@@ -140,6 +141,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Re-validation rerun on February 7, 2026 (AGENTS workflow run after re-reading `README.md` and `AGENTS.md`): `cargo test -p squalr-tests` passed all per-command suites (97 integration tests total); existing `squalr-engine-api` warnings are unchanged; Phase 2 remains deferred pending OS singleton DI seams.
 - `pr/unit-tests`: Re-validation rerun on February 7, 2026: `cargo test -p squalr-tests` passed all per-command suites (97 integration tests total); existing `squalr-engine-api` warnings are unchanged; Phase 2 remains deferred pending OS singleton DI seams.
 - `pr/unit-tests`: Re-validation rerun on February 7, 2026: `cargo test -p squalr-tests` passed all per-command suites (97 integration tests total); existing `squalr-engine-api` warnings are unchanged; Phase 2 remains deferred pending OS singleton DI seams.
+- `pr/unit-tests`: Re-validation rerun on February 7, 2026 (AGENTS workflow run after re-reading `README.md` and `AGENTS.md`): `cargo test -p squalr-tests` passed all per-command suites (97 integration tests total); existing `squalr-engine-api` warnings are unchanged; Phase 2 remains deferred pending OS singleton DI seams.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
