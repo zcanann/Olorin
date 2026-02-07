@@ -469,6 +469,23 @@ fn privileged_command_parser_accepts_scan_results_list_with_long_flags() {
 }
 
 #[test]
+fn privileged_command_parser_accepts_scan_results_query_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "results", "query", "--page-index", "5"]));
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Query { results_query_request }) => {
+            assert_eq!(results_query_request.page_index, 5);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
 fn privileged_command_parser_accepts_scan_results_set_property_with_long_flags() {
     let parse_result = std::panic::catch_unwind(|| {
         PrivilegedCommand::from_iter_safe([
@@ -503,6 +520,35 @@ fn privileged_command_parser_accepts_scan_results_set_property_with_long_flags()
                 "255"
             );
             assert_eq!(results_set_property_request.field_namespace, "value".to_string());
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_results_delete_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "results",
+            "delete",
+            "--scan-result-refs",
+            "17",
+            "--scan-result-refs",
+            "29",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Results(ScanResultsCommand::Delete { results_delete_request }) => {
+            assert_eq!(results_delete_request.scan_result_refs.len(), 2);
+            assert_eq!(results_delete_request.scan_result_refs[0].get_scan_result_global_index(), 17);
+            assert_eq!(results_delete_request.scan_result_refs[1].get_scan_result_global_index(), 29);
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
