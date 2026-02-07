@@ -63,6 +63,7 @@ If this starts to become sprawling, compact this.
 - Contract coverage now includes privileged typed-response mismatch handling for `tasks cancel` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variant while preserving command dispatch capture.
 - Contract coverage now includes privileged `scan reset` and `scan collect-values` request dispatch through `send_unprivileged(...)`, with typed response decode verification and command dispatch capture checks.
 - Contract coverage now includes privileged typed-response mismatch handling for `scan collect-values` dispatch through `send_unprivileged(...)`, verifying callback suppression on wrong response variants while preserving command dispatch capture.
+- Contract coverage now includes privileged `memory read` and `memory write` request dispatch through `send_unprivileged(...)`, with typed response decode verification, request payload propagation checks, and wrong-variant callback suppression coverage.
 - `squalr-tests` integration coverage is now split into per-command suites under `squalr-tests/tests/*_command_tests.rs` to avoid single-file test sprawl.
 
 #### Architecture Plan (Agents can modify this!)
@@ -83,6 +84,7 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 - Phase 1 (extended): validate privileged trackable-task list/cancel dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode and cancel payload propagation.
 - Phase 1 (extended): validate privileged typed-response mismatch behavior for trackable-task cancel request callbacks in `send_unprivileged(...)` coverage.
 - Phase 1 (extended): validate privileged scan reset/collect-values dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode and wrong-variant callback suppression for collect-values.
+- Phase 1 (extended): validate privileged memory read/write dispatch contract coverage for `send_unprivileged(...)`, including typed callback decode, payload propagation, and wrong-variant callback suppression.
 - Phase 1 (extended): add parser contract regression coverage for privileged command parsing to prevent clap construction regressions.
 - Phase 1 (extended): add parser contract regression coverage for unprivileged project and project-item command parsing to prevent clap regressions outside privileged command trees.
 - Phase 1 (extended): broaden unprivileged parser coverage to include all currently exposed `project` and `project-items` subcommands.
@@ -103,6 +105,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Added privileged `process list` contract coverage to assert typed callback decode for returned process metadata, request payload propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `tasks list` and `tasks cancel` contract coverage to assert typed callback decode, cancel request payload propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
 - `pr/unit-tests`: Added privileged `scan reset` and `scan collect-values` contract coverage to assert typed callback decode, command dispatch propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
+- `pr/unit-tests`: Added privileged `memory read` and `memory write` contract coverage to assert typed callback decode, payload propagation, and callback suppression on wrong typed response variants through `send_unprivileged(...)`.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
