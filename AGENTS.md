@@ -131,6 +131,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Added shared `squalr-tests::shared_execution_context()` usage in project/project-items suites to avoid repeated logger init noise.
 - `pr/unit-tests`: Current Phase 1 scope covers all currently exposed `PrivilegedCommand` and `UnprivilegedCommand` enum variants.
 - `pr/unit-tests`: Re-validation on February 7, 2026 after re-reading `README.md` and `AGENTS.md`: `cargo test -p squalr-tests` passed all per-command suites (97 integration tests total); existing `squalr-engine-api` warnings are unchanged; Phase 2 remains deferred pending OS singleton DI seams.
+- `pr/unit-tests`: Re-validation on February 7, 2026 (follow-up AGENTS workflow run): `cargo test -p squalr-tests` passed all per-command suites (97 integration tests total); existing `squalr-engine-api` warnings are unchanged; Phase 2 remains deferred pending OS singleton DI seams.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
