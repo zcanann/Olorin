@@ -10,6 +10,7 @@ use squalr_engine_api::commands::process::process_command::ProcessCommand;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
+use squalr_engine_api::commands::settings::general::general_settings_command::GeneralSettingsCommand;
 use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
 use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSettingsCommand;
 use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
@@ -328,6 +329,34 @@ fn privileged_command_parser_accepts_scan_settings_set_with_long_flags() {
                 Some(FloatingPointTolerance::ToleranceEpsilon)
             );
             assert_eq!(scan_settings_set_request.is_single_threaded_scan, Some(true));
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_general_settings_set_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "settings",
+            "general",
+            "set",
+            "--engine-request-delay",
+            "250",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Settings(SettingsCommand::General {
+            general_settings_command: GeneralSettingsCommand::Set { general_settings_set_request },
+        }) => {
+            assert_eq!(general_settings_set_request.engine_request_delay, Some(250));
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
