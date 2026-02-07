@@ -11,6 +11,7 @@ use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::new::scan_new_response::ScanNewResponse;
 use squalr_engine_api::commands::scan::scan_command::ScanCommand;
 use squalr_engine_api::commands::settings::memory::memory_settings_command::MemorySettingsCommand;
+use squalr_engine_api::commands::settings::scan::scan_settings_command::ScanSettingsCommand;
 use squalr_engine_api::commands::settings::settings_command::SettingsCommand;
 use squalr_engine_api::commands::trackable_tasks::trackable_tasks_command::TrackableTasksCommand;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
@@ -18,6 +19,9 @@ use squalr_engine_api::commands::unprivileged_command_response::UnprivilegedComm
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
+use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
+use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
+use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
@@ -281,6 +285,49 @@ fn privileged_command_parser_accepts_process_list_with_long_flags() {
             assert!(process_list_request.match_case);
             assert_eq!(process_list_request.limit, Some(10));
             assert!(process_list_request.fetch_icons);
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn privileged_command_parser_accepts_scan_settings_set_with_long_flags() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "settings",
+            "scan",
+            "set",
+            "--results-page-size",
+            "512",
+            "--memory-alignment",
+            "8",
+            "--memory-read-mode",
+            "i",
+            "--floating-point-tolerance",
+            "epsilon",
+            "--is-single-threaded-scan",
+            "true",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        PrivilegedCommand::Settings(SettingsCommand::Scan {
+            scan_settings_command: ScanSettingsCommand::Set { scan_settings_set_request },
+        }) => {
+            assert_eq!(scan_settings_set_request.results_page_size, Some(512));
+            assert_eq!(scan_settings_set_request.memory_alignment, Some(MemoryAlignment::Alignment8));
+            assert_eq!(scan_settings_set_request.memory_read_mode, Some(MemoryReadMode::ReadInterleavedWithScan));
+            assert_eq!(
+                scan_settings_set_request.floating_point_tolerance,
+                Some(FloatingPointTolerance::ToleranceEpsilon)
+            );
+            assert_eq!(scan_settings_set_request.is_single_threaded_scan, Some(true));
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
