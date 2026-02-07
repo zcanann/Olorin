@@ -24,6 +24,8 @@ This should cover various cases like scanning for different data types, writing 
 If functionality is too hard to test, note down why its better to not have the test yet and instead wait for the implementation to change. Always cross-reference this with the Architecture Plan. If the plan seems too complicated, cut scope. If the tests can't comply due to poor architecture, just note it down and leave the test stubbed.
 
 #### Scratchpad (Agents can modify this!)
+If this starts to become sprawling, compact this.
+
 - `squalr-tests` crate now exists in the workspace.
 - Initial scope is command/response contract tests that do not require real OS process handles.
 - Parser blocker resolved for current command set: duplicate aliases and duplicate short flags no longer panic `PrivilegedCommand::from_iter_safe(...)` in `squalr-tests` parser coverage.
@@ -64,7 +66,8 @@ If functionality is too hard to test, note down why its better to not have the t
 - `squalr-tests` integration coverage is now split into per-command suites under `squalr-tests/tests/*_command_tests.rs` to avoid single-file test sprawl.
 
 #### Architecture Plan (Agents can modify this!)
-Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan.
+Iterate on this section with the architecture plan. Prefer simplicty, while staying within the bounds of the README.md plan. If this starts to become sprawling, compact it into the core skeleton of the intended architecture that is meant to guide all edits.
+
 - Phase 1 (implemented): validate command request dispatch and typed response extraction through `EngineApiUnprivilegedBindings` mocks.
 - Phase 1 (extended): validate unprivileged request dispatch and typed response extraction through `UnprivilegedCommandRequest::send_unprivileged(...)` mock bindings.
 - Phase 1 (extended): expand unprivileged dispatch contract coverage beyond `project list` by validating typed callback decode and payload propagation for additional project commands.
@@ -89,7 +92,7 @@ Iterate on this section with the architecture plan. Prefer simplicty, while stay
 - Proposed minimal future seam: trait-object providers on `EnginePrivilegedState` for process/memory/query APIs, with production defaults bound to current implementations.
 
 #### Concise Session logs (Agents can modify this!)
-For each PR, append to this section a summary of the work accomplished.
+For each PR, append to this section a summary of the work accomplished. If this starts to become sprawling, compact this.
 - `pr/unit-tests`: Added new workspace member `squalr-tests`.
 - `pr/unit-tests`: Added initial tests in `squalr-tests/tests/command_response_tests.rs`
 - NOTE FROM OWNER: This test format is unsustainable and retarded. Stop dumping everything in one file. One test suite per command.
