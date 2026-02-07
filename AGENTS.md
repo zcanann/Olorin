@@ -149,6 +149,7 @@ For each PR, append to this section a summary of the work accomplished. If this 
 - `pr/unit-tests`: Re-validated `squalr-tests` on branch head with `cargo test -p squalr-tests` (all suites passing) and confirmed current Phase 1 command/response coverage matches all presently exposed privileged/unprivileged command enum variants.
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS workflow; all command/response suites still pass and no new Phase 1 gaps were identified.
 - `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 after reloading README.md and AGENTS.md context; all command/response suites still pass, with existing `squalr-engine-api` warnings unchanged and no new Phase 1 scope changes.
+- `pr/unit-tests`: Re-ran `cargo test -p squalr-tests` on February 7, 2026 while following AGENTS.md instructions; all command/response suites still pass, with existing `squalr-engine-api` warnings unchanged and no new Phase 1 scope changes.
 
 ## Agentic Eventually TODO list
 - pr/cli-bugs - The cli build currently does not even spawn a window. The cli should be able to spawn visibly and execute commands. It has not been functional for many months, causing drift. Observe the gui project (squalr) for reference to functional code. Both projects leverage squalr-engine / squalr-engine-api for the heavy lifting.
