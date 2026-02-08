@@ -13,7 +13,9 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- No remaining installer-specific UI parity tasks are currently listed.
+- The installer is not rendering transparent, causing the rounded corners of the header/footer to show as black. Fix the transparency (squalr does this correctly).
+- The project needs to be modularized similar to `squalr` folder layout wise. Overloading `main.rs` is unacceptable.
+- OWNER COMMENT: Tests probably belong in the test project right? Why are they just inlined in `main.rs` too? Or is it not feasible to mix tests for different projects (api, installer) into one repo?
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
