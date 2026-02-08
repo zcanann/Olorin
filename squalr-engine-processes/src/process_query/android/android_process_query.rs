@@ -117,17 +117,20 @@ impl AndroidProcessQuery {
 
     fn get_apk_path(package_name: &str) -> Option<String> {
         Self::parse_packages_xml();
-        PACKAGE_CACHE
-            .read()
-            .unwrap()
-            .get(package_name)
-            .cloned()
-            .map(|mut path| {
-                if Path::new(&path).is_dir() {
-                    path.push_str("/base.apk");
-                }
-                path
-            })
+        let package_cache_guard = match PACKAGE_CACHE.read() {
+            Ok(guard) => guard,
+            Err(error) => {
+                Logger::log(LogLevel::Error, &format!("Failed to acquire PACKAGE_CACHE read lock: {}", error), None);
+                return None;
+            }
+        };
+
+        package_cache_guard.get(package_name).cloned().map(|mut path| {
+            if Path::new(&path).is_dir() {
+                path.push_str("/base.apk");
+            }
+            path
+        })
     }
 
     fn get_icon_from_apk(apk_path: &str) -> Option<ProcessIcon> {

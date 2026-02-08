@@ -5839,6 +5839,7 @@ dependencies = [
 name = "squalr"
 version = "0.1.1"
 dependencies = [
+ "anyhow",
  "arc-swap",
  "bus",
  "crossbeam-channel",
@@ -5879,6 +5880,7 @@ dependencies = [
 name = "squalr-cli"
 version = "0.1.1"
 dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "futures",
  "log",
@@ -6067,6 +6069,7 @@ dependencies = [
 name = "squalr-tui"
 version = "0.1.1"
 dependencies = [
+ "anyhow",
  "crossbeam-channel",
  "futures",
  "log",

@@ -11,15 +11,16 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
 - [ ] Define canonical error boundaries and ownership: engine/internal crates use typed errors (`thiserror`), CLI/GUI/TUI entrypoints use `anyhow::Result`.
+  - Progress: CLI/TUI/desktop GUI entrypoints now use `anyhow::Result`; engine/internal typed-error migration remains.
 - [ ] Replace `Result<_, String>` in process query + OS provider path with typed errors.
   Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
 - [ ] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
   Files: `squalr-engine/src/engine_bindings/interprocess/**`, `squalr-engine/src/engine_bindings/standalone/**`.
 - [ ] Replace `Result<_, String>` in snapshot region memory reader with typed scan I/O errors.
   File: `squalr-engine-scanning/src/scanners/snapshot_region_memory_reader.rs`.
-- [ ] Replace runtime `unwrap()` in non-test crates with safe handling (`Result` propagation, guarded fallback, or structured log and early return).
+- [x] Replace runtime `unwrap()` in non-test crates with safe handling (`Result` propagation, guarded fallback, or structured log and early return).
   Initial files: `squalr-tui/src/main.rs`, `squalr-cli/src/main.rs`, `squalr/src/views/struct_viewer/struct_viewer_entry_view.rs`, `squalr-engine-api/src/structures/tasks/trackable_task.rs`, `squalr-engine-processes/src/process_query/android/android_process_query.rs`, `squalr-engine-api/src/structures/results/snapshot_region_scan_results.rs`.
-- [ ] Replace runtime `panic!` in app entrypoints with error returns and consistent startup failure reporting.
+- [x] Replace runtime `panic!` in app entrypoints with error returns and consistent startup failure reporting.
   Initial files: `squalr/src/main.rs`, `squalr-cli/src/main.rs`, `squalr-tui/src/main.rs`, `squalr-android/src/lib.rs`.
 - [ ] Update API response payloads that currently embed `Result<T, String>` where appropriate to use typed serializable error payloads.
   Initial files: `squalr-engine-api/src/commands/settings/*/list/*_response.rs`.
@@ -42,7 +43,9 @@ Initial analysis
   - `Result<(_), String>` is explicitly called out as bad practice.
 
 Discovered during iteration:
-- 
+- CLI, TUI, and desktop GUI entrypoints now return `anyhow::Result<()>` and no longer panic during startup/event-loop failures.
+- Android startup path no longer panics on engine/gui initialization; it logs and returns from `android_main`.
+- Runtime unwrap removals completed in `trackable_task`, `snapshot_region_scan_results`, and Android package cache read path.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -53,4 +56,6 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 ### Concise Session Log
 - Audited repository for runtime error-handling hotspots (`unwrap`, `panic`, `Result<_, String>`, existing typed errors).
 - Set current task to `pr/error_handling` and created a concrete implementation tasklist for next session.
+- Replaced runtime panic/unwrap hotspots in the initial target files and added `anyhow` to CLI/TUI/GUI crates.
+- Ran `cargo fmt`, `cargo check -p squalr-cli`, `cargo check -p squalr-tui`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr`.
 

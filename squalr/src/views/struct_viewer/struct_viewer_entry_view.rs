@@ -1,10 +1,6 @@
 use crate::{
     app_context::AppContext,
-    ui::{
-        converters::data_type_to_icon_converter::DataTypeToIconConverter,
-        draw::icon_draw::IconDraw,
-        widgets::controls::{data_value_box::data_value_box_view::DataValueBoxView, state_layer::StateLayer},
-    },
+    ui::{converters::data_type_to_icon_converter::DataTypeToIconConverter, draw::icon_draw::IconDraw, widgets::controls::state_layer::StateLayer},
     views::struct_viewer::view_data::struct_viewer_frame_action::StructViewerFrameAction,
 };
 use eframe::egui::{Align2, Response, Sense, Ui, Widget, vec2};
