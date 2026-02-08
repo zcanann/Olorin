@@ -10,8 +10,11 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- [x] Audit `pr/error_handling` for regressions in runtime error-handling rules (`unwrap`, `panic!`, `Result<_, String>`) in non-test Rust crates.
-- [x] Run relevant crate and integration tests for the error-handling migration and record the results.
+- [ ] Restore fail-fast startup semantics in privileged engine initialization by returning a typed init `Result` when critical boot steps fail (`engine bindings init`, `process monitor start`) instead of logging and continuing.
+- [ ] Restore fail-fast startup semantics for IPC host initialization by propagating privileged CLI spawn/pipe bind failures out of `InterprocessEngineApiUnprivilegedBindings::new` and `SqualrEngine::new` instead of background-thread logging.
+- [ ] Enforce startup invariants in standalone bindings (`StandaloneEngineApiUnprivilegedBindings::new`) by replacing "log and continue with `None`" behavior with hard invariant failure (`panic!`/`expect`) for impossible states.
+- [ ] Decide Android fatal-startup policy and implement consistently: either panic on unrecoverable `android_main` init failures (preferred for critical bootstrap) or return explicit startup status to caller with centralized fatal handler.
+- [ ] Add regression tests for startup failure behavior (engine init + IPC init) to ensure critical-system bootstrap failures are fail-fast and no longer degrade silently.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -43,6 +46,13 @@ Discovered during iteration:
 - Eliminated remaining non-test `Result<_, String>` signatures by introducing `SymbolRegistryError` + `ValuedStructError`, and removed stale commented UI `unwrap()` usage from struct viewer row rendering.
 - Post-migration audit confirmed no non-test `unwrap()`, no non-test `panic!`, and no `Result<_, String>` signatures remain in Rust source.
 - Verification run completed successfully for `squalr-engine-processes`, `squalr-engine-api`, `squalr-engine-scanning`, and `squalr-tests`.
+- Follow-up audit found over-correction: several startup-critical failures now only log and continue, creating partially initialized runtimes.
+- Primary locations requiring fail-fast handling:
+  - `squalr-engine/src/engine_privileged_state.rs` (`initialize` failures at lines `87`, `101`, `115` currently log-only).
+  - `squalr-engine/src/engine_bindings/interprocess/interprocess_engine_api_unprivileged_bindings.rs` (IPC bootstrap failures at lines `116`, `120` currently log-only in worker thread).
+  - `squalr-engine/src/engine_bindings/standalone/standalone_engine_api_unprivileged_bindings.rs` (missing privileged state at line `27` currently logs and degrades).
+  - `squalr-android/src/lib.rs` (`android_main` fatal startup errors at lines `16`, `24`, `33`, `45` currently log and return).
+- Non-startup command/runtime paths are mostly correct to keep as recoverable `Result` + logging; the regression scope is concentrated in bootstrapping critical systems.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -68,4 +78,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Ran `cargo test -p squalr-engine-processes`, `cargo test -p squalr-engine-api`, `cargo test -p squalr-engine-scanning`, and `cargo test -p squalr-tests` (all passing).
 - Re-ran branch validation audit: `rg` checks confirmed no non-test `unwrap()` usage and only test-only `panic!`; no `Result<_, String>` signatures detected in current Rust sources.
 - Re-ran relevant verification suites: `cargo test -p squalr-engine-processes`, `cargo test -p squalr-engine-api`, `cargo test -p squalr-engine-scanning`, and `cargo test -p squalr-tests` (all passing; existing unrelated warning-only diagnostics remain).
-
+- Audited startup/initialization paths for over-zealous panic removal and identified critical bootstrap sites that currently log-and-continue instead of failing fast.
+- Updated tasklist with concrete follow-up fixes focused on engine/bootstrap invariant enforcement and startup failure regression tests.
