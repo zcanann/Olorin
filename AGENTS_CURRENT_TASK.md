@@ -13,7 +13,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
@@ -41,3 +40,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Re-ran installer task audit and validation; `cargo fmt --all` and `cargo test -p squalr-installer` pass; `cargo clippy -p squalr-installer --all-targets -- -D warnings` is blocked by pre-existing non-installer warnings/errors in `squalr-engine-api`.
 - 2026-02-08: Polished installer parity items: centered header status text, footer recolor to `squalr` accent blue, explicit foreground colors for section headers, full-width readonly log viewer from first render, and unified installer icon usage (`build.rs` resource icon + runtime viewport icon); `cargo fmt --all` and `cargo test -p squalr-installer` pass.
 - 2026-02-08: Audited `pr/installer` with empty tasklist; no installer-local dead code found; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace emits pre-existing non-installer warnings).
+- 2026-02-08: Revalidated installer parity against `squalr` theme/layout refs (`theme.rs`, `output_view.rs`, title bar/docked spacing); stale checklist items removed; `cargo fmt --all` and `cargo test -p squalr-installer` pass.
