@@ -13,6 +13,17 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
+- THe title bar icons are missing. Just import these from the `squalr` project.
+- The title bar font feels weak. Either it is not bolded, a different font, the wrong weight... or something.
+- The font for section headers is wrong as well. Installation Status and Installer log are not only different sizes, but look nothing like that of `docked_window_title_bar_view.rs` for instance, which is a good reference for a header font size.
+- The installer logs font looks wrong. It should look like `output_view.rs`. Again, it is some sort of font family, weight, size, or something issue (Not clear).
+- The title bar does not have rounded corners like `squalr` does, breaking theme cohesion.
+- The footer does not have rounded corners like `squalr` does, breaking theme cohesion.
+- The footer font is similarly weak. It also appears to be different than the theme.foreground color which is generally white?
+
+- REQUEST FROM OWNER:
+    - Why are you not just importing main_title_bar_view.rs  and main_footer_view.rs from the `squalr` project and iterating? Call them installer_title_bar_view.rs, and installer_footer_view.rs Stop reinventing the wheel and doing a poor job.
+
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
