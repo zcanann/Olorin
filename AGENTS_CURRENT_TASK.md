@@ -95,3 +95,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Ran `cargo test -p squalr-tests` (passing).
 - Re-validated `pr/error_handling` checkpoint with `cargo test -p squalr-engine` and `cargo test -p squalr-tests`; both passed and startup fail-fast regression tests remain green.
 - Re-validated `pr/error_handling` on 2026-02-08 with `cargo test -p squalr-engine` and `cargo test -p squalr-tests`; both passed, with only pre-existing warning-only diagnostics.
+- Performed targeted unused-code cleanup in pointer scan scaffolding and element scan dispatcher (removed dead imports + unused locals) without behavioral changes.
+- Ran `cargo fmt`, `cargo test -p squalr-engine`, and `cargo test -p squalr-tests` on 2026-02-08; all tests passed and warning count decreased slightly.
