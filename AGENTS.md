@@ -69,6 +69,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Added deterministic `scan_results set_property` OS-behavior tests for value writes and freeze/unfreeze toggling through injected providers.
 - `pr/unit-tests`: Fixed bool deanonymization for supported formats so `set_property is_frozen` decodes boolean payloads correctly.
 - `pr/unit-tests`: Kept `scan_results add_to_project` at contract-level coverage, cleaned unused stub executor binding, and revalidated `cargo test -p squalr-tests` (107 integration tests; singleton usage under `scan_results` remains limited to the intentional `add_to_project` stub path).
+- `pr/unit-tests`: Revalidated `cargo test -p squalr-tests` on 2026-02-08 (107 integration tests passing); `scan_results add_to_project` remains contract-level only by design.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
