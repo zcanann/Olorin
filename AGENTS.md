@@ -51,7 +51,8 @@ We need deterministic tests for privileged executors that currently call static 
 ## Agent Scratchpad and Notes
 
 ### Current Tasklist (Remove as things are completed, add remaining tangible tasks)
-- Keep `scan_results add_to_project` at contract-level coverage only until project-item mutation hooks are implemented; add deterministic behavior tests immediately after hooks land.
+- Add an additional CI lane (scheduled/nightly) that runs broader regression coverage (`cargo test --workspace`) so test-framework regressions outside PR path filters are caught automatically.
+- Add lightweight warning signal controls for unit-test related crates in CI (baseline + fail on new warnings for touched crates) so new warning noise does not hide test-signal regressions.
 
 ### Architecture Plan (Modify sparringly as new information is learned. Keep minimal and simple)
 - Phase 1: command parsing + request dispatch + typed response decode via engine API mocks. [done]
@@ -76,6 +77,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Expanded `os_behavior_command_tests` with deterministic failure-path assertions for `memory_read`, `memory_write`, `process_open`, and `scan_results` (`query/list/refresh/freeze/set_property`) using mock OS toggles.
 - `pr/unit-tests`: Added parser rejection tests across all command-family suites for malformed/incomplete args and invalid value formats; revalidated `cargo test -p squalr-tests` passes with 124 integration tests on 2026-02-08.
 - `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (124 integration tests); Phase 2 DI seam coverage remains unchanged with `scan_results add_to_project` intentionally stub-bound pending project-item mutation hooks.
+- `pr/unit-tests`: Reconciled 2026-02-08 `audit.txt` items against current branch state; retained only remaining actionable unit-test framework follow-ups (broader CI lane + warning-signal controls) in the task list.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
