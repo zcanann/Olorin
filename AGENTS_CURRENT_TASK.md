@@ -17,6 +17,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 - [ ] Upgrade shared foundational dependencies used across many crates (serialization/logging/error/concurrency) and resolve breakages.
 - [ ] Upgrade engine-side crates and APIs, then run targeted engine + command tests.
 - [ ] Upgrade GUI/CLI/TUI/installer/android crate dependencies and resolve platform-specific breakages.
+  - Note: Android does not currently compile. Blind upgrades are possibly acceptable, as this is a future task to fix android anyways.
 - [ ] Run full workspace validation (`cargo check`, relevant tests), remove dead code/imports, and prepare commit.
 
 ## Important Information

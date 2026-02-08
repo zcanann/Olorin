@@ -236,10 +236,6 @@ Our existing architecture is quite flexible, but this definitely requires a spec
 ## Detailed Tasklist
 This is a highly descriptive 
 
-### Error Handling
-Branch: `pr/error_handling`
-Normalize error style (engine uses struct-based errors; cli/gui can use `anyhow!`, and using Result<(), String> is generally bad practice).
-
 ### Android Build
 Branch: `pr/android`
 The android build should be made functional again. Note that unlike the main gui build, this must run in IPC mode with a privileged shell rather than standalone.
