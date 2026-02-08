@@ -9,7 +9,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 ----------------------
 
 - **Four layers (do not mix them):**
-  - **`squalr-api` (public contract):** shared types + versioned IPC request/response structs.
+  - **`squalr-engine-api` (public contract):** shared types + versioned IPC request/response structs.
     No OS calls, no caches/monitors, no GUI/runtime session ownership, no global mutable singletons.
   - **`squalr-engine` (pure compute):** scans/rules/RLE/pagination/snapshot merge logic given read results.
     No OS deps (`windows-sys`, `sysinfo`, ptrace, etc). No persistent state. No task handles.
@@ -24,7 +24,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
   - OS calls -> `squalr-operating-system`
   - compute on bytes -> `squalr-engine`
   - anything remembered across interactions -> runtime
-  - shared protocol/types -> `squalr-api`
+  - shared protocol/types -> `squalr-engine-api`
   - if a file is getting overloaded with responsibilities, split it
 
 ## Current Tasklist (ordered)

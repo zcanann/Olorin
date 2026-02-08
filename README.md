@@ -252,7 +252,7 @@ Needs a full implementation of a TUI that behaves as similar to the GUI as possi
 ### Conversion Testing
 Branch: `pr/conversion-testing`
 
-The conversions in the squalr-api should probably have a dedicated test suite.
+The conversions in the squalr-engine-api should probably have a dedicated test suite.
 
 Additionally, conversions should be architecturally audited for robustness.
 
