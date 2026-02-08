@@ -13,12 +13,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- The installer log should look similar to the `output_view.rs` color / theme wise in `squalr`. This means the same background, same foreground. Right now it is black text, white bg. This is NOT how it should be.
-- The footer status text feels under-sized and looks like shit. Increase the font size of the footer status text.
-- The padding for the installer status/log are too intense compared to the borders in `squalr` / `main_window_view` -> docked windows. ie the space between the window edge, footer, title bar and the inner controls is much smaller. This means the installer should be updated to be consistent with squalr.
-- The corner radiuses on the inner installer status / installer log sections are far more intense than that of `squalr`. These should probably not be set at all for the internal items.
-- The title bar color, font, icon size, etc. look wrong compared to `squalr`. Right now its using OS default icons rather than a custom title bar and theme colors.
-
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
@@ -31,6 +25,7 @@ Important information discovered during work about the current state of the task
 - Installer visuals were re-audited against `squalr` theme/layout and are currently aligned; repeat this audit after future installer UI feature additions.
 - Installer now uses `squalr` app icons for both runtime viewport icon (`IconData`) and Windows executable resources.
 - Installer header now renders a centered single-line status message; log panel now fills available width before first log line.
+- Installer now uses a custom themed title bar (`with_decorations(false)`) with app icon + explicit minimize/maximize/close controls, reduced inner padding, no rounded inner status/log cards, larger footer text, and output-view-style level-colored log text on dark background.
 
 ## Agent Scratchpad and Notes
 Smaller notes should go here, and can be erased and compacted as needed during iteration.
@@ -54,3 +49,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Re-ran `pr/installer` AGENTS workflow on empty tasklist; installer crate remains clean (`unwrap()`-free, no dead helper/import findings); `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings plus rustfmt `fn_args_layout` deprecation warnings).
 - 2026-02-08: Re-ran `pr/installer` AGENTS maintenance pass with empty tasklist; no installer-local dead helpers/imports and no panic-style unwrap usage found; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
 - 2026-02-08: Re-ran `pr/installer` AGENTS workflow pass with empty tasklist; `squalr-installer` audit remains clean (no `unwrap()` usage, dead helpers, or unused imports found in installer crate); `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
+- 2026-02-08: Completed remaining installer parity checklist: custom themed title bar with app icon/window controls, output-view-style dark log rendering with level colors, larger footer status text, reduced panel paddings, and removed rounded inner status/log corners; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
