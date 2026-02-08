@@ -1,5 +1,5 @@
 use crate::memory_queryer::memory_protection_enum::MemoryProtectionEnum;
-use crate::memory_queryer::memory_queryer_trait::IMemoryQueryer;
+use crate::memory_queryer::memory_queryer_trait::MemoryQueryerTrait;
 use crate::memory_queryer::memory_type_enum::MemoryTypeEnum;
 use crate::memory_queryer::region_bounds_handling::RegionBoundsHandling;
 use squalr_engine_api::structures::memory::normalized_module::NormalizedModule;
@@ -200,7 +200,7 @@ impl AndroidMemoryQueryer {
     }
 }
 
-impl IMemoryQueryer for AndroidMemoryQueryer {
+impl MemoryQueryerTrait for AndroidMemoryQueryer {
     fn get_virtual_pages(
         &self,
         process_info: &OpenedProcessInfo,
@@ -355,3 +355,4 @@ impl IMemoryQueryer for AndroidMemoryQueryer {
         0
     }
 }
+

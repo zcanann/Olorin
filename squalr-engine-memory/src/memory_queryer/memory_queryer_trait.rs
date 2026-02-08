@@ -5,7 +5,7 @@ use squalr_engine_api::structures::memory::normalized_module::NormalizedModule;
 use squalr_engine_api::structures::memory::normalized_region::NormalizedRegion;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 
-pub trait IMemoryQueryer {
+pub trait MemoryQueryerTrait {
     fn get_virtual_pages(
         &self,
         process_info: &OpenedProcessInfo,
@@ -60,3 +60,4 @@ pub trait IMemoryQueryer {
         identifier: &str,
     ) -> u64;
 }
+

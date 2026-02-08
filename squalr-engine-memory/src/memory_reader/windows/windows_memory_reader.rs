@@ -1,4 +1,4 @@
-use crate::memory_reader::memory_reader_trait::IMemoryReader;
+use crate::memory_reader::memory_reader_trait::MemoryReaderTrait;
 use squalr_engine_api::structures::structs::valued_struct::ValuedStruct;
 use squalr_engine_api::structures::{data_values::data_value::DataValue, processes::opened_process_info::OpenedProcessInfo};
 use std::os::raw::c_void;
@@ -14,7 +14,7 @@ impl WindowsMemoryReader {
     }
 }
 
-impl IMemoryReader for WindowsMemoryReader {
+impl MemoryReaderTrait for WindowsMemoryReader {
     fn read(
         &self,
         process_info: &OpenedProcessInfo,
@@ -87,3 +87,4 @@ impl IMemoryReader for WindowsMemoryReader {
         }
     }
 }
+

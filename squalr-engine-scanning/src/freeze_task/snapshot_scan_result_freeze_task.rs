@@ -3,9 +3,9 @@ use squalr_engine_api::registries::freeze_list::freeze_list_registry::FreezeList
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::tasks::trackable_task::TrackableTask;
 use squalr_engine_memory::memory_queryer::memory_queryer::MemoryQueryer;
-use squalr_engine_memory::memory_queryer::memory_queryer_trait::IMemoryQueryer;
+use squalr_engine_memory::memory_queryer::memory_queryer_trait::MemoryQueryerTrait;
 use squalr_engine_memory::memory_writer::MemoryWriter;
-use squalr_engine_memory::memory_writer::memory_writer_trait::IMemoryWriter;
+use squalr_engine_memory::memory_writer::memory_writer_trait::MemoryWriterTrait;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::sync::atomic::Ordering;
@@ -78,3 +78,4 @@ impl SnapshotScanResultFreezeTask {
         }
     }
 }
+

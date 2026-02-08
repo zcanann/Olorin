@@ -5,12 +5,12 @@ use squalr_engine_api::structures::processes::opened_process_info::OpenedProcess
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 use squalr_engine_api::structures::structs::valued_struct::ValuedStruct;
 use squalr_engine_memory::memory_queryer::memory_queryer::MemoryQueryer;
-use squalr_engine_memory::memory_queryer::memory_queryer_trait::IMemoryQueryer;
+use squalr_engine_memory::memory_queryer::memory_queryer_trait::MemoryQueryerTrait;
 use squalr_engine_memory::memory_queryer::page_retrieval_mode::PageRetrievalMode;
 use squalr_engine_memory::memory_reader::MemoryReader;
-use squalr_engine_memory::memory_reader::memory_reader_trait::IMemoryReader;
+use squalr_engine_memory::memory_reader::memory_reader_trait::MemoryReaderTrait;
 use squalr_engine_memory::memory_writer::MemoryWriter;
-use squalr_engine_memory::memory_writer::memory_writer_trait::IMemoryWriter;
+use squalr_engine_memory::memory_writer::memory_writer_trait::MemoryWriterTrait;
 use squalr_engine_processes::process_query::process_query_error::ProcessQueryError;
 use squalr_engine_processes::process_query::process_query_options::ProcessQueryOptions;
 use squalr_engine_processes::process_query::process_queryer::ProcessQuery;
@@ -226,3 +226,4 @@ impl MemoryWriteProvider for DefaultMemoryWriteProvider {
         MemoryWriter::get_instance().write_bytes(process_info, address, values)
     }
 }
+

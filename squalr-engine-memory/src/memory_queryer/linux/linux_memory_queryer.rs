@@ -1,5 +1,5 @@
 use crate::memory_queryer::memory_protection_enum::MemoryProtectionEnum;
-use crate::memory_queryer::memory_queryer_trait::IMemoryQueryer;
+use crate::memory_queryer::memory_queryer_trait::MemoryQueryerTrait;
 use crate::memory_queryer::memory_type_enum::MemoryTypeEnum;
 use crate::memory_queryer::region_bounds_handling::RegionBoundsHandling;
 use core::ffi::c_void;
@@ -24,7 +24,7 @@ impl LinuxMemoryQueryer {
     }
 }
 
-impl IMemoryQueryer for LinuxMemoryQueryer {
+impl MemoryQueryerTrait for LinuxMemoryQueryer {
     fn get_virtual_pages(
         &self,
         process_info: &OpenedProcessInfo,
@@ -97,3 +97,4 @@ impl IMemoryQueryer for LinuxMemoryQueryer {
         0
     }
 }
+

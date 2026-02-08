@@ -2,7 +2,7 @@ use squalr_engine_api::structures::{
     data_values::data_value::DataValue, processes::opened_process_info::OpenedProcessInfo, structs::valued_struct::ValuedStruct,
 };
 
-pub trait IMemoryReader {
+pub trait MemoryReaderTrait {
     fn read(
         &self,
         process_info: &OpenedProcessInfo,
@@ -22,3 +22,4 @@ pub trait IMemoryReader {
         values: &mut [u8],
     ) -> bool;
 }
+

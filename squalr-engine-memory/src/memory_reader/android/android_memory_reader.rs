@@ -1,4 +1,4 @@
-use crate::memory_reader::memory_reader_trait::IMemoryReader;
+use crate::memory_reader::memory_reader_trait::MemoryReaderTrait;
 use squalr_engine_common::dynamic_struct::dynamic_struct::DynamicStruct;
 use squalr_engine_common::logging::log_level::LogLevel;
 use squalr_engine_common::logging::logger::Logger;
@@ -47,7 +47,7 @@ impl AndroidMemoryReader {
     }
 }
 
-impl IMemoryReader for AndroidMemoryReader {
+impl MemoryReaderTrait for AndroidMemoryReader {
     /// Reads into a `DynamicStruct` by calling `read_bytes_internal(...)`.
     fn read(
         &self,
@@ -84,3 +84,4 @@ impl IMemoryReader for AndroidMemoryReader {
         }
     }
 }
+

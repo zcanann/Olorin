@@ -1,4 +1,4 @@
-use crate::memory_writer::memory_writer_trait::IMemoryWriter;
+use crate::memory_writer::memory_writer_trait::MemoryWriterTrait;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
@@ -19,7 +19,7 @@ impl LinuxMemoryWriter {
     }
 }
 
-impl IMemoryWriter for LinuxMemoryWriter {
+impl MemoryWriterTrait for LinuxMemoryWriter {
     fn write_bytes(
         &self,
         process_info: &OpenedProcessInfo,
@@ -29,3 +29,4 @@ impl IMemoryWriter for LinuxMemoryWriter {
         Self::write_memory(process_info.get_handle(), address, values)
     }
 }
+
