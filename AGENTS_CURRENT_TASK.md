@@ -17,7 +17,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
 - Continue narrowing `api::types` so contract paths avoid engine-coupled internals (remaining hotspots: scanning internals and legacy project item internals still exposed under transitional paths).
-- Continue expanding `api::commands::stateless` coverage with explicit context handles (next families: `project`, `scan`, `scan_results`) and add compatibility tests per family.
+- Expand `api::commands::stateless` coverage into `project_items` and evaluate `settings` command families for explicit context handles where session assumptions still exist.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -54,6 +54,9 @@ Information discovered during iteration:
 - Added `squalr-engine-api::api::commands::stateless::memory` with explicit `ProcessSessionHandle` in read/write request and response DTOs.
 - Added `squalr-engine-api/tests/api_contract_memory_compatibility.rs` for stateless memory request/response serde round-trips, typed privileged response mapping checks, and legacy payload compatibility assertions.
 - `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_process_compatibility --test api_contract_trackable_tasks_compatibility --test api_contract_memory_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after this iteration (pre-existing warnings unchanged).
+- Added stateless DTO contract modules `squalr-engine-api::api::commands::stateless::{project, scan, scan_results}` with explicit `ProjectSessionHandle` and `ScanSessionHandle` context handles.
+- Added compatibility test suites `api_contract_project_compatibility.rs`, `api_contract_scan_compatibility.rs`, and `api_contract_scan_results_compatibility.rs` covering serde round-trips, typed command response mapping, and legacy-payload field compatibility assertions.
+- `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_process_compatibility --test api_contract_trackable_tasks_compatibility --test api_contract_memory_compatibility --test api_contract_project_compatibility --test api_contract_scan_compatibility --test api_contract_scan_results_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after this iteration (pre-existing warnings unchanged).
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -70,3 +73,4 @@ Append logs for each session here. Compact redundency occasionally:
 - Implemented a stateless process API prototype (`api::commands::stateless::process`) and added process contract compatibility tests for serde round-trips plus typed response mapping; validated with `cargo fmt`, targeted `cargo test`, and `cargo check` for API + engine crates.
 - Added a stateless trackable tasks API contract (`api::commands::stateless::trackable_tasks`), added compatibility tests, narrowed `api::types::projects` to DTO-focused exports with a legacy shim, and re-validated using `cargo fmt`, targeted API tests, and `cargo check` for API + engine crates.
 - Added a stateless memory API contract (`api::commands::stateless::memory`) with explicit process session context and a new compatibility test suite; re-validated with `cargo fmt`, targeted API contract tests, and `cargo check` for API + engine crates.
+- Added stateless `project`, `scan`, and `scan_results` API contracts with explicit context handles, added three per-family compatibility test suites, and re-validated with `cargo fmt`, expanded targeted API contract tests, and `cargo check` for API + engine crates.
