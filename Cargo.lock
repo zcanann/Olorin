@@ -5624,7 +5624,6 @@ dependencies = [
  "slint",
  "squalr-engine",
  "squalr-engine-api",
- "squalr-engine-architecture",
  "structopt",
  "sysinfo",
  "winresource",
@@ -5665,13 +5664,10 @@ dependencies = [
  "serde",
  "serde_json",
  "squalr-engine-api",
- "squalr-engine-architecture",
- "squalr-engine-debuggers",
  "squalr-engine-memory",
  "squalr-engine-processes",
  "squalr-engine-projects",
  "squalr-engine-scanning",
- "squalr-engine-scripting",
  "structopt",
  "sysinfo",
  "tempfile",
@@ -5709,20 +5705,6 @@ dependencies = [
  "thiserror 2.0.18",
  "typetag",
  "uuid",
-]
-
-[[package]]
-name = "squalr-engine-architecture"
-version = "0.1.1"
-dependencies = [
- "log",
-]
-
-[[package]]
-name = "squalr-engine-debuggers"
-version = "0.1.1"
-dependencies = [
- "squalr-engine-api",
 ]
 
 [[package]]
@@ -5785,17 +5767,6 @@ dependencies = [
  "squalr-engine-memory",
  "sysinfo",
  "thiserror 2.0.18",
-]
-
-[[package]]
-name = "squalr-engine-scripting"
-version = "0.1.1"
-dependencies = [
- "squalr-engine-architecture",
- "squalr-engine-debuggers",
- "squalr-engine-memory",
- "squalr-engine-processes",
- "squalr-engine-scanning",
 ]
 
 [[package]]

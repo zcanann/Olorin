@@ -8,3 +8,4 @@ pub mod general_settings_config;
 pub mod os;
 pub mod squalr_engine;
 pub mod tasks;
+pub mod vectors;

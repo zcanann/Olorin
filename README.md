@@ -272,7 +272,7 @@ Branch: `pr/engine-refactor`
 Goal: make the public API sane, and make the engine truly stateless + reusable.
 
 #### Hard decisions (do not bikeshed in this branch)
-- **`squalr-engine` is pure compute.** It does scans, rules, snapshot merge logic (given read results), filter RLE, pagination math.  
+- **`squalr-engine` is pure compute.** It does scans, rules, snapshot merge logic (given read results), filter RLE, pagination math. Possibly fold squalr-engine-scanning into this, as the existing logic in squalr-engine will likely be moved to runtime.
   **No OS calls. No persistent state. No task handles.**
 - **OS integration is not "engine."** Process enumeration, open/close handles, region/module enumeration, read/write memory, icons, bitness, permissions, IPC transport — this all lives under **`squalr-os*`** (name TBD, but it is explicitly *operating-system layer*).
 - **Interactive state lives in a state shim** (name TBD, but think `squalr-runtime`):

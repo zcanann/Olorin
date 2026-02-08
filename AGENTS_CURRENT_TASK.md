@@ -34,7 +34,6 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [ ] Move stateful stuff out of OS/engine: caches, monitors, “current selection”, projects → runtime/state shim.
 - [ ] Make engine calls blocking + stateless (no task handles). If UI needs progress, runtime owns it.
 - [ ] Define/confirm versioned IPC request/response structs in `squalr-api` (processes, open/close, regions/modules, read/write, scan).
-- [ ] IPC mode: privileged side returns `FilterRle` + metadata (not raw snapshots). Runtime requests values on-demand.
 
 ## Important Information
 Append important discoveries. Compac

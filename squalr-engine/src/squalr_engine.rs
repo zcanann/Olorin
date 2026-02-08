@@ -2,6 +2,7 @@ use crate::app_provisioner::updater::app_updater::AppUpdater;
 use crate::engine_bindings::standalone::standalone_engine_api_unprivileged_bindings::StandaloneEngineApiUnprivilegedBindings;
 use crate::engine_mode::EngineMode;
 use crate::engine_privileged_state::EnginePrivilegedState;
+use crate::vectors::Vectors;
 use crate::{
     app_provisioner::progress_tracker::ProgressTracker,
     engine_bindings::interprocess::interprocess_engine_api_unprivileged_bindings::InterprocessEngineApiUnprivilegedBindings,
@@ -9,7 +10,6 @@ use crate::{
 use squalr_engine_api::dependency_injection::dependency_container::DependencyContainer;
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
-use squalr_engine_architecture::vectors::Vectors;
 use std::sync::{Arc, RwLock};
 
 /// Orchestrates commands and responses to and from the engine.
