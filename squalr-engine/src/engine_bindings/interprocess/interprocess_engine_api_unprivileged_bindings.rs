@@ -1,6 +1,7 @@
 use crate::engine_bindings::engine_egress::EngineEgress;
 use crate::engine_bindings::executable_command_unprivileged::ExecutableCommandUnprivleged;
 use crate::engine_bindings::interprocess::pipes::interprocess_pipe_bidirectional::InterprocessPipeBidirectional;
+use crate::engine_initialization_error::EngineInitializationError;
 use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use squalr_engine_api::commands::privileged_command::PrivilegedCommand;
@@ -92,7 +93,7 @@ impl EngineApiUnprivilegedBindings for InterprocessEngineApiUnprivilegedBindings
 }
 
 impl InterprocessEngineApiUnprivilegedBindings {
-    pub fn new() -> InterprocessEngineApiUnprivilegedBindings {
+    pub fn new() -> Result<InterprocessEngineApiUnprivilegedBindings, EngineInitializationError> {
         let instance = InterprocessEngineApiUnprivilegedBindings {
             privileged_shell_process: Arc::new(RwLock::new(None)),
             ipc_connection: Arc::new(RwLock::new(None)),
@@ -100,28 +101,31 @@ impl InterprocessEngineApiUnprivilegedBindings {
             event_senders: Arc::new(RwLock::new(vec![])),
         };
 
-        instance.initialize();
+        instance.initialize()?;
 
-        instance
+        Ok(instance)
     }
 
-    fn initialize(&self) {
+    fn initialize(&self) -> Result<(), EngineInitializationError> {
+        self.initialize_with_hooks(Self::spawn_privileged_cli, Self::bind_to_interprocess_pipe)
+    }
+
+    fn initialize_with_hooks(
+        &self,
+        spawn_privileged_cli: fn(Arc<RwLock<Option<Child>>>) -> io::Result<()>,
+        bind_to_interprocess_pipe: fn(Arc<RwLock<Option<InterprocessPipeBidirectional>>>) -> Result<(), EngineBindingError>,
+    ) -> Result<(), EngineInitializationError> {
         let privileged_shell_process = self.privileged_shell_process.clone();
         let ipc_connection = self.ipc_connection.clone();
         let request_handles = self.request_handles.clone();
         let event_senders = self.event_senders.clone();
 
-        thread::spawn(move || {
-            if let Err(error) = Self::spawn_privileged_cli(privileged_shell_process) {
-                log::error!("Failed to spawn privileged cli: {}", error);
-            }
+        spawn_privileged_cli(privileged_shell_process).map_err(EngineInitializationError::spawn_privileged_cli_failed)?;
+        bind_to_interprocess_pipe(ipc_connection.clone()).map_err(EngineInitializationError::bind_unprivileged_ipc_failed)?;
 
-            if let Err(error) = Self::bind_to_interprocess_pipe(ipc_connection.clone()) {
-                log::error!("Failed to bind to inter process pipe: {}", error);
-            }
+        Self::listen_for_shell_responses(request_handles, event_senders, ipc_connection);
 
-            Self::listen_for_shell_responses(request_handles, event_senders, ipc_connection);
-        });
+        Ok(())
     }
 
     fn handle_engine_response(
@@ -228,5 +232,74 @@ impl InterprocessEngineApiUnprivilegedBindings {
         // No actual privilege escallation for windows -- this feature is not supposed to be used on windows at all.
         // So, just spawn it normally for the rare occasion that we are testing this feature on windows.
         Command::new("squalr-cli").arg("--ipc-mode").spawn()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::InterprocessEngineApiUnprivilegedBindings;
+    use crate::engine_bindings::interprocess::pipes::interprocess_pipe_bidirectional::InterprocessPipeBidirectional;
+    use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
+    use std::io;
+    use std::sync::{Arc, RwLock};
+
+    #[test]
+    fn initialize_fails_fast_when_privileged_cli_spawn_fails() {
+        fn failing_spawn(_privileged_shell_process: Arc<RwLock<Option<std::process::Child>>>) -> io::Result<()> {
+            Err(io::Error::other("spawn failed"))
+        }
+
+        fn successful_bind(_ipc_connection: Arc<RwLock<Option<InterprocessPipeBidirectional>>>) -> Result<(), EngineBindingError> {
+            Ok(())
+        }
+
+        let interprocess_bindings = InterprocessEngineApiUnprivilegedBindings {
+            privileged_shell_process: Arc::new(RwLock::new(None)),
+            ipc_connection: Arc::new(RwLock::new(None)),
+            request_handles: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            event_senders: Arc::new(RwLock::new(vec![])),
+        };
+
+        let initialize_result = interprocess_bindings.initialize_with_hooks(failing_spawn, successful_bind);
+
+        assert!(initialize_result.is_err());
+
+        if let Err(initialization_error) = initialize_result {
+            assert!(
+                initialization_error
+                    .to_string()
+                    .contains("Failed to spawn privileged CLI process for unprivileged host startup")
+            );
+        }
+    }
+
+    #[test]
+    fn initialize_fails_fast_when_ipc_bind_fails() {
+        fn successful_spawn(_privileged_shell_process: Arc<RwLock<Option<std::process::Child>>>) -> io::Result<()> {
+            Ok(())
+        }
+
+        fn failing_bind(_ipc_connection: Arc<RwLock<Option<InterprocessPipeBidirectional>>>) -> Result<(), EngineBindingError> {
+            Err(EngineBindingError::unavailable("binding bidirectional IPC connection"))
+        }
+
+        let interprocess_bindings = InterprocessEngineApiUnprivilegedBindings {
+            privileged_shell_process: Arc::new(RwLock::new(None)),
+            ipc_connection: Arc::new(RwLock::new(None)),
+            request_handles: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+            event_senders: Arc::new(RwLock::new(vec![])),
+        };
+
+        let initialize_result = interprocess_bindings.initialize_with_hooks(successful_spawn, failing_bind);
+
+        assert!(initialize_result.is_err());
+
+        if let Err(initialization_error) = initialize_result {
+            assert!(
+                initialization_error
+                    .to_string()
+                    .contains("Failed to bind unprivileged host IPC channel during startup")
+            );
+        }
     }
 }

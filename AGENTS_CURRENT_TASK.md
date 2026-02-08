@@ -12,11 +12,11 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 
 Note from owner: Panic is actually acceptable in some situations! Let us revert the use of result in these cases:
-- [ ] Restore fail-fast startup semantics in privileged engine initialization by returning a typed init `Result` when critical boot steps fail (`engine bindings init`, `process monitor start`) instead of logging and continuing.
-- [ ] Restore fail-fast startup semantics for IPC host initialization by propagating privileged CLI spawn/pipe bind failures out of `InterprocessEngineApiUnprivilegedBindings::new` and `SqualrEngine::new` instead of background-thread logging.
-- [ ] Enforce startup invariants in standalone bindings (`StandaloneEngineApiUnprivilegedBindings::new`) by replacing "log and continue with `None`" behavior with hard invariant failure (`panic!`/`expect`) for impossible states.
-- [ ] Decide Android fatal-startup policy and implement consistently: either panic on unrecoverable `android_main` init failures (preferred for critical bootstrap) or return explicit startup status to caller with centralized fatal handler.
-- [ ] Add regression tests for startup failure behavior (engine init + IPC init) to ensure critical-system bootstrap failures are fail-fast and no longer degrade silently.
+- [x] Restore fail-fast startup semantics in privileged engine initialization by returning a typed init `Result` when critical boot steps fail (`engine bindings init`, `process monitor start`) instead of logging and continuing.
+- [x] Restore fail-fast startup semantics for IPC host initialization by propagating privileged CLI spawn/pipe bind failures out of `InterprocessEngineApiUnprivilegedBindings::new` and `SqualrEngine::new` instead of background-thread logging.
+- [x] Enforce startup invariants in standalone bindings (`StandaloneEngineApiUnprivilegedBindings::new`) by replacing "log and continue with `None`" behavior with hard invariant failure (`panic!`/`expect`) for impossible states.
+- [x] Decide Android fatal-startup policy and implement consistently: either panic on unrecoverable `android_main` init failures (preferred for critical bootstrap) or return explicit startup status to caller with centralized fatal handler.
+- [x] Add regression tests for startup failure behavior (engine init + IPC init) to ensure critical-system bootstrap failures are fail-fast and no longer degrade silently.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -55,6 +55,11 @@ Discovered during iteration:
   - `squalr-engine/src/engine_bindings/standalone/standalone_engine_api_unprivileged_bindings.rs` (missing privileged state at line `27` currently logs and degrades).
   - `squalr-android/src/lib.rs` (`android_main` fatal startup errors at lines `16`, `24`, `33`, `45` currently log and return).
 - Non-startup command/runtime paths are mostly correct to keep as recoverable `Result` + logging; the regression scope is concentrated in bootstrapping critical systems.
+- Restored fail-fast startup behavior with typed `EngineInitializationError` in `squalr-engine`, including privileged binding init, process monitor startup, and unprivileged-host IPC bootstrap errors.
+- `InterprocessEngineApiUnprivilegedBindings::new` now initializes synchronously and returns startup errors directly; `SqualrEngine::new` now propagates those failures.
+- Standalone unprivileged bindings now require an `Arc<EnginePrivilegedState>` directly, enforcing startup invariant at construction.
+- Android startup policy now uses fatal panic-on-bootstrap-failure semantics in `android_main`.
+- Added fail-fast regression tests in `squalr-engine` for privileged startup monitor failure and IPC spawn/bind startup failures.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -82,3 +87,6 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Re-ran relevant verification suites: `cargo test -p squalr-engine-processes`, `cargo test -p squalr-engine-api`, `cargo test -p squalr-engine-scanning`, and `cargo test -p squalr-tests` (all passing; existing unrelated warning-only diagnostics remain).
 - Audited startup/initialization paths for over-zealous panic removal and identified critical bootstrap sites that currently log-and-continue instead of failing fast.
 - Updated tasklist with concrete follow-up fixes focused on engine/bootstrap invariant enforcement and startup failure regression tests.
+- Restored fail-fast bootstrap flow across privileged engine startup, IPC unprivileged host startup, standalone invariant construction, and Android fatal startup semantics.
+- Added `EngineInitializationError`, refactored startup constructors to return typed errors, and added regression tests under `squalr-engine`.
+- Ran `cargo fmt`, `cargo test -p squalr-engine`, `cargo check -p squalr-cli`, `cargo check -p squalr`, and `cargo check -p squalr-tests`.

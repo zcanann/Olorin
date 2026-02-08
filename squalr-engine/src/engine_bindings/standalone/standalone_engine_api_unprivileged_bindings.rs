@@ -15,21 +15,15 @@ use std::sync::Arc;
 
 pub struct StandaloneEngineApiUnprivilegedBindings {
     // The instance of the engine privileged state. Since this is an intra-process implementation, we invoke commands using this state directly.
-    engine_privileged_state: Option<Arc<EnginePrivilegedState>>,
+    engine_privileged_state: Arc<EnginePrivilegedState>,
 }
 
 impl StandaloneEngineApiUnprivilegedBindings {
     /// Initialize unprivileged bindings. For standalone builds, the privileged engine state is passed to allow direct communcation.
-    pub fn new(engine_privileged_state: &Option<Arc<EnginePrivilegedState>>) -> Self {
-        let engine_privileged_state = if let Some(engine_privileged_state) = engine_privileged_state {
-            Some(engine_privileged_state.clone())
-        } else {
-            log::error!("No privileged state provided! Engine command dispatching will be non-functional without this.");
-
-            None
-        };
-
-        Self { engine_privileged_state }
+    pub fn new(engine_privileged_state: &Arc<EnginePrivilegedState>) -> Self {
+        Self {
+            engine_privileged_state: engine_privileged_state.clone(),
+        }
     }
 }
 
@@ -42,24 +36,20 @@ impl EngineApiUnprivilegedBindings for StandaloneEngineApiUnprivilegedBindings {
     ) -> Result<(), EngineBindingError> {
         let engine_request_delay = GeneralSettingsConfig::get_engine_request_delay_ms();
 
-        if let Some(engine_privileged_state) = &self.engine_privileged_state {
-            // Execute the request either immediately, or on an artificial delay if a debug request delay is set.
-            if engine_request_delay <= 0 {
-                callback(privileged_command.execute(&engine_privileged_state));
-            } else {
-                let engine_privileged_state = engine_privileged_state.clone();
-
-                std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_millis(engine_request_delay as u64));
-                    let response = privileged_command.execute(&engine_privileged_state);
-                    callback(response);
-                });
-            }
-
-            Ok(())
+        // Execute the request either immediately, or on an artificial delay if a debug request delay is set.
+        if engine_request_delay <= 0 {
+            callback(privileged_command.execute(&self.engine_privileged_state));
         } else {
-            Err(EngineBindingError::unavailable("dispatching privileged command in standalone mode"))
+            let engine_privileged_state = self.engine_privileged_state.clone();
+
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(engine_request_delay as u64));
+                let response = privileged_command.execute(&engine_privileged_state);
+                callback(response);
+            });
         }
+
+        Ok(())
     }
 
     /// Dispatches an unprivileged command to be immediately handled on the client side.
@@ -78,11 +68,6 @@ impl EngineApiUnprivilegedBindings for StandaloneEngineApiUnprivilegedBindings {
 
     /// Requests to listen to all engine events.
     fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, EngineBindingError> {
-        // If we are in standalone mode, then we can just directly subscribe to the engine events.
-        if let Some(engine_privileged_state) = &self.engine_privileged_state {
-            engine_privileged_state.subscribe_to_engine_events()
-        } else {
-            Err(EngineBindingError::unavailable("subscribing to standalone engine events"))
-        }
+        self.engine_privileged_state.subscribe_to_engine_events()
     }
 }
