@@ -9,6 +9,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
+
 - [ ] Define canonical error boundaries and ownership: engine/internal crates use typed errors (`thiserror`), CLI/GUI/TUI entrypoints use `anyhow::Result`.
 - [ ] Replace `Result<_, String>` in process query + OS provider path with typed errors.
   Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
@@ -26,9 +27,11 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
+
+Initial analysis
 - Audit baseline (non-test runtime crates):
-  - `unwrap()`: 8 occurrences.
-  - `panic!()`: 6 occurrences.
+  - `unwrap()`: 8 original occurrences.
+  - `panic!()`: 6 original occurrences.
   - `Result<_, String>`: widespread, concentrated in process query, engine bindings (interprocess/standalone), scan memory reader, and selected API payloads.
 - Existing typed error foundation already present:
   - `squalr-engine-api/src/conversions/conversion_error.rs`
@@ -36,9 +39,10 @@ Important information discovered during work about the current state of the task
 - Architectural constraint from `README.md` task definition:
   - Engine should normalize toward struct/typed errors.
   - CLI/GUI may use `anyhow`.
-  - `Result<(), String>` is explicitly called out as bad practice.
-- Scope note:
-  - This session is audit + plan only; no production code changes yet.
+  - `Result<(_), String>` is explicitly called out as bad practice.
+
+Discovered during iteration:
+- 
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -47,7 +51,6 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Non-test panic/unwrap cleanup should be done before deep refactors so runtime behavior is safer during migration.
 
 ### Concise Session Log
-- Read `AGENTS.md`, `README.md`, and existing `AGENTS_CURRENT_TASK.md`.
 - Audited repository for runtime error-handling hotspots (`unwrap`, `panic`, `Result<_, String>`, existing typed errors).
 - Set current task to `pr/error_handling` and created a concrete implementation tasklist for next session.
 
