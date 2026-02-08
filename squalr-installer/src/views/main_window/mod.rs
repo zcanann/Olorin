@@ -1,0 +1,3 @@
+pub(crate) mod installer_footer_view;
+pub(crate) mod installer_main_window_view;
+pub(crate) mod installer_title_bar_view;

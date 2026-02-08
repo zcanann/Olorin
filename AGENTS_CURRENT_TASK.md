@@ -14,10 +14,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- There is a weird gap between the title bar and footer. This causes transparency to bleed through in a line.
-- There is also a white line below the title bar, possibly a similar root cause
-- app.rs violates the architecture of `squalr`, which has distinct controls (ie `main_window_view.rs` has `main_title_bar_view.rs` and `main_footer_view.rs`). The installer should have distinct installer versions of these, incorporated in a similar manner. Doing this may resolve the strange visual bugs above, as these are not present in `squalr`.
-- An audit should be performed against our rendering and file setup vs that of `squalr` to ensure we are properly mirroring `squalr` and modularizing in a similar way.
+- (No open installer-local items. Continue periodic parity audits against `squalr` after future UI changes.)
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -34,6 +31,7 @@ Important information discovered during work about the current state of the task
 - Installer now uses a custom themed title bar (`with_decorations(false)`) with app icon + explicit minimize/maximize/close controls, reduced inner padding, no rounded inner status/log cards, larger footer text, and output-view-style level-colored log text on dark background.
 - Installer title/footer rendering now directly mirrors `squalr` main title/footer layout patterns (painted rounded bars, drag zone, icon-based window controls), with `squalr` font assets (`NotoSans`, `UbuntuMonoBold`) applied for title/header/footer/log typography.
 - Installer bootstrap is now modularized into `src/app.rs`, `src/theme.rs`, `src/ui_assets.rs`, `src/ui_state.rs`, `src/installer_runtime.rs`, and `src/logging.rs`; `main.rs` is now bootstrap-only.
+- Installer rendering now mirrors `squalr`'s distinct control layout with `src/views/main_window/installer_main_window_view.rs`, `src/views/main_window/installer_title_bar_view.rs`, and `src/views/main_window/installer_footer_view.rs`; `app.rs` now orchestrates state + repaint only.
 - Installer transparency now matches `squalr` behavior via `ViewportBuilder::with_transparent(true)` and transparent app clear color.
 - Installer log-buffer unit tests are no longer in `main.rs`; they now live in `src/logging.rs`.
 
@@ -63,3 +61,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Re-ran `pr/installer` AGENTS maintenance pass with empty tasklist; no installer-local dead imports/helpers or `unwrap()` usage found, `cargo fmt --all` and `cargo test -p squalr-installer` pass; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings.
 - 2026-02-08: Completed installer modularization and transparency fix: split `squalr-installer` into dedicated app/theme/assets/runtime/logger/state modules, enabled transparent viewport + transparent clear color to remove rounded-corner black artifacts, moved log-buffer tests out of `main.rs` into `src/logging.rs`; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
 - 2026-02-08: Re-ran `pr/installer` AGENTS maintenance workflow on empty tasklist; `squalr-installer` remains clean (no `unwrap()` usage, dead helpers, or unused imports), `cargo fmt --all -- --check` and `cargo test -p squalr-installer` pass; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings.
+- 2026-02-08: Refactored installer window composition to mirror `squalr` view boundaries: introduced `views/main_window` with distinct title bar/footer/main window controls, removed title/footer rendering logic from `app.rs`, and revalidated with `cargo fmt --all` + `cargo test -p squalr-installer` (passes; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
