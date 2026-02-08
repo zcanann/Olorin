@@ -6048,6 +6048,7 @@ dependencies = [
 name = "squalr-installer"
 version = "0.1.1"
 dependencies = [
+ "anyhow",
  "eframe",
  "epaint",
  "image",
