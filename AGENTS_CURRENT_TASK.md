@@ -14,6 +14,13 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
+- `installer_main_window_view.rs` needs to be modularized a bit more. A distinct log control should be made (much how `squalr` has `output_view.rs`).
+- The window currently renders with a harsh white border instead of transparency, despite having `clear_color` set up exactly like `squalr`. Somehow, `squalr` does render the transparent border correctly, meaning that the installer is set up wrong in some fundamental way for rendering.
+- the installer has the wrong app icon in the title bar, We should use the one from `squalr`.
+- The title bar buttons have no mouse over state.
+- We should not be using egui's buttons, but instead our own custom button control (why not just import this from `squalr` too...)
+- `installer_title_bar_view.rs` should be very similar to `main_title_bar_view.rs`
+
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
