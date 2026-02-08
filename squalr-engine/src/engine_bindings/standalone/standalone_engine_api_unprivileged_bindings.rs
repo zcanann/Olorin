@@ -8,6 +8,7 @@ use squalr_engine_api::commands::privileged_command_response::PrivilegedCommandR
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
 use squalr_engine_api::commands::unprivileged_command_response::UnprivilegedCommandResponse;
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
+use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
 use std::sync::Arc;
@@ -38,7 +39,7 @@ impl EngineApiUnprivilegedBindings for StandaloneEngineApiUnprivilegedBindings {
         &self,
         privileged_command: PrivilegedCommand,
         callback: Box<dyn FnOnce(PrivilegedCommandResponse) + Send + Sync + 'static>,
-    ) -> Result<(), String> {
+    ) -> Result<(), EngineBindingError> {
         let engine_request_delay = GeneralSettingsConfig::get_engine_request_delay_ms();
 
         if let Some(engine_privileged_state) = &self.engine_privileged_state {
@@ -57,7 +58,7 @@ impl EngineApiUnprivilegedBindings for StandaloneEngineApiUnprivilegedBindings {
 
             Ok(())
         } else {
-            Err("No privileged state available for command execution.".to_string())
+            Err(EngineBindingError::unavailable("dispatching privileged command in standalone mode"))
         }
     }
 
@@ -67,7 +68,7 @@ impl EngineApiUnprivilegedBindings for StandaloneEngineApiUnprivilegedBindings {
         unprivileged_command: UnprivilegedCommand,
         engine_unprivileged_state: &Arc<EngineUnprivilegedState>,
         callback: Box<dyn FnOnce(UnprivilegedCommandResponse) + Send + Sync + 'static>,
-    ) -> Result<(), String> {
+    ) -> Result<(), EngineBindingError> {
         let response = unprivileged_command.execute(engine_unprivileged_state);
 
         callback(response);
@@ -76,12 +77,12 @@ impl EngineApiUnprivilegedBindings for StandaloneEngineApiUnprivilegedBindings {
     }
 
     /// Requests to listen to all engine events.
-    fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, String> {
+    fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, EngineBindingError> {
         // If we are in standalone mode, then we can just directly subscribe to the engine events.
         if let Some(engine_privileged_state) = &self.engine_privileged_state {
             engine_privileged_state.subscribe_to_engine_events()
         } else {
-            Err("Failed to subscribe to engine events.".to_string())
+            Err(EngineBindingError::unavailable("subscribing to standalone engine events"))
         }
     }
 }

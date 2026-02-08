@@ -8,6 +8,7 @@ use squalr_engine_api::commands::privileged_command_response::PrivilegedCommandR
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
 use squalr_engine_api::commands::unprivileged_command_response::UnprivilegedCommandResponse;
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
+use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
 use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
 use squalr_engine_api::events::engine_event::EngineEvent;
 use std::collections::HashMap;
@@ -40,24 +41,27 @@ impl EngineApiUnprivilegedBindings for InterprocessEngineApiUnprivilegedBindings
         &self,
         privileged_command: PrivilegedCommand,
         callback: Box<dyn FnOnce(PrivilegedCommandResponse) + Send + Sync + 'static>,
-    ) -> Result<(), String> {
+    ) -> Result<(), EngineBindingError> {
         let request_id = Uuid::new_v4();
 
         if let Ok(mut request_handles) = self.request_handles.lock() {
             request_handles.insert(request_id, Box::new(callback));
         }
 
-        if let Ok(ipc_connection) = self.ipc_connection.read() {
-            if let Some(ipc_connection) = ipc_connection.as_ref() {
-                if let Err(error) = ipc_connection.send(privileged_command, request_id) {
-                    return Err(error.to_string());
-                } else {
-                    return Ok(());
-                }
-            }
+        let ipc_connection_guard = self
+            .ipc_connection
+            .read()
+            .map_err(|error| EngineBindingError::lock_failure("dispatching privileged command to IPC", error.to_string()))?;
+
+        if let Some(ipc_connection) = ipc_connection_guard.as_ref() {
+            ipc_connection
+                .send(privileged_command, request_id)
+                .map_err(|error| EngineBindingError::operation_failed("sending privileged command over IPC", error))?;
+
+            return Ok(());
         }
 
-        Err("Failed to dispatch command.".to_string())
+        Err(EngineBindingError::unavailable("dispatching privileged command over IPC"))
     }
 
     /// Dispatches an unprivileged command to be immediately handled on the client side.
@@ -66,7 +70,7 @@ impl EngineApiUnprivilegedBindings for InterprocessEngineApiUnprivilegedBindings
         unprivileged_command: UnprivilegedCommand,
         engine_unprivileged_state: &Arc<EngineUnprivilegedState>,
         callback: Box<dyn FnOnce(UnprivilegedCommandResponse) + Send + Sync + 'static>,
-    ) -> Result<(), String> {
+    ) -> Result<(), EngineBindingError> {
         let response = unprivileged_command.execute(engine_unprivileged_state);
 
         callback(response);
@@ -75,9 +79,12 @@ impl EngineApiUnprivilegedBindings for InterprocessEngineApiUnprivilegedBindings
     }
 
     /// Requests to listen to all engine events.
-    fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, String> {
+    fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, EngineBindingError> {
         let (sender, receiver) = crossbeam_channel::unbounded();
-        let mut sender_lock = self.event_senders.write().map_err(|error| error.to_string())?;
+        let mut sender_lock = self
+            .event_senders
+            .write()
+            .map_err(|error| EngineBindingError::lock_failure("subscribing to IPC engine events", error.to_string()))?;
         sender_lock.push(sender);
 
         Ok(receiver)
@@ -187,18 +194,15 @@ impl InterprocessEngineApiUnprivilegedBindings {
         }
     }
 
-    fn bind_to_interprocess_pipe(ipc_connection: Arc<RwLock<Option<InterprocessPipeBidirectional>>>) -> Result<(), String> {
-        if let Ok(mut ipc_connection) = ipc_connection.write() {
-            match InterprocessPipeBidirectional::bind() {
-                Ok(bound_connection) => {
-                    *ipc_connection = Some(bound_connection);
-                    Ok(())
-                }
-                Err(error) => Err(error),
-            }
-        } else {
-            Err("Failed to acquire write lock on bidirectional interprocess connection.".to_string())
-        }
+    fn bind_to_interprocess_pipe(ipc_connection: Arc<RwLock<Option<InterprocessPipeBidirectional>>>) -> Result<(), EngineBindingError> {
+        let mut ipc_connection_guard = ipc_connection
+            .write()
+            .map_err(|error| EngineBindingError::lock_failure("binding unprivileged IPC connection", error.to_string()))?;
+        let bound_connection =
+            InterprocessPipeBidirectional::bind().map_err(|error| EngineBindingError::operation_failed("binding bidirectional IPC connection", error))?;
+        *ipc_connection_guard = Some(bound_connection);
+
+        Ok(())
     }
 
     #[cfg(any(target_os = "android"))]

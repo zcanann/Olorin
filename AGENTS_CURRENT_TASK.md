@@ -14,7 +14,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
   - Progress: CLI/TUI/desktop GUI entrypoints now use `anyhow::Result`; process query + OS provider now uses typed errors; engine/internal typed-error migration remains.
 - [x] Replace `Result<_, String>` in process query + OS provider path with typed errors.
   Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
-- [ ] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
+- [x] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
   Files: `squalr-engine/src/engine_bindings/interprocess/**`, `squalr-engine/src/engine_bindings/standalone/**`.
 - [ ] Replace `Result<_, String>` in snapshot region memory reader with typed scan I/O errors.
   File: `squalr-engine-scanning/src/scanners/snapshot_region_memory_reader.rs`.
@@ -48,6 +48,8 @@ Discovered during iteration:
 - Runtime unwrap removals completed in `trackable_task`, `snapshot_region_scan_results`, and Android package cache read path.
 - Process query path now uses `ProcessQueryError` across `squalr-engine-processes` + `squalr-engine` OS provider boundary (including Windows/Linux/macOS/Android implementations and `squalr-tests` mock providers), replacing prior `Result<_, String>` signatures.
 - Added focused unit tests for process-query typed error formatting/constructor behavior in `squalr-engine-processes/src/process_query/process_query_error.rs`.
+- Engine binding traits now use typed `EngineBindingError` instead of `Result<_, String>`, with interprocess pipe-specific `InterprocessPipeError` preserving operation context + source error chaining.
+- Added focused unit tests for `EngineBindingError` constructor/display behavior in `squalr-engine-api/src/engine/engine_binding_error.rs`.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -63,4 +65,6 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Ran `cargo fmt`, `cargo check -p squalr-cli`, `cargo check -p squalr-tui`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr`.
 - Replaced process query + OS provider `Result<_, String>` boundaries with typed `ProcessQueryError` and updated test mocks to match.
 - Ran `cargo fmt`, `cargo test -p squalr-engine-processes`, and `cargo check -p squalr-engine -p squalr-tests`.
+- Replaced `Result<_, String>` in interprocess/standalone engine bindings with typed errors (`EngineBindingError`, `InterprocessPipeError`) and propagated signatures through engine-api + tests.
+- Ran `cargo fmt`, `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine`, `cargo check -p squalr-tests`, `cargo test -p squalr-engine-api engine_binding_error`, and `cargo test -p squalr-tests`.
 

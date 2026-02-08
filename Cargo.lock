@@ -5921,6 +5921,7 @@ dependencies = [
  "structopt",
  "sysinfo",
  "tempfile",
+ "thiserror 2.0.16",
  "ureq",
  "url",
  "urlencoding",

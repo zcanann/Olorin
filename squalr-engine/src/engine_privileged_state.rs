@@ -5,6 +5,7 @@ use crate::os::engine_os_provider::EngineOsProviders;
 use crate::tasks::trackable_task_manager::TrackableTaskManager;
 use crossbeam_channel::Receiver;
 use squalr_engine_api::engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings;
+use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
 use squalr_engine_api::events::engine_event::{EngineEvent, EngineEventRequest};
 use squalr_engine_api::registries::freeze_list::freeze_list_registry::FreezeListRegistry;
 use squalr_engine_api::registries::project_item_types::project_item_type_registry::ProjectItemTypeRegistry;
@@ -162,10 +163,13 @@ impl EnginePrivilegedState {
     }
 
     /// Dispatches an event from the engine.
-    pub fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, String> {
+    pub fn subscribe_to_engine_events(&self) -> Result<Receiver<EngineEvent>, EngineBindingError> {
         match self.engine_bindings.read() {
             Ok(engine_bindings) => engine_bindings.subscribe_to_engine_events(),
-            Err(error) => Err(format!("Failed to acquire privileged engine bindings read lock: {}", error)),
+            Err(error) => Err(EngineBindingError::lock_failure(
+                "subscribing to engine events from privileged state",
+                error.to_string(),
+            )),
         }
     }
 
