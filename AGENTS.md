@@ -17,7 +17,7 @@
 - Format with default Rust formatter (repo includes `.rustfmt.toml`).
 - Prefer rustdoc/intellisense-friendly function comments where practical.
 - Remove unused imports.
-- Prefer single-responsibility. Do not inline structs that do not belong in the file.
+- Prefer single-responsibility principal. Do not inline structs that do not belong in the file. Make separate files for separate concerns.
 
 ## Unit Tests
 If it makes sense to test it, add test cases. Test should generally be robust for things like the squalr-api.
