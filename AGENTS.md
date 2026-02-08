@@ -75,6 +75,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Added CI workflow `.github/workflows/squalr-tests-pr.yml` to enforce `cargo test -p squalr-tests` for PRs targeting `pr/unit-tests` when relevant workspace paths change.
 - `pr/unit-tests`: Expanded `os_behavior_command_tests` with deterministic failure-path assertions for `memory_read`, `memory_write`, `process_open`, and `scan_results` (`query/list/refresh/freeze/set_property`) using mock OS toggles.
 - `pr/unit-tests`: Added parser rejection tests across all command-family suites for malformed/incomplete args and invalid value formats; revalidated `cargo test -p squalr-tests` passes with 124 integration tests on 2026-02-08.
+- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (124 integration tests); Phase 2 DI seam coverage remains unchanged with `scan_results add_to_project` intentionally stub-bound pending project-item mutation hooks.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
