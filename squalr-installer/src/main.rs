@@ -38,15 +38,14 @@ pub fn main() {
         APP_NAME,
         native_options,
         Box::new(move |creation_context| {
-            if let Err(error) = initialize_logger(ui_state.clone(), creation_context.egui_ctx.clone()) {
-                eprintln!("Failed to initialize installer logger: {error}");
-            }
+            initialize_logger(ui_state.clone(), creation_context.egui_ctx.clone())
+                .unwrap_or_else(|error| panic!("Failed to initialize installer logger: {error}"));
 
             Ok(Box::new(InstallerApp::new(&creation_context.egui_ctx, ui_state.clone())))
         }),
     );
 
     if let Err(error) = run_result {
-        eprintln!("Fatal error starting installer GUI: {error}");
+        panic!("Fatal error starting installer GUI: {error}");
     }
 }

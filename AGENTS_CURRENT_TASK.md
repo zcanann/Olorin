@@ -17,8 +17,8 @@ Note from owner: Panic is actually acceptable in some situations! Let us revert 
 - [x] Enforce startup invariants in standalone bindings (`StandaloneEngineApiUnprivilegedBindings::new`) by replacing "log and continue with `None`" behavior with hard invariant failure (`panic!`/`expect`) for impossible states.
 - [x] Decide Android fatal-startup policy and implement consistently: either panic on unrecoverable `android_main` init failures (preferred for critical bootstrap) or return explicit startup status to caller with centralized fatal handler.
 - [x] Add regression tests for startup failure behavior (engine init + IPC init) to ensure critical-system bootstrap failures are fail-fast and no longer degrade silently.
-- [ ] Note from owner: Installer main.rs is still logging errors instead of panic.
-- [ ] Note from onwer: I see uses of eprintln instead of logging in 3 instances (2 in installer, 1 in project_manager.rs). Fix.
+- [x] Note from owner: Installer main.rs is still logging errors instead of panic.
+- [x] Note from onwer: I see uses of eprintln instead of logging in 3 instances (2 in installer, 1 in project_manager.rs). Fix.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -63,6 +63,8 @@ Discovered during iteration:
 - Android startup policy now uses fatal panic-on-bootstrap-failure semantics in `android_main`.
 - Added fail-fast regression tests in `squalr-engine` for privileged startup monitor failure and IPC spawn/bind startup failures.
 - Follow-up verification found one integration-test compile regression after startup API hardening: `squalr-tests/tests/os_behavior_command_tests.rs` assumed direct `Arc<EnginePrivilegedState>` return from `new_with_os_providers`; fixed helper to handle the typed startup `Result` explicitly.
+- Installer startup now fails fast in `squalr-installer/src/main.rs`: logger init failure and `eframe::run_native` startup failure both panic with explicit fatal messages.
+- Removed all current Rust `eprintln!` usage by converting project watcher stderr output to `log::error!` and using panic for installer fatal bootstrap errors.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -103,3 +105,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Re-ran `cargo test -p squalr-engine` and `cargo test -p squalr-tests` on 2026-02-08; all tests passed, with only pre-existing warning-only diagnostics.
 - Re-validated on 2026-02-08: targeted `rg` audit still shows no Rust `Result<_, String>` and no non-test `unwrap()` usage; `panic!` usage remains limited to tests plus intentional Android fatal-startup policy.
 - Re-ran `cargo test -p squalr-engine` and `cargo test -p squalr-tests` on 2026-02-08; both passed again with only existing warning-only diagnostics.
+- Completed owner follow-up fixes on 2026-02-08: installer fatal startup paths now panic (no log-and-continue), `project_manager` watch failures use `log::error!`, and `rg -n 'eprintln!' -g '*.rs'` returns no matches.
+- Ran `cargo fmt`, `cargo check -p squalr-installer`, and `cargo test -p squalr-engine-api` on 2026-02-08 (passing; existing warning-only diagnostics unchanged).
