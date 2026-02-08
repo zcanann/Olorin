@@ -69,18 +69,15 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Expanded deterministic OS-behavior tests (`os_behavior_command_tests`) to cover scan-results query/list/refresh/freeze provider usage.
 - `pr/unit-tests`: Added deterministic `scan_results set_property` OS-behavior tests for value writes and freeze/unfreeze toggling through injected providers.
 - `pr/unit-tests`: Fixed bool deanonymization for supported formats so `set_property is_frozen` decodes boolean payloads correctly.
-- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (107 integration tests) and singleton usage under `scan_results` remains isolated to the intentional `add_to_project` stub path (`scan_results_add_to_project_request_executor`).
 - `pr/unit-tests`: Audited test framework on 2026-02-08 and recorded prioritized gaps in `audit.txt` (CI enforcement missing, failure-path depth gaps, `scan_results add_to_project` still stub-bound for behavior testing).
 - `pr/unit-tests`: Converted 2026-02-08 `audit.txt` findings into actionable `AGENTS.MD` tasklist items focused on CI enforcement, OS failure-path depth, and parser rejection coverage.
 - `pr/unit-tests`: Added CI workflow `.github/workflows/squalr-tests-pr.yml` to enforce `cargo test -p squalr-tests` for PRs targeting `pr/unit-tests` when relevant workspace paths change.
 - `pr/unit-tests`: Expanded `os_behavior_command_tests` with deterministic failure-path assertions for `memory_read`, `memory_write`, `process_open`, and `scan_results` (`query/list/refresh/freeze/set_property`) using mock OS toggles.
 - `pr/unit-tests`: Added parser rejection tests across all command-family suites for malformed/incomplete args and invalid value formats; revalidated `cargo test -p squalr-tests` passes with 124 integration tests on 2026-02-08.
-- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (124 integration tests); Phase 2 DI seam coverage remains unchanged with `scan_results add_to_project` intentionally stub-bound pending project-item mutation hooks.
 - `pr/unit-tests`: Reconciled 2026-02-08 `audit.txt` items against current branch state; retained only remaining actionable unit-test framework follow-ups (broader CI lane + warning-signal controls) in the task list.
 - `pr/unit-tests`: Added scheduled CI workflow `.github/workflows/workspace-nightly.yml` to run `cargo test --workspace` (plus manual dispatch) for broader regression coverage outside PR path filters.
 - `pr/unit-tests`: Added warning-baseline controls to `.github/workflows/squalr-tests-pr.yml`; touched unit-test crates (`squalr-tests`, `squalr-engine`, `squalr-engine-api`) now compare warning counts against PR base and fail only on warning regressions.
-- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` passes locally (124 integration tests) after CI warning-baseline + nightly-lane additions; active DI routing remains in place and singleton mentions under `scan_results add_to_project` stay isolated to the intentional stubbed/commented path pending project-item mutation hooks.
-- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes locally (124 integration tests) with no new tasklist items; existing workspace warnings remain outside the `squalr-tests` Phase 2 DI seam scope.
+- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` passes locally (124 integration tests); active DI routing remains in place and singleton usage under `scan_results add_to_project` remains intentionally stub-bound pending project-item mutation hooks.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
