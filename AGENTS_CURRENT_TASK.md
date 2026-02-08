@@ -17,7 +17,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
 - Continue narrowing `api::types` so contract paths avoid engine-coupled internals (remaining hotspots: scanning internals and legacy project item internals still exposed under transitional paths).
-- Expand `api::commands::stateless` coverage beyond process + trackable tasks, then add compatibility tests per command family.
+- Continue expanding `api::commands::stateless` coverage with explicit context handles (next families: `project`, `scan`, `scan_results`) and add compatibility tests per family.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -51,6 +51,9 @@ Information discovered during iteration:
 - Added `squalr-engine-api/tests/api_contract_trackable_tasks_compatibility.rs` for stateless request/response serde, typed privileged response mapping checks, and JSON shape compatibility against legacy requests.
 - Narrowed `squalr-engine-api::api::types::projects` to contract-safe DTO modules and moved broad project exposure to `api::types::projects_legacy` as a transitional path.
 - `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_process_compatibility --test api_contract_trackable_tasks_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after this iteration (pre-existing warnings unchanged).
+- Added `squalr-engine-api::api::commands::stateless::memory` with explicit `ProcessSessionHandle` in read/write request and response DTOs.
+- Added `squalr-engine-api/tests/api_contract_memory_compatibility.rs` for stateless memory request/response serde round-trips, typed privileged response mapping checks, and legacy payload compatibility assertions.
+- `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_process_compatibility --test api_contract_trackable_tasks_compatibility --test api_contract_memory_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after this iteration (pre-existing warnings unchanged).
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -66,3 +69,4 @@ Append logs for each session here. Compact redundency occasionally:
 - Added API surface inventory documentation, marked non-contract root modules as `#[doc(hidden)]`, documented `api` as preferred contract entrypoint, and re-validated with `cargo check -p squalr-engine-api` + `cargo check -p squalr-engine`.
 - Implemented a stateless process API prototype (`api::commands::stateless::process`) and added process contract compatibility tests for serde round-trips plus typed response mapping; validated with `cargo fmt`, targeted `cargo test`, and `cargo check` for API + engine crates.
 - Added a stateless trackable tasks API contract (`api::commands::stateless::trackable_tasks`), added compatibility tests, narrowed `api::types::projects` to DTO-focused exports with a legacy shim, and re-validated using `cargo fmt`, targeted API tests, and `cargo check` for API + engine crates.
+- Added a stateless memory API contract (`api::commands::stateless::memory`) with explicit process session context and a new compatibility test suite; re-validated with `cargo fmt`, targeted API contract tests, and `cargo check` for API + engine crates.
