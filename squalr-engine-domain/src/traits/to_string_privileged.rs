@@ -1,10 +1,9 @@
-use crate::registries::registries::Registries;
 use std::fmt::Formatter;
 
-pub trait ToStringPrivileged {
+pub trait ToStringPrivileged<TContext> {
     fn to_string_privileged(
         &self,
         formatter: &mut Formatter<'_>,
-        registries: &Registries,
+        context: &TContext,
     ) -> std::fmt::Result;
 }

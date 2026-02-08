@@ -145,7 +145,7 @@ impl ValuedStructField {
     }
 }
 
-impl FromStringPrivileged for ValuedStructField {
+impl FromStringPrivileged<Registries> for ValuedStructField {
     type Err = String;
 
     fn from_string_privileged(

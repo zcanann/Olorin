@@ -175,7 +175,7 @@ impl fmt::Display for ValuedStruct {
     }
 }
 
-impl FromStringPrivileged for ValuedStruct {
+impl FromStringPrivileged<Registries> for ValuedStruct {
     type Err = String;
 
     fn from_string_privileged(

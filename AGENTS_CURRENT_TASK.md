@@ -42,6 +42,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
 - [ ] Create `squalr-engine-domain` and move domain semantics from `squalr-engine-api` there (`structures/data_types/*`, `structures/structs/*`, registries, privileged string conversion traits, conversions).
 - [x] Move conversion core modules (`base_system_conversions`, `command_line_conversions`, `conversion_error`, `conversions_from_primitives`, `storage_size_conversions`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
+- [x] Move privileged string conversion traits into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [ ] Create `squalr-engine-session` and move session/state orchestration there (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
 - [ ] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
 - [ ] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
@@ -80,6 +81,7 @@ Information discovered during iteration:
 - Root `Cargo.toml` workspace members now include `squalr-engine-domain`, and targeted crate wiring check passes via `cargo check -p squalr-engine-domain`.
 - Moving full `structures`/`registries`/`traits` directly into `squalr-engine-domain` currently fails due coupling to session-facing `engine` bindings through project item types (`EngineApiPrivilegedBindings` dependency), so migration should proceed in smaller decoupled slices.
 - Conversion core is now hosted in `squalr-engine-domain`, with compatibility preserved via re-exports in `squalr-engine-api::conversions`.
+- Privileged string conversion traits are now hosted in `squalr-engine-domain::traits` with a generic context type, and re-exported via `squalr-engine-api::traits` for compatibility.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -110,3 +112,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Completed trait rename cleanup for memory interfaces (`IMemory*` -> `*Trait`) across engine/memory/scanning crates and validated with targeted cargo checks.
 - 2026-02-08: Added scaffold crate `squalr-engine-domain` and wired it into workspace membership; validated with `cargo check -p squalr-engine-domain`.
 - 2026-02-08: Moved conversion core modules into `squalr-engine-domain`, re-exported them from `squalr-engine-api`, validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
+- 2026-02-08: Moved privileged string conversion traits (`FromStringPrivileged`, `ToStringPrivileged`) into `squalr-engine-domain`, preserved API compatibility via re-exports, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.

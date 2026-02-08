@@ -91,7 +91,7 @@ impl DataValue {
     }
 }
 
-impl FromStringPrivileged for DataValue {
+impl FromStringPrivileged<Registries> for DataValue {
     type Err = String;
 
     fn from_string_privileged(
