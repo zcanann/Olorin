@@ -10,6 +10,8 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
+
+Note from owner: Panic is actually acceptable in some situations! Let us revert the use of result in these cases:
 - [ ] Restore fail-fast startup semantics in privileged engine initialization by returning a typed init `Result` when critical boot steps fail (`engine bindings init`, `process monitor start`) instead of logging and continuing.
 - [ ] Restore fail-fast startup semantics for IPC host initialization by propagating privileged CLI spawn/pipe bind failures out of `InterprocessEngineApiUnprivilegedBindings::new` and `SqualrEngine::new` instead of background-thread logging.
 - [ ] Enforce startup invariants in standalone bindings (`StandaloneEngineApiUnprivilegedBindings::new`) by replacing "log and continue with `None`" behavior with hard invariant failure (`panic!`/`expect`) for impossible states.
