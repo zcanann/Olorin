@@ -99,3 +99,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Ran `cargo fmt`, `cargo test -p squalr-engine`, and `cargo test -p squalr-tests` on 2026-02-08; all tests passed and warning count decreased slightly.
 - Re-ran `pr/error_handling` audit on 2026-02-08: `rg` checks found no non-test `unwrap()` and no `Result<_, String>` signatures; startup-critical Android `panic!` usage remains intentional by policy.
 - Re-ran `cargo test -p squalr-engine` and `cargo test -p squalr-tests` on 2026-02-08; all tests passed, with only pre-existing warning-only diagnostics.
+- Re-validated on 2026-02-08: targeted `rg` audit still shows no Rust `Result<_, String>` and no non-test `unwrap()` usage; `panic!` usage remains limited to tests plus intentional Android fatal-startup policy.
+- Re-ran `cargo test -p squalr-engine` and `cargo test -p squalr-tests` on 2026-02-08; both passed again with only existing warning-only diagnostics.
