@@ -468,3 +468,20 @@ fn privileged_command_parser_accepts_scan_settings_list_subcommand() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn privileged_command_parser_rejects_scan_settings_set_with_invalid_memory_alignment() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "settings",
+            "scan",
+            "set",
+            "--memory-alignment",
+            "invalid",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+    assert!(parse_result.expect("parser should not panic").is_err());
+}

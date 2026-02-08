@@ -39,9 +39,10 @@ We need deterministic tests for privileged executors that currently call static 
 - `EnginePrivilegedState` now supports injected OS providers (process query + memory query/read/write), with production defaults bound to existing singletons.
 - `scan_results` privileged executors (`query`, `list`, `refresh`, `freeze`, `set_property`) now route memory operations through injected OS providers.
 - `MockEngineBindings` is centralized in `squalr-tests/src/mocks/mock_engine_bindings.rs` and reused by all command contract suites.
-- Deterministic OS-behavior tests exist in `squalr-tests/tests/os_behavior_command_tests.rs` for memory read/write, process list/open/close, scan-new page bounds merge flow, and scan-results query/list/refresh/freeze/set-property flows.
+- Deterministic OS-behavior tests exist in `squalr-tests/tests/os_behavior_command_tests.rs` for memory read/write (success + failure), process list/open/close (including open-failure), scan-new page bounds merge flow, and scan-results query/list/refresh/freeze/set-property flows (success + failure paths).
 - `scan_results add_to_project` remains a stubbed executor in this branch because project-item mutation hooks are not wired yet.
-- `cargo test -p squalr-tests` is currently passing (107 integration tests; revalidated on 2026-02-08 in no-code-change verification runs, with singleton usage under `scan_results` limited to the intentional `add_to_project` stub path).
+- Parser rejection coverage now exists per command family for malformed/incomplete arguments (missing required args and invalid value formats).
+- `cargo test -p squalr-tests` is currently passing (124 integration tests; revalidated on 2026-02-08 after adding CI + failure-path/parser-rejection coverage, with singleton usage under `scan_results` limited to the intentional `add_to_project` stub path).
 
 ### If something is too hard to test
 - Stub the test, and write down **why** (architecture limitation) + what would need to change.
@@ -50,13 +51,6 @@ We need deterministic tests for privileged executors that currently call static 
 ## Agent Scratchpad and Notes
 
 ### Current Tasklist (Remove as things are completed, add remaining tangible tasks)
-- Add PR CI workflow to enforce `cargo test -p squalr-tests` on `pr/unit-tests` changes.
-- Add failure-path OS-behavior tests for privileged executors using existing mock toggles:
-  - `memory_read` failure assertions (error response shape + no unintended state mutation).
-  - `memory_write` failure assertions (error response shape + no unintended freeze/value mutation).
-  - `process_open` failure assertions when target process handle cannot be resolved.
-  - `scan_results` failure-path coverage for `query`, `list`, `refresh`, `freeze`, and `set_property`.
-- Add parser rejection tests per command family for malformed or incomplete args (missing required flags, invalid enum/value strings).
 - Keep `scan_results add_to_project` at contract-level coverage only until project-item mutation hooks are implemented; add deterministic behavior tests immediately after hooks land.
 
 ### Architecture Plan (Modify sparringly as new information is learned. Keep minimal and simple)
@@ -78,6 +72,9 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (107 integration tests) and singleton usage under `scan_results` remains isolated to the intentional `add_to_project` stub path (`scan_results_add_to_project_request_executor`).
 - `pr/unit-tests`: Audited test framework on 2026-02-08 and recorded prioritized gaps in `audit.txt` (CI enforcement missing, failure-path depth gaps, `scan_results add_to_project` still stub-bound for behavior testing).
 - `pr/unit-tests`: Converted 2026-02-08 `audit.txt` findings into actionable `AGENTS.MD` tasklist items focused on CI enforcement, OS failure-path depth, and parser rejection coverage.
+- `pr/unit-tests`: Added CI workflow `.github/workflows/squalr-tests-pr.yml` to enforce `cargo test -p squalr-tests` for PRs targeting `pr/unit-tests` when relevant workspace paths change.
+- `pr/unit-tests`: Expanded `os_behavior_command_tests` with deterministic failure-path assertions for `memory_read`, `memory_write`, `process_open`, and `scan_results` (`query/list/refresh/freeze/set_property`) using mock OS toggles.
+- `pr/unit-tests`: Added parser rejection tests across all command-family suites for malformed/incomplete args and invalid value formats; revalidated `cargo test -p squalr-tests` passes with 124 integration tests on 2026-02-08.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.

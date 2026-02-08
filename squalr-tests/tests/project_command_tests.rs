@@ -607,3 +607,19 @@ fn unprivileged_command_parser_accepts_project_save_subcommand() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn unprivileged_command_parser_rejects_project_rename_when_new_name_is_missing() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project",
+            "rename",
+            "--project-directory-path",
+            "C:\\Projects\\OldProject",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+    assert!(parse_result.expect("parser should not panic").is_err());
+}

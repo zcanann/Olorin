@@ -174,3 +174,19 @@ fn unprivileged_command_parser_accepts_project_items_list_subcommand() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn unprivileged_command_parser_rejects_project_items_activate_when_path_value_is_missing() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project-items",
+            "activate",
+            "--project-item-paths",
+            "--is-activated",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+    assert!(parse_result.expect("parser should not panic").is_err());
+}

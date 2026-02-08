@@ -262,3 +262,21 @@ fn privileged_command_parser_accepts_memory_write_with_short_flags() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn privileged_command_parser_rejects_memory_write_when_required_value_is_missing() {
+    let parse_result = std::panic::catch_unwind(|| {
+        PrivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "memory",
+            "write",
+            "--address",
+            "8192",
+            "--module-name",
+            "game.exe",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+    assert!(parse_result.expect("parser should not panic").is_err());
+}

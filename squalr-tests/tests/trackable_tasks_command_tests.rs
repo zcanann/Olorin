@@ -177,3 +177,11 @@ fn privileged_command_parser_accepts_trackable_tasks_cancel_with_long_flags() {
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
 }
+
+#[test]
+fn privileged_command_parser_rejects_trackable_tasks_cancel_when_task_id_is_missing() {
+    let parse_result = std::panic::catch_unwind(|| PrivilegedCommand::from_iter_safe(["squalr-cli", "tasks", "cancel"]));
+
+    assert!(parse_result.is_ok());
+    assert!(parse_result.expect("parser should not panic").is_err());
+}
