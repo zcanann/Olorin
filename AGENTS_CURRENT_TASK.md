@@ -20,6 +20,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 - [x] Upgrade GUI/CLI/TUI/installer/android crate dependencies and resolve platform-specific breakages.
   - Note: Android does not currently compile. Blind upgrades are possibly acceptable, as this is a future task to fix android anyways.
 - [x] Run full workspace validation (`cargo check`, relevant tests), remove dead code/imports, and prepare commit.
+- [ ] Ensure Cargo.toml versions match the downloaded versions (even minor version).
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
