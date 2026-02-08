@@ -13,9 +13,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- The installer is not rendering transparent, causing the rounded corners of the header/footer to show as black. Fix the transparency (squalr does this correctly).
-- The project needs to be modularized similar to `squalr` folder layout wise. Overloading `main.rs` is unacceptable.
-- OWNER COMMENT: Tests probably belong in the test project right? Why are they just inlined in `main.rs` too? Or is it not feasible to mix tests for different projects (api, installer) into one repo?
+- No open installer task items right now.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -31,6 +29,9 @@ Important information discovered during work about the current state of the task
 - Installer header now renders a centered single-line status message; log panel now fills available width before first log line.
 - Installer now uses a custom themed title bar (`with_decorations(false)`) with app icon + explicit minimize/maximize/close controls, reduced inner padding, no rounded inner status/log cards, larger footer text, and output-view-style level-colored log text on dark background.
 - Installer title/footer rendering now directly mirrors `squalr` main title/footer layout patterns (painted rounded bars, drag zone, icon-based window controls), with `squalr` font assets (`NotoSans`, `UbuntuMonoBold`) applied for title/header/footer/log typography.
+- Installer bootstrap is now modularized into `src/app.rs`, `src/theme.rs`, `src/ui_assets.rs`, `src/ui_state.rs`, `src/installer_runtime.rs`, and `src/logging.rs`; `main.rs` is now bootstrap-only.
+- Installer transparency now matches `squalr` behavior via `ViewportBuilder::with_transparent(true)` and transparent app clear color.
+- Installer log-buffer unit tests are no longer in `main.rs`; they now live in `src/logging.rs`.
 
 ## Agent Scratchpad and Notes
 Smaller notes should go here, and can be erased and compacted as needed during iteration.
@@ -56,3 +57,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Reworked installer title/footer to follow copied `squalr` main title/footer patterns, restored icon textures for close/maximize/minimize, switched installer typography to `squalr` fonts (`NotoSans`/`UbuntuMonoBold`) for title/header/footer/log text, and retained output-style log coloring; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
 - 2026-02-08: Re-ran `pr/installer` AGENTS workflow with empty tasklist; installer crate remains clean (`unwrap()`-free, no dead helper/import findings), `cargo fmt --all` and `cargo test -p squalr-installer` pass; workspace still reports pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings.
 - 2026-02-08: Re-ran `pr/installer` AGENTS maintenance pass with empty tasklist; no installer-local dead imports/helpers or `unwrap()` usage found, `cargo fmt --all` and `cargo test -p squalr-installer` pass; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings.
+- 2026-02-08: Completed installer modularization and transparency fix: split `squalr-installer` into dedicated app/theme/assets/runtime/logger/state modules, enabled transparent viewport + transparent clear color to remove rounded-corner black artifacts, moved log-buffer tests out of `main.rs` into `src/logging.rs`; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
