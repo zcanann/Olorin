@@ -14,8 +14,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- Fix an issue causing the egui app in squalr-installer to render with a harsh white window background, whereas the egui app in squalr correctly renders to transparency, allowing for the custom window title bar and the likes. While the installer does have this custom title bar, the background is not rendering to transparent despite the presence of a clear_color function. It must not be hooked up the same way (or some subtle issue like version mismatch, wrong crates, etc). Carefully compare `squalr` to `squalr-installer`, and only make the change when absolutely certain of the root cause. We have attempted to fix this issue 5 times without success.
-- Note from owner: It looks like the issue was "fixed" in the hackiest and worst way possible. The BG color now just matches the app color. This defeats the purpose. The title bar and footer have rounded edges. The BG MUST render to transparent, not just some non-white color as you have changed it to be. Completely useless.
+- No remaining actionable items recorded for `pr/installer`; tasklist is currently clear after transparency fix validation.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -40,6 +39,7 @@ Important information discovered during work about the current state of the task
 - Installer log panel rendering is now modularized into `src/views/main_window/installer_log_view.rs`, and `installer_main_window_view.rs` now composes it.
 - Installer title-bar button hover/pressed visuals now use `squalr`-matching tint overlays (white/black alpha) instead of blue fills/borders.
 - Installer theme visuals are now reapplied every frame in `src/app.rs::update` so integration/native theme changes cannot revert panel visuals to default light/white.
+- Root cause of the remaining white-background/transparency mismatch was missing `squalr`-style rounded outer app frame wiring in installer `App::update`; installer now applies a rounded `CentralPanel` frame (`corner_radius` + border stroke + outer margin) so transparent viewport corners are exposed correctly around rounded title/footer bars.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -57,3 +57,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Fixed recurring white installer background by reapplying installer visuals in every frame update, preventing fallback to default light panel visuals.
 - Checkpointed on 2026-02-08: branch remains clean for `pr/installer`; `cargo fmt --all -- --check` and `cargo test -p squalr-installer` pass with only pre-existing non-installer warnings.
 - Audited on 2026-02-08: no `TODO`/`FIXME`, `panic!`, or `unwrap()` usages remain under `squalr-installer`; `cargo fmt --all -- --check` and `cargo test -p squalr-installer` still pass with unchanged non-installer warnings.
+- Fixed on 2026-02-08: installer now mirrors `squalr` outer app frame composition in `squalr-installer/src/app.rs` (rounded central frame + border + margin), resolving white corner background and restoring true transparent viewport corners with rounded title/footer visuals.
