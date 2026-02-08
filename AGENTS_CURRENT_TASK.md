@@ -11,8 +11,8 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
 - [ ] Define canonical error boundaries and ownership: engine/internal crates use typed errors (`thiserror`), CLI/GUI/TUI entrypoints use `anyhow::Result`.
-  - Progress: CLI/TUI/desktop GUI entrypoints now use `anyhow::Result`; engine/internal typed-error migration remains.
-- [ ] Replace `Result<_, String>` in process query + OS provider path with typed errors.
+  - Progress: CLI/TUI/desktop GUI entrypoints now use `anyhow::Result`; process query + OS provider now uses typed errors; engine/internal typed-error migration remains.
+- [x] Replace `Result<_, String>` in process query + OS provider path with typed errors.
   Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
 - [ ] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
   Files: `squalr-engine/src/engine_bindings/interprocess/**`, `squalr-engine/src/engine_bindings/standalone/**`.
@@ -46,16 +46,21 @@ Discovered during iteration:
 - CLI, TUI, and desktop GUI entrypoints now return `anyhow::Result<()>` and no longer panic during startup/event-loop failures.
 - Android startup path no longer panics on engine/gui initialization; it logs and returns from `android_main`.
 - Runtime unwrap removals completed in `trackable_task`, `snapshot_region_scan_results`, and Android package cache read path.
+- Process query path now uses `ProcessQueryError` across `squalr-engine-processes` + `squalr-engine` OS provider boundary (including Windows/Linux/macOS/Android implementations and `squalr-tests` mock providers), replacing prior `Result<_, String>` signatures.
+- Added focused unit tests for process-query typed error formatting/constructor behavior in `squalr-engine-processes/src/process_query/process_query_error.rs`.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
 - Prioritize replacing error signatures at trait boundaries first (`ProcessQueryer`, `ProcessQueryProvider`, engine bindings), then cascade call sites.
 - Keep serialized command responses backward-compatible where needed; if shape changes are required, update tests in `squalr-tests`.
 - Non-test panic/unwrap cleanup should be done before deep refactors so runtime behavior is safer during migration.
+- Added `thiserror` to `squalr-engine-processes` and centralized process query failures under `process_query_error.rs`.
 
 ### Concise Session Log
 - Audited repository for runtime error-handling hotspots (`unwrap`, `panic`, `Result<_, String>`, existing typed errors).
 - Set current task to `pr/error_handling` and created a concrete implementation tasklist for next session.
 - Replaced runtime panic/unwrap hotspots in the initial target files and added `anyhow` to CLI/TUI/GUI crates.
 - Ran `cargo fmt`, `cargo check -p squalr-cli`, `cargo check -p squalr-tui`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr`.
+- Replaced process query + OS provider `Result<_, String>` boundaries with typed `ProcessQueryError` and updated test mocks to match.
+- Ran `cargo fmt`, `cargo test -p squalr-engine-processes`, and `cargo check -p squalr-engine -p squalr-tests`.
 

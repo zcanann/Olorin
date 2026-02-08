@@ -1,5 +1,6 @@
 use crate::process_info::{Bitness, OpenedProcessInfo, ProcessIcon, ProcessInfo};
 use crate::process_query::android::android_process_monitor::AndroidProcessMonitor;
+use crate::process_query::process_query_error::ProcessQueryError;
 use crate::process_query::process_query_options::ProcessQueryOptions;
 use crate::process_query::process_queryer::ProcessQueryer;
 use image::ImageReader;
@@ -161,10 +162,10 @@ impl AndroidProcessQuery {
 }
 
 impl ProcessQueryer for AndroidProcessQuery {
-    fn start_monitoring() -> Result<(), String> {
+    fn start_monitoring() -> Result<(), ProcessQueryError> {
         let mut monitor = PROCESS_MONITOR
             .write()
-            .map_err(|error| format!("Failed to acquire process monitor lock: {}", error))?;
+            .map_err(|error| ProcessQueryError::process_monitor_lock_poisoned("start_monitoring", error.to_string()))?;
 
         Logger::log(LogLevel::Error, "Monitoring system processes...", None);
         monitor.start_monitoring();
@@ -172,10 +173,10 @@ impl ProcessQueryer for AndroidProcessQuery {
         Ok(())
     }
 
-    fn stop_monitoring() -> Result<(), String> {
+    fn stop_monitoring() -> Result<(), ProcessQueryError> {
         let mut monitor = PROCESS_MONITOR
             .write()
-            .map_err(|error| format!("Failed to acquire process monitor lock: {}", error))?;
+            .map_err(|error| ProcessQueryError::process_monitor_lock_poisoned("stop_monitoring", error.to_string()))?;
 
         monitor.stop_monitoring();
 
@@ -183,7 +184,7 @@ impl ProcessQueryer for AndroidProcessQuery {
     }
 
     // Android has no concept of opening a process -- do nothing, return 0 for handle.
-    fn open_process(process_info: &ProcessInfo) -> Result<OpenedProcessInfo, String> {
+    fn open_process(process_info: &ProcessInfo) -> Result<OpenedProcessInfo, ProcessQueryError> {
         Ok(OpenedProcessInfo {
             process_id: process_info.process_id,
             name: process_info.name.clone(),
@@ -194,7 +195,7 @@ impl ProcessQueryer for AndroidProcessQuery {
     }
 
     // Android has no concept of closing a process -- do nothing.
-    fn close_process(_handle: u64) -> Result<(), String> {
+    fn close_process(_handle: u64) -> Result<(), ProcessQueryError> {
         Ok(())
     }
 
