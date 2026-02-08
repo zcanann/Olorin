@@ -22,3 +22,5 @@ This file classifies the current crate-level public modules for `pr/api-contract
 - Internal modules remain `pub` today to avoid immediate breakage while migration is in progress.
 - Internal modules are marked `#[doc(hidden)]` to discourage new external usage.
 - Future steps can move internal modules to crate-private visibility once call sites are migrated.
+- `api::types::projects` is now narrowed to contract-safe project DTO modules; engine-coupled project item internals remain available only via `api::types::projects_legacy`.
+- `api::commands::stateless` currently includes `process` and `trackable_tasks` command DTOs that are intentionally free of CLI parsing derives.
