@@ -36,3 +36,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Re-themed `squalr-installer` UI to match `squalr` palette/layout (header, status card, log card, footer action row), added install-phase status messaging; `cargo test -p squalr-installer` passes.
 - 2026-02-08: Audited `squalr-installer` visuals against `squalr` theme references; no parity regressions found; `cargo test -p squalr-installer` passes.
 - 2026-02-08: Re-audited `pr/installer` with current tree; installer remains `eframe`-based with no installer-local regressions found; `cargo test -p squalr-installer` passes.
+- 2026-02-08: Re-ran installer task audit and validation; `cargo fmt --all` and `cargo test -p squalr-installer` pass; `cargo clippy -p squalr-installer --all-targets -- -D warnings` is blocked by pre-existing non-installer warnings/errors in `squalr-engine-api`.
