@@ -15,7 +15,7 @@ pub(crate) fn launch_app() {
             UpdateOperationLaunch::launch_app(&executable_path);
         }
         Err(error) => {
-            log::error!("Failed to resolve install directory: {}", error);
+            log::error!("Failed to resolve install directory: {error}");
         }
     }
 }
@@ -59,7 +59,7 @@ pub(crate) fn start_installer(
             AppInstaller::run_installation(install_directory, progress_tracker);
         }
         Err(error) => {
-            log::error!("Failed to resolve install directory: {}", error);
+            log::error!("Failed to resolve install directory: {error}");
         }
     }
 }

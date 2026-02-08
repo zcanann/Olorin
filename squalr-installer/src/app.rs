@@ -1,6 +1,6 @@
 use crate::installer_runtime::start_installer;
 use crate::theme::InstallerTheme;
-use crate::ui_assets::{InstallerIconLibrary, load_installer_icon_library};
+use crate::ui_assets::{load_installer_icon_library, InstallerIconLibrary};
 use crate::ui_state::InstallerUiState;
 use crate::views::main_window::installer_main_window_view::InstallerMainWindowView;
 use eframe::egui;
