@@ -13,6 +13,12 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
+- The installer log should look similar to the `output_view.rs` color / theme wise in `squalr`. This means the same background, same foreground. Right now it is black text, white bg. This is NOT how it should be.
+- The footer status text feels under-sized and looks like shit. Increase the font size of the footer status text.
+- The padding for the installer status/log are too intense compared to the borders in `squalr` / `main_window_view` -> docked windows. ie the space between the window edge, footer, title bar and the inner controls is much smaller. This means the installer should be updated to be consistent with squalr.
+- The corner radiuses on the inner installer status / installer log sections are far more intense than that of `squalr`. These should probably not be set at all for the internal items.
+- The title bar color, font, icon size, etc. look wrong compared to `squalr`. Right now its using OS default icons rather than a custom title bar and theme colors.
+
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
