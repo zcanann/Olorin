@@ -14,7 +14,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- (No open installer-local items. Continue periodic parity audits against `squalr` after future UI changes.)
+- The usage of context.request_repaint_after(Duration::from_millis(50)); is incredibly weird compared to how `app.rs` in squalr handles its rendering. `squalr-installer` should mirror the rendering process of `squalr` exactly.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
