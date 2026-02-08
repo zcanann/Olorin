@@ -49,3 +49,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Extracted installer log rendering into dedicated `installer_log_view.rs`.
 - Updated title-bar button hover/pressed states to match `squalr` tint overlays.
 - `cargo fmt --all` + `cargo test -p squalr-installer` pass; workspace still has pre-existing non-installer warnings + rustfmt `fn_args_layout` deprecation.
+- Re-verified on 2026-02-08: `cargo fmt --all -- --check` and `cargo test -p squalr-installer` both pass; non-installer warnings remain unchanged.
