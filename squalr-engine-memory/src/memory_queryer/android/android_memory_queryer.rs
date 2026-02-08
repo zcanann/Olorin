@@ -355,4 +355,3 @@ impl MemoryQueryerTrait for AndroidMemoryQueryer {
         0
     }
 }
-

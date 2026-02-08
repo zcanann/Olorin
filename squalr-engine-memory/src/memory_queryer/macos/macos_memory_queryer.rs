@@ -97,4 +97,3 @@ impl MemoryQueryerTrait for MacOsMemoryQueryer {
         0
     }
 }
-

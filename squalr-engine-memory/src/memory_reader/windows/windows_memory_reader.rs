@@ -87,4 +87,3 @@ impl MemoryReaderTrait for WindowsMemoryReader {
         }
     }
 }
-

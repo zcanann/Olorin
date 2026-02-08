@@ -8,4 +8,3 @@ pub trait MemoryWriterTrait {
         values: &[u8],
     ) -> bool;
 }
-

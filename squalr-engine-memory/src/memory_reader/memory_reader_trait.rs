@@ -22,4 +22,3 @@ pub trait MemoryReaderTrait {
         values: &mut [u8],
     ) -> bool;
 }
-

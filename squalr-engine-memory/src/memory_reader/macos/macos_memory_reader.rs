@@ -39,4 +39,3 @@ impl MemoryReaderTrait for MacOsMemoryReader {
         false
     }
 }
-

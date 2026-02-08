@@ -29,4 +29,3 @@ impl MemoryWriterTrait for MacOsMemoryWriter {
         Self::write_memory(process_info.get_handle(), address, values)
     }
 }
-

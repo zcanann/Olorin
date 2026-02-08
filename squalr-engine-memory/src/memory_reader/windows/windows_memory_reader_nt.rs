@@ -100,4 +100,3 @@ impl MemoryReaderTrait for WindowsMemoryReaderNt {
         }
     }
 }
-

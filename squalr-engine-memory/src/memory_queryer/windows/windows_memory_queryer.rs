@@ -325,4 +325,3 @@ impl MemoryQueryerTrait for WindowsMemoryQueryer {
         0
     }
 }
-

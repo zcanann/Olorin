@@ -87,6 +87,8 @@ Information discovered during iteration:
 - Privileged string conversion traits are now hosted in `squalr-engine-domain::traits` with a generic context type, and re-exported via `squalr-engine-api::traits` for compatibility.
 - Foundational struct-domain types `SymbolicStructRef` and `ValuedStructError` are now hosted in `squalr-engine-domain::structures::structs`, with compatibility preserved through `squalr-engine-api` module re-exports.
 - `ContainerType` and `AnonymousValueString` now live in `squalr-engine-domain::structures::data_values`, with compatibility preserved via `squalr-engine-api::structures::data_values` re-export modules.
+- `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` now live in `squalr-engine-domain::structures::data_types`, with compatibility preserved via `squalr-engine-api::structures::data_types` re-export modules.
+- `FloatingPointTolerance::get_value` now avoids unchecked unwraps and falls back to epsilon when conversion fails, aligning with the branch rule against panic-style failure paths.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -121,3 +123,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Moved foundational struct-domain types (`SymbolicStructRef`, `ValuedStructError`) into `squalr-engine-domain::structures::structs`, preserved API compatibility with re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Moved `AnonymousValueStringFormat` and format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain`, preserved API compatibility via re-exports in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Moved `ContainerType` and `AnonymousValueString` into `squalr-engine-domain::structures::data_values`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
+- 2026-02-08: Moved `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` into `squalr-engine-domain::structures::data_types`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.

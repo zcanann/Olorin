@@ -60,4 +60,3 @@ pub trait MemoryQueryerTrait {
         identifier: &str,
     ) -> u64;
 }
-

@@ -97,4 +97,3 @@ impl MemoryQueryerTrait for LinuxMemoryQueryer {
         0
     }
 }
-

@@ -39,4 +39,3 @@ impl MemoryWriterTrait for AndroidMemoryWriter {
         Self::write_memory(process_handle, address, values)
     }
 }
-
