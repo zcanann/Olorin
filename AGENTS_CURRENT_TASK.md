@@ -82,6 +82,7 @@ Information discovered during iteration:
 - Moving full `structures`/`registries`/`traits` directly into `squalr-engine-domain` currently fails due coupling to session-facing `engine` bindings through project item types (`EngineApiPrivilegedBindings` dependency), so migration should proceed in smaller decoupled slices.
 - Conversion core is now hosted in `squalr-engine-domain`, with compatibility preserved via re-exports in `squalr-engine-api::conversions`.
 - Privileged string conversion traits are now hosted in `squalr-engine-domain::traits` with a generic context type, and re-exported via `squalr-engine-api::traits` for compatibility.
+- Foundational struct-domain types `SymbolicStructRef` and `ValuedStructError` are now hosted in `squalr-engine-domain::structures::structs`, with compatibility preserved through `squalr-engine-api` module re-exports.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -113,3 +114,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Added scaffold crate `squalr-engine-domain` and wired it into workspace membership; validated with `cargo check -p squalr-engine-domain`.
 - 2026-02-08: Moved conversion core modules into `squalr-engine-domain`, re-exported them from `squalr-engine-api`, validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Moved privileged string conversion traits (`FromStringPrivileged`, `ToStringPrivileged`) into `squalr-engine-domain`, preserved API compatibility via re-exports, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
+- 2026-02-08: Moved foundational struct-domain types (`SymbolicStructRef`, `ValuedStructError`) into `squalr-engine-domain::structures::structs`, preserved API compatibility with re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
