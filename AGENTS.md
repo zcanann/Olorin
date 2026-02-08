@@ -51,6 +51,8 @@ We need deterministic tests for privileged executors that currently call static 
 
 ### Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 - Keep `scan_results add_to_project` coverage at contract-level only until project-item mutation hooks are implemented.
+- Add failure-path OS-behavior tests in `squalr-tests` (read/write/open failures) using existing mock toggles.
+- Add CI coverage for `cargo test -p squalr-tests`.
 
 ### Architecture Plan (Modify sparringly as new information is learned. Keep minimal and simple)
 - Phase 1: command parsing + request dispatch + typed response decode via engine API mocks. [done]
@@ -69,6 +71,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Added deterministic `scan_results set_property` OS-behavior tests for value writes and freeze/unfreeze toggling through injected providers.
 - `pr/unit-tests`: Fixed bool deanonymization for supported formats so `set_property is_frozen` decodes boolean payloads correctly.
 - `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (107 integration tests) and singleton usage under `scan_results` remains isolated to the intentional `add_to_project` stub path (`scan_results_add_to_project_request_executor`).
+- `pr/unit-tests`: Audited test framework on 2026-02-08 and recorded prioritized gaps in `audit.txt` (CI enforcement missing, failure-path depth gaps, `scan_results add_to_project` still stub-bound for behavior testing).
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
