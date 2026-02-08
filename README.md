@@ -234,7 +234,7 @@ Struct scans will be very challenging. Imagine scanning for {float} {float} {flo
 Our existing architecture is quite flexible, but this definitely requires a special scanner implementation, and it is highly unlikely to benefit from any of the rules engine optimizations.
 
 ## Detailed Tasklist
-This is a highly descriptive 
+This is a highly descriptive list of tasks to be implemented, with enough detail such that an agent should be able to audit the codebase and come up with a plan.
 
 ### Android Build
 Branch: `pr/android`
@@ -247,7 +247,7 @@ This will require a bit of a revival.
 ### TUI Build
 Branch: `pr/tui`
 
-Needs a full implementation of a TUI that behaves as similar to the GUI as possible where it makes sense, and perhaps like a CLI in other ways.
+Needs a full implementation of a TUI that behaves as similar to the GUI as possible where it makes sense, and perhaps like a CLI in other ways. Need to investigate TUI options, and which makes the most sense to use.
 
 ### Scan Commands
 Branch: `pr/scan-commands`
@@ -290,3 +290,12 @@ Pointer scans need to be implemented. The actual algorithm is too complex for an
 Branch: `pr/release-test`
 
 We need to orchestrate a full attempt at a v1.0.0 release to see how the process goes.
+
+### API Contract
+Branch: `pr/api-contract`
+
+We need to ensure that everything in squalr-api makes sense to be visible to the public. This is the universal interaction point between CLI, GUI, TUI, MCP, and anything that wants to use Squalr as a library.
+
+Additionally, it would be nice to evaluate whether it makes sense to move from session based (tracking state for open processes and the like) to completely API based. If API based, the state would need to be moved out of the engine and tracked by callers.
+
+In other words, this would mean that the API are the building blocks, invoking things is stateless (all context is passed by caller), any long term state is tracked by the app itself. This may be more feasible for expanding to MCP, where agents want to just be able to call things.
