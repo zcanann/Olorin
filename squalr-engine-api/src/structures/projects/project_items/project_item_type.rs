@@ -1,6 +1,6 @@
 use crate::registries::registries::Registries;
 use crate::structures::processes::opened_process_info::OpenedProcessInfo;
-use crate::{engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings, structures::projects::project_items::project_item_ref::ProjectItemRef};
+use crate::{engine::engine_api_privileged_bindings::EngineApiPrivilegedBindings, structures::projects::project_items::project_item_ref::ProjectItemRef};
 use std::sync::{Arc, RwLock};
 
 pub trait ProjectItemType: Send + Sync {

@@ -19,7 +19,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 - Inventory and classify all public `squalr-engine-api` modules/types into `public contract`, `internal`, and `transitional`.
 - Propose and implement a public prelude/namespace layout (`api::commands`, `api::events`, `api::types`) and stop exposing deep module trees by default.
 - Move engine-coupled abstractions out of contract-facing types where possible (`Registries`, `ProjectItemType`, singleton registries, and scan internals).
-- Replace misspelled `engine_api_priviliged_bindings` naming with a compatible migration path (`engine_api_privileged_bindings` + deprecation shim).
 - Separate `structopt` parsing concerns from API DTO definitions for request types.
 - Design and implement a stateless command prototype for one vertical slice (process open/list/close) to validate the migration model.
 - Add compatibility tests for serialization/deserialization of command/event payloads and typed response mapping.
@@ -42,6 +41,9 @@ Information found in initial audit:
 Information discovered during iteration:
 - `cargo check -p squalr-engine-api` passes but emits multiple warnings including TODO/JIRA placeholders and unfinished paths in API-exposed code.
 - `cargo check -p squalr-cli` passes, confirming current workspace remains buildable while contract issues are primarily architectural/boundary related.
+- Added `squalr-engine-api::engine::engine_api_privileged_bindings` as the corrected module and retained `engine_api_priviliged_bindings` as a deprecation shim re-export for compatibility.
+- Updated `squalr-engine-api` and `squalr-engine` call sites to import from `engine_api_privileged_bindings`.
+- `cargo check -p squalr-engine-api` and `cargo check -p squalr-engine` both pass after the migration (warnings unchanged and pre-existing).
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -52,3 +54,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 ### Concise Session Log
 Append logs for each session here. Compact redundency occasionally:
 - Audited README + API contract task scope, scanned `squalr-engine-api` public surface, validated compile health with `cargo check`, and produced staged plan for boundary hardening + stateless API migration.
+- Implemented `engine_api_priviliged_bindings` -> `engine_api_privileged_bindings` migration with a deprecated compatibility shim, updated engine/api imports, ran `cargo fmt`, then verified with `cargo check -p squalr-engine-api` and `cargo check -p squalr-engine`.

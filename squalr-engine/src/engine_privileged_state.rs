@@ -5,7 +5,7 @@ use crate::engine_mode::EngineMode;
 use crate::os::engine_os_provider::EngineOsProviders;
 use crate::tasks::trackable_task_manager::TrackableTaskManager;
 use crossbeam_channel::Receiver;
-use squalr_engine_api::engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings;
+use squalr_engine_api::engine::engine_api_privileged_bindings::EngineApiPrivilegedBindings;
 use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
 use squalr_engine_api::events::engine_event::{EngineEvent, EngineEventRequest};
 use squalr_engine_api::registries::freeze_list::freeze_list_registry::FreezeListRegistry;

@@ -1,4 +1,4 @@
-use crate::engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings;
+use crate::engine::engine_api_privileged_bindings::EngineApiPrivilegedBindings;
 use crate::registries::registries::Registries;
 use crate::structures::projects::project_items::project_item_ref::ProjectItemRef;
 use crate::structures::{

@@ -7,7 +7,7 @@ use crossbeam_channel::Receiver;
 use crossbeam_channel::Sender;
 use squalr_engine_api::commands::privileged_command::PrivilegedCommand;
 use squalr_engine_api::commands::privileged_command_response::PrivilegedCommandResponse;
-use squalr_engine_api::engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings;
+use squalr_engine_api::engine::engine_api_privileged_bindings::EngineApiPrivilegedBindings;
 use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
 use squalr_engine_api::events::engine_event::EngineEvent;
 use std::collections::HashMap;
