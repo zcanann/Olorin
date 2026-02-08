@@ -5,3 +5,8 @@ authors = ["Zachary Canann"]
 edition = "2024"
 
 [dependencies]
+squalr-engine-api = { path = "../squalr-engine-api" }
+anyhow = "1.0.101"
+dirs = "6.0.0"
+log = "0.4.29"
+log4rs = "1.4.0"

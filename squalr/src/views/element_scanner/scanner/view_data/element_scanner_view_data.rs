@@ -10,7 +10,6 @@ use squalr_engine_api::{
         },
     },
     dependency_injection::dependency::Dependency,
-    engine::engine_unprivileged_state::EngineUnprivilegedState,
     structures::{
         data_types::{built_in_types::i32::data_type_i32::DataTypeI32, data_type_ref::DataTypeRef},
         data_values::anonymous_value_string_format::AnonymousValueStringFormat,
@@ -20,6 +19,7 @@ use squalr_engine_api::{
         },
     },
 };
+use squalr_engine_session::engine_unprivileged_state::EngineUnprivilegedState;
 use std::sync::Arc;
 
 #[derive(Clone)]

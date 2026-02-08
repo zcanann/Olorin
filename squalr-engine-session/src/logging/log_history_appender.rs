@@ -1,6 +1,6 @@
-use crate::structures::logging::log_event::LogEvent;
 use log::Record;
 use log4rs::append::Append;
+use squalr_engine_api::structures::logging::log_event::LogEvent;
 use std::{
     collections::VecDeque,
     fmt,

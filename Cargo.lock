@@ -5608,6 +5608,7 @@ dependencies = [
  "smallvec",
  "squalr-engine",
  "squalr-engine-api",
+ "squalr-engine-session",
  "wasm-bindgen",
  "winresource",
 ]
@@ -5642,6 +5643,7 @@ dependencies = [
  "shlex",
  "squalr-engine",
  "squalr-engine-api",
+ "squalr-engine-session",
  "structopt",
 ]
 
@@ -5668,6 +5670,7 @@ dependencies = [
  "squalr-engine-processes",
  "squalr-engine-projects",
  "squalr-engine-scanning",
+ "squalr-engine-session",
  "structopt",
  "sysinfo",
  "tempfile",
@@ -5688,11 +5691,9 @@ dependencies = [
  "bus",
  "crossbeam-channel",
  "directories",
- "dirs",
  "encoding",
  "encoding_rs",
  "log",
- "log4rs",
  "notify",
  "num-traits",
  "rayon",
@@ -5783,6 +5784,13 @@ dependencies = [
 [[package]]
 name = "squalr-engine-session"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dirs",
+ "log",
+ "log4rs",
+ "squalr-engine-api",
+]
 
 [[package]]
 name = "squalr-installer"
@@ -5806,6 +5814,7 @@ dependencies = [
  "squalr-engine-api",
  "squalr-engine-memory",
  "squalr-engine-processes",
+ "squalr-engine-session",
  "structopt",
 ]
 

@@ -1,10 +1,11 @@
-use crate::{engine::logging::log_history_appender::LogHistoryAppender, structures::logging::log_event::LogEvent};
+use crate::logging::log_history_appender::LogHistoryAppender;
 use log::LevelFilter;
 use log4rs::{
     append::{console::ConsoleAppender, file::FileAppender},
     config::{Appender, Config, Root},
     encode::pattern::PatternEncoder,
 };
+use squalr_engine_api::structures::logging::log_event::LogEvent;
 use std::{
     collections::VecDeque,
     fs,

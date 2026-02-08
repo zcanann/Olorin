@@ -45,7 +45,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Move privileged string conversion traits into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Create scaffold crate `squalr-engine-session` and add it to workspace membership for incremental state migration.
-- [ ] Move session/state orchestration into `squalr-engine-session` (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
+- [x] Move session/state orchestration into `squalr-engine-session` (`EngineUnprivilegedState`, event routing, log dispatch, and project manager ownership moved out of `squalr-engine-api`).
 - [ ] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
 - [ ] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
 - [ ] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
@@ -74,7 +74,7 @@ Information discovered during iteration:
   - domain/structops: `structures/data_types/*`, `structures/structs/*`, registries;
   - protocol/messaging: `commands/*`, `events/*`.
 - `squalr-engine-api` currently requires nightly SIMD (`#![feature(portable_simd)]`), which is a red flag for a pure messaging contract crate.
-- `UnprivilegedCommandRequest` is coupled to session state (`EngineUnprivilegedState`) instead of pure transport contracts.
+- `UnprivilegedCommandRequest` and `EngineApiUnprivilegedBindings` were previously coupled to concrete `EngineUnprivilegedState`; now they target `EngineExecutionContext` trait abstraction.
 - `squalr-engine-api` is depended on by most crates but is not listed as a workspace member, increasing boundary drift risk during this refactor.
 - `squalr-engine-api` `Cargo.toml` currently pulls in session/domain-heavy deps (`sysinfo`, `rayon`, `notify`, `structopt`, etc), confirming it is not yet contract-only.
 - `squalr-engine-processes` and `squalr-engine-memory` are no longer target end-state crates; their responsibilities consolidate into `squalr-operating-system`.
@@ -91,6 +91,9 @@ Information discovered during iteration:
 - `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` now live in `squalr-engine-domain::structures::data_types`, with compatibility preserved via `squalr-engine-api::structures::data_types` re-export modules.
 - `FloatingPointTolerance::get_value` now avoids unchecked unwraps and falls back to epsilon when conversion fails, aligning with the branch rule against panic-style failure paths.
 - Root `Cargo.toml` workspace members now include `squalr-engine-session`, with initial scaffold crate wiring in place for incremental session-orchestration migration.
+- Session orchestration concrete type `EngineUnprivilegedState` and logging types (`LogDispatcher`, `LogHistoryAppender`) now live in `squalr-engine-session`; `squalr-engine-api` no longer contains `engine_unprivileged_state` or engine logging modules.
+- Introduced `squalr-engine-api::engine::engine_execution_context::EngineExecutionContext` so API command/binding traits depend on context capabilities instead of concrete session type.
+- Updated consumers (`squalr-engine`, `squalr`, `squalr-cli`, `squalr-tests`) to depend on `squalr-engine-session` for concrete unprivileged state access.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -127,3 +130,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Moved `ContainerType` and `AnonymousValueString` into `squalr-engine-domain::structures::data_values`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Moved `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` into `squalr-engine-domain::structures::data_types`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Added scaffold crate `squalr-engine-session`, wired it into root workspace members, and validated with `cargo check -p squalr-engine-session`.
+- 2026-02-08: Migrated `EngineUnprivilegedState` and engine logging implementation from `squalr-engine-api` into `squalr-engine-session`; introduced `EngineExecutionContext` abstraction in API traits to avoid crate cycles; rewired engine/cli/gui/tests imports and validated with `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine-session`, `cargo check -p squalr-engine`, `cargo check -p squalr-cli`, `cargo check -p squalr-tests`, `cargo test -p squalr-engine-session`, and `cargo test -p squalr-tests --no-run`.

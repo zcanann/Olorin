@@ -9,7 +9,7 @@ use crate::{
 };
 use squalr_engine_api::dependency_injection::dependency_container::DependencyContainer;
 use squalr_engine_api::engine::engine_api_unprivileged_bindings::EngineApiUnprivilegedBindings;
-use squalr_engine_api::engine::engine_unprivileged_state::EngineUnprivilegedState;
+use squalr_engine_session::engine_unprivileged_state::EngineUnprivilegedState;
 use std::sync::{Arc, RwLock};
 
 /// Orchestrates commands and responses to and from the engine.
