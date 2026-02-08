@@ -8,17 +8,18 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ----------------------
 
 - Restore SIMD scan compilation on latest nightly by removing obsolete lane-bound API usage (`LaneCount`/`SupportedLaneCount`) and preserving current scanner behavior/performance.
-- Keep SIMD abstraction centralized in existing generic/scanning helper modules to avoid scattering nightly-specific compatibility logic.
+- Keep SIMD abstraction centralized in existing generic/scanning helper modules via a local marker type (`VectorLaneCount<const N: usize>`) for 16/32/64 dispatch.
 - Validate fixes in `squalr-engine-api` first (the root blocker), then re-run workspace checks to surface and handle downstream regressions in dependency order.
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- [ ] Replace `std::simd::{LaneCount, SupportedLaneCount}` imports/usages across the 12 affected files in `squalr-engine-api` with current nightly-compatible constraints/types.
-- [ ] Refactor generic trait bounds and impl targets that currently depend on `LaneCount<N>` (notably vector comparer/function dispatch) to bind directly on usable SIMD generics.
-- [ ] Rebuild `squalr-engine-api` (`cargo check -p squalr-engine-api`) and resolve any second-order type errors caused by bound refactors.
-- [ ] Re-run `cargo check --workspace` and capture any additional nightly regressions beyond the initial SIMD lane-count break.
-- [ ] Add/adjust targeted tests for SIMD comparison path coverage if behavior-affecting refactors are required.
+- [x] Replace `std::simd::{LaneCount, SupportedLaneCount}` imports/usages across the 12 affected files in `squalr-engine-api` with current nightly-compatible constraints/types.
+- [x] Refactor generic trait bounds and impl targets that currently depend on `LaneCount<N>` (notably vector comparer/function dispatch) to bind directly on usable SIMD generics.
+- [x] Rebuild `squalr-engine-api` (`cargo check -p squalr-engine-api`) and resolve second-order type errors caused by bound refactors.
+- [x] Re-run `cargo check --workspace` and capture additional nightly regressions beyond the initial SIMD lane-count break.
+- [x] Resolve additional lane-count regressions in `squalr-engine-scanning` vector scanners (5 files).
+- [ ] Decide scope for existing `squalr-android` workspace failures (non-SIMD; missing `squalr_gui`, Android-only `slint::android`, include_bytes path, stale API call).
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -44,15 +45,20 @@ INITIAL AUDIT:
 - Quick compiler probes confirm `std::simd::Simd<T, N>` compiles on current nightly without lane-count bounds, indicating obsolete constraint plumbing rather than import-path-only breakage.
 
 Information discovered during iteration:
-- 
+- Implemented `VectorLaneCount<const N: usize>` marker in `squalr-engine-api` and replaced former `LaneCount`-based dispatch/bounds in symbol registry, scan constraints/plans, vector comparers/functions, and SIMD comparison helpers.
+- `cargo check -p squalr-engine-api` now succeeds on nightly.
+- Additional nightly SIMD regressions surfaced in `squalr-engine-scanning` (5 vector scanner files); fixed by switching bounds/imports to `VectorLaneCount`.
+- `cargo check --workspace` now fails only in `squalr-android` due to pre-existing platform/configuration issues unrelated to lane-count API removal.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
 
 - First unblock `squalr-engine-api`; entire workspace build is blocked there.
 - Use a phased refactor: generic helpers first, then scanner/registry callsites.
-- Expect cascading trait-bound mismatches immediately after lane-bound removal; handle centrally.
+- SIMD lane-count migration is complete for `squalr-engine-api` and `squalr-engine-scanning`.
+- Remaining workspace blocker is `squalr-android` configuration/API drift.
 
 ### Concise Session Log
 Append logs for each session here. Compact redundency occasionally:
 - 2026-02-08: Audited nightly-upgrade breakages. `cargo check --workspace` and `cargo check -p squalr-engine-api` fail with 12 `E0432` errors caused by removed `std::simd::LaneCount`/`SupportedLaneCount`. Captured affected files and staged a remediation plan; no implementation changes yet.
+- 2026-02-08: Migrated SIMD lane-count plumbing from removed `std::simd::{LaneCount, SupportedLaneCount}` to local `VectorLaneCount` dispatch in `squalr-engine-api`; updated downstream `squalr-engine-scanning` vector scanners. Verified `cargo check -p squalr-engine-api` passes. `cargo check --workspace` progresses past SIMD blockers and now fails in `squalr-android` for unrelated Android-specific issues.
