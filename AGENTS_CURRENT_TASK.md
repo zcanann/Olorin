@@ -13,13 +13,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
-
-- `installer_main_window_view.rs` needs to be modularized a bit more. A distinct log control should be made (much how `squalr` has `output_view.rs`).
-- The window currently renders with a harsh white border instead of transparency, despite having `clear_color` set up exactly like `squalr`. Somehow, `squalr` does render the transparent border correctly, meaning that the installer is set up wrong in some fundamental way for rendering.
-- the installer has the wrong app icon in the title bar, We should use the one from `squalr`.
-- The title bar buttons have no mouse over state.
-- We should not be using egui's buttons, but instead our own custom button control (why not just import this from `squalr` too...)
-- `installer_title_bar_view.rs` should be very similar to `main_title_bar_view.rs`
+- No remaining tangible installer checklist items are currently open. Continue routine audit + validation passes.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -40,6 +34,7 @@ Important information discovered during work about the current state of the task
 - Installer transparency now matches `squalr` behavior via `ViewportBuilder::with_transparent(true)` and transparent app clear color.
 - Installer log-buffer unit tests are no longer in `main.rs`; they now live in `src/logging.rs`.
 - Installer repaint flow is now event-driven (log/progress updates call `Context::request_repaint`) instead of a fixed `request_repaint_after` polling loop, matching `squalr`'s render/update pattern more closely.
+- Installer title-bar window controls now use a dedicated custom widget (`src/views/main_window/title_bar_button.rs`) with explicit hover/pressed visuals instead of raw `egui::Button`, keeping parity with `squalr` title-bar behavior.
 
 ## Agent Scratchpad and Notes
 Smaller notes should go here, and can be erased and compacted as needed during iteration.
@@ -81,3 +76,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Re-ran pr/installer AGENTS maintenance workflow per request; installer crate audit remains clean (no panic-style unwrap, dead helpers, or unused imports in squalr-installer), cargo fmt --all -- --check and cargo test -p squalr-installer pass; workspace still emits pre-existing non-installer warnings plus rustfmt n_args_layout deprecation warnings.
 - 2026-02-08: Re-ran `pr/installer` AGENTS maintenance workflow per request; installer crate audit remains clean (no panic-style `unwrap`, dead helpers, or unused imports in `squalr-installer`), `cargo fmt --all` and `cargo test -p squalr-installer` pass; workspace still emits pre-existing non-installer warnings plus rustfmt `fn_args_layout` deprecation warnings.
 - 2026-02-08: Re-ran `pr/installer` AGENTS workflow per request; installer crate audit remains clean (no panic-style `unwrap`, dead helpers, or unused imports in `squalr-installer`), `cargo fmt --all` and `cargo test -p squalr-installer` pass; workspace still emits pre-existing non-installer warnings plus rustfmt `fn_args_layout` deprecation warnings.
+- 2026-02-08: Completed title-bar control parity cleanup for `pr/installer`: replaced raw `egui::Button` title-bar window controls with reusable `title_bar_button` widget (hover/pressed visuals), updated tasklist to empty, and revalidated with `cargo fmt --all` + `cargo test -p squalr-installer` (passes; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).

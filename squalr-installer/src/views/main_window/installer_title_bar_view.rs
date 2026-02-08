@@ -1,5 +1,6 @@
 use crate::theme::InstallerTheme;
 use crate::ui_assets::{APP_NAME, InstallerIconLibrary, draw_icon};
+use crate::views::main_window::title_bar_button::TitleBarButton;
 use eframe::egui::viewport::ViewportCommand;
 use eframe::egui::{Align, CornerRadius, Id, Layout, Rect, Response, RichText, Sense, Ui, Widget, pos2};
 
@@ -72,7 +73,7 @@ impl Widget for InstallerTitleBarView {
         title_bar_user_interface.with_layout(Layout::right_to_left(Align::Center), |window_controls_user_interface| {
             let button_size = eframe::egui::vec2(36.0, self.installer_theme.title_bar_height);
 
-            let close_button_response = window_controls_user_interface.add_sized(button_size, eframe::egui::Button::new("").frame(false));
+            let close_button_response = window_controls_user_interface.add_sized(button_size, TitleBarButton::new(self.installer_theme.clone()));
             if let Some(installer_icon_library) = &self.installer_icon_library {
                 draw_icon(window_controls_user_interface, close_button_response.rect, &installer_icon_library.close);
             }
@@ -80,7 +81,7 @@ impl Widget for InstallerTitleBarView {
                 context.send_viewport_cmd(ViewportCommand::Close);
             }
 
-            let maximize_button_response = window_controls_user_interface.add_sized(button_size, eframe::egui::Button::new("").frame(false));
+            let maximize_button_response = window_controls_user_interface.add_sized(button_size, TitleBarButton::new(self.installer_theme.clone()));
             if let Some(installer_icon_library) = &self.installer_icon_library {
                 draw_icon(window_controls_user_interface, maximize_button_response.rect, &installer_icon_library.maximize);
             }
@@ -89,7 +90,7 @@ impl Widget for InstallerTitleBarView {
                 context.send_viewport_cmd(ViewportCommand::Maximized(!viewport_maximized));
             }
 
-            let minimize_button_response = window_controls_user_interface.add_sized(button_size, eframe::egui::Button::new("").frame(false));
+            let minimize_button_response = window_controls_user_interface.add_sized(button_size, TitleBarButton::new(self.installer_theme.clone()));
             if let Some(installer_icon_library) = &self.installer_icon_library {
                 draw_icon(window_controls_user_interface, minimize_button_response.rect, &installer_icon_library.minimize);
             }
