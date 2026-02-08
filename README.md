@@ -272,28 +272,56 @@ Branch: `pr/engine-refactor`
 Goal: make the public API sane, and make the engine truly stateless + reusable.
 
 #### Hard decisions (do not bikeshed in this branch)
-- **`squalr-engine` is pure compute.** It does scans, rules, snapshot merge logic (given read results), filter RLE, pagination math. Possibly fold squalr-engine-scanning into this, as the existing logic in squalr-engine will likely be moved to runtime.
+- **`squalr-engine` is pure compute.** It does scans, rules, snapshot merge logic (given read results), filter RLE, pagination math. Possibly fold `squalr-engine-scanning` into this, as the existing logic in `squalr-engine` will likely be moved to runtime.
   **No OS calls. No persistent state. No task handles.**
-- **OS integration is not "engine."** Process enumeration, open/close handles, region/module enumeration, read/write memory, icons, bitness, permissions, IPC transport — this all lives under **`squalr-os*`** (name TBD, but it is explicitly *operating-system layer*).
-- **Interactive state lives in a state shim** (name TBD, but think `squalr-runtime`):
+- **OS integration is not "engine."** Process enumeration, open/close handles, region/module enumeration, read/write memory, icons, bitness, permissions, IPC transport all live under **`squalr-os*`** (name TBD, but it is explicitly *operating-system layer*).
+- **Interactive state lives in a state shim** (name TBD, think `squalr-runtime`):
   - caches (process/icon cache, snapshot buffers, filter sets)
   - monitoring loops
   - projects/freezes
-  - progress/cancel if we want it
+  - progress/cancel
   This shim is compiled into GUI/TUI/interactive CLI and links to the engine directly (no IPC hop).
 
-#### IPC rule (don’t shoot ourselves in the foot)
+#### IPC rule (do not shoot ourselves in the foot)
 - In IPC/privileged mode, **do not ship multi-GB snapshots over IPC**.
 - Prefer: privileged side reads memory and (optionally) runs scans close to memory, returning **compressed filter results + metadata**. UI asks for specific values on-demand, as is currently the case.
 
 #### CLI modes
-- **One-shot CLI**: blocking, "grep-like", no interactive state.
+- **One-shot CLI**: blocking, grep-like, no interactive state.
 - **Interactive CLI/TUI/GUI**: uses the state shim (stateful), engine stays blocking/stateless.
-Undecided: are these separate binaries? boot arg for interactive mode?
+Undecided: separate binaries vs boot arg for interactive mode.
 
 #### Plugin/registry scope
-- This branch should not attempt "full registry sync" or a marketplace.
-- Just ensure we don’t rely on global singleton registries leaking across boundaries. Any real sync work is a later branch.
+- This branch should not attempt full registry sync or a marketplace.
+- Just ensure we do not rely on global singleton registries leaking across boundaries. Any real sync work is a later branch.
+
+#### Audit snapshot (2026-02-08)
+- `squalr-engine` is currently a mixed layer: it directly depends on OS crates (`squalr-engine-memory`, `squalr-engine-processes`), stateful services (`squalr-engine-projects`), compute (`squalr-engine-scanning`), and app/update concerns.
+- `squalr-engine-scanning` is not pure compute yet because it depends on memory readers/writers from `squalr-engine-memory` and creates `TrackableTask`s.
+- `squalr-engine-api` is not contract-only yet; it currently contains runtime/session behavior (`src/engine/engine_unprivileged_state.rs`, bindings, log dispatch wiring, project manager ownership).
+- OS crates currently own long-lived global state in multiple platforms (`PROCESS_CACHE`, monitor singletons), which conflicts with runtime-owned state direction.
+- Scan/collect response types expose optional `TrackableTaskHandle`, which blocks a clean blocking/stateless engine API.
+
+#### Execution order for this branch
+1. **Freeze boundary decisions + naming.**
+Define final crate names and ownership (engine vs OS vs runtime) before moving code.
+2. **Contract-first cleanup in `squalr-engine-api`.**
+Keep only shared protocol/types; move unprivileged runtime/session logic to the runtime shim crate.
+3. **Separate pure compute from orchestration.**
+Move scan compute/RLE/pagination/snapshot-merge math into `squalr-engine`; move task/progress orchestration out.
+4. **Create runtime shim and move state there.**
+Runtime owns process selection, snapshots, caches/monitors, projects, and progress/cancel.
+5. **Refactor OS crates to primitives-only.**
+OS crates expose immediate process/memory/transport operations; no global caches/monitors.
+6. **Rewire binaries by mode.**
+One-shot CLI stays blocking/stateless; GUI/TUI/interactive CLI link runtime+engine directly; IPC mode keeps large memory local to privileged side.
+
+#### Definition of done for `pr/engine-refactor`
+- `squalr-engine` has no OS dependencies and no long-lived mutable state.
+- OS crates have no process/icon/global cache singletons and no monitoring loops.
+- Task handles/progress are runtime concerns, not engine compute API concerns.
+- `squalr-engine-api` is a clean contract/protocol crate without runtime session ownership.
+- IPC data flow keeps snapshots local and returns compressed scan/filter metadata plus on-demand value reads.
 
 ### Engine Event Hooks
 Branch: `pr/engine-event-hooks`
