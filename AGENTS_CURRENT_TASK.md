@@ -19,7 +19,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 - [x] Rebuild `squalr-engine-api` (`cargo check -p squalr-engine-api`) and resolve second-order type errors caused by bound refactors.
 - [x] Re-run `cargo check --workspace` and capture additional nightly regressions beyond the initial SIMD lane-count break.
 - [x] Resolve additional lane-count regressions in `squalr-engine-scanning` vector scanners (5 files).
-- [ ] Decide scope for existing `squalr-android` workspace failures (non-SIMD; missing `squalr_gui`, Android-only `slint::android`, include_bytes path, stale API call).
+- [x] Decide scope for existing `squalr-android` workspace failures (non-SIMD; missing `squalr_gui`, Android-only `slint::android`, include_bytes path, stale API call).
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -49,6 +49,8 @@ Information discovered during iteration:
 - `cargo check -p squalr-engine-api` now succeeds on nightly.
 - Additional nightly SIMD regressions surfaced in `squalr-engine-scanning` (5 vector scanner files); fixed by switching bounds/imports to `VectorLaneCount`.
 - `cargo check --workspace` now fails only in `squalr-android` due to pre-existing platform/configuration issues unrelated to lane-count API removal.
+- Scope decision (2026-02-08): treat current `squalr-android` failures as out-of-scope for `pr/nightly-upgrade`; they map to `README.md`'s Android revival task (`pr/android`) and require Android target/build-path/API alignment rather than nightly SIMD migration work.
+- Validation for this branch should use `cargo check --workspace --exclude squalr-android` plus targeted crate checks until `pr/android` addresses Android build drift.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -62,3 +64,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 Append logs for each session here. Compact redundency occasionally:
 - 2026-02-08: Audited nightly-upgrade breakages. `cargo check --workspace` and `cargo check -p squalr-engine-api` fail with 12 `E0432` errors caused by removed `std::simd::LaneCount`/`SupportedLaneCount`. Captured affected files and staged a remediation plan; no implementation changes yet.
 - 2026-02-08: Migrated SIMD lane-count plumbing from removed `std::simd::{LaneCount, SupportedLaneCount}` to local `VectorLaneCount` dispatch in `squalr-engine-api`; updated downstream `squalr-engine-scanning` vector scanners. Verified `cargo check -p squalr-engine-api` passes. `cargo check --workspace` progresses past SIMD blockers and now fails in `squalr-android` for unrelated Android-specific issues.
+- 2026-02-08: Re-ran `cargo check --workspace`; confirmed only `squalr-android` errors remain (`squalr_gui` unresolved, `slint::android` cfg-gated on non-Android host, broken `include_bytes!` output path, stale `SqualrEngine` API call). Formally scoped these to `pr/android` and finalized nightly-upgrade validation plan as workspace check excluding Android.
