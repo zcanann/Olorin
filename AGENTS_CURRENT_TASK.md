@@ -16,15 +16,15 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
   Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
 - [x] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
   Files: `squalr-engine/src/engine_bindings/interprocess/**`, `squalr-engine/src/engine_bindings/standalone/**`.
-- [ ] Replace `Result<_, String>` in snapshot region memory reader with typed scan I/O errors.
+- [x] Replace `Result<_, String>` in snapshot region memory reader with typed scan I/O errors.
   File: `squalr-engine-scanning/src/scanners/snapshot_region_memory_reader.rs`.
 - [x] Replace runtime `unwrap()` in non-test crates with safe handling (`Result` propagation, guarded fallback, or structured log and early return).
   Initial files: `squalr-tui/src/main.rs`, `squalr-cli/src/main.rs`, `squalr/src/views/struct_viewer/struct_viewer_entry_view.rs`, `squalr-engine-api/src/structures/tasks/trackable_task.rs`, `squalr-engine-processes/src/process_query/android/android_process_query.rs`, `squalr-engine-api/src/structures/results/snapshot_region_scan_results.rs`.
 - [x] Replace runtime `panic!` in app entrypoints with error returns and consistent startup failure reporting.
   Initial files: `squalr/src/main.rs`, `squalr-cli/src/main.rs`, `squalr-tui/src/main.rs`, `squalr-android/src/lib.rs`.
-- [ ] Update API response payloads that currently embed `Result<T, String>` where appropriate to use typed serializable error payloads.
+- [x] Update API response payloads that currently embed `Result<T, String>` where appropriate to use typed serializable error payloads.
   Initial files: `squalr-engine-api/src/commands/settings/*/list/*_response.rs`.
-- [ ] Add focused tests for new error conversions and propagation (process query + IPC + scan memory reader), and keep panic-based test assertions only in tests.
+- [x] Add focused tests for new error conversions and propagation (process query + IPC + scan memory reader), and keep panic-based test assertions only in tests.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -50,6 +50,9 @@ Discovered during iteration:
 - Added focused unit tests for process-query typed error formatting/constructor behavior in `squalr-engine-processes/src/process_query/process_query_error.rs`.
 - Engine binding traits now use typed `EngineBindingError` instead of `Result<_, String>`, with interprocess pipe-specific `InterprocessPipeError` preserving operation context + source error chaining.
 - Added focused unit tests for `EngineBindingError` constructor/display behavior in `squalr-engine-api/src/engine/engine_binding_error.rs`.
+- Snapshot region memory reads now return typed `SnapshotRegionMemoryReadError` values (including chunk-first-failure context) while preserving tombstone behavior for failed read addresses.
+- Settings list response payloads (`general/memory/scan`) now use typed serializable `SettingsError` instead of `String`, and engine list executors now emit scope-specific typed read failures.
+- Added focused unit tests for `SnapshotRegionMemoryReadError` and `SettingsError`, and updated settings command tests to exercise typed settings-list error payloads end-to-end.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -67,4 +70,7 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Ran `cargo fmt`, `cargo test -p squalr-engine-processes`, and `cargo check -p squalr-engine -p squalr-tests`.
 - Replaced `Result<_, String>` in interprocess/standalone engine bindings with typed errors (`EngineBindingError`, `InterprocessPipeError`) and propagated signatures through engine-api + tests.
 - Ran `cargo fmt`, `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine`, `cargo check -p squalr-tests`, `cargo test -p squalr-engine-api engine_binding_error`, and `cargo test -p squalr-tests`.
+- Replaced snapshot region memory reader `Result<_, String>` signatures with typed `SnapshotRegionMemoryReadError` and added structured failure propagation.
+- Replaced settings list response payloads from `Result<T, String>` to `Result<T, SettingsError>` and updated command executors/tests.
+- Ran `cargo fmt`, `cargo test -p squalr-engine-scanning snapshot_region_memory_read_error`, `cargo test -p squalr-engine-api settings_error`, `cargo check -p squalr-engine -p squalr-cli -p squalr-engine-scanning`, and `cargo test -p squalr-tests --test settings_command_tests`.
 

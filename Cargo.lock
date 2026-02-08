@@ -6030,6 +6030,7 @@ dependencies = [
  "squalr-engine-api",
  "squalr-engine-memory",
  "sysinfo",
+ "thiserror 2.0.16",
 ]
 
 [[package]]
