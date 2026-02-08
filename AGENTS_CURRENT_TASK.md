@@ -107,3 +107,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Re-ran `cargo test -p squalr-engine` and `cargo test -p squalr-tests` on 2026-02-08; both passed again with only existing warning-only diagnostics.
 - Completed owner follow-up fixes on 2026-02-08: installer fatal startup paths now panic (no log-and-continue), `project_manager` watch failures use `log::error!`, and `rg -n 'eprintln!' -g '*.rs'` returns no matches.
 - Ran `cargo fmt`, `cargo check -p squalr-installer`, and `cargo test -p squalr-engine-api` on 2026-02-08 (passing; existing warning-only diagnostics unchanged).
+- Re-validated on 2026-02-08 with startup/error-handling guardrail audit: `rg -n "Result<[^\\n>]*,\\s*String>" --glob "*.rs"` and `rg -n "eprintln!" --glob "*.rs"` returned no matches; `panic!` remains confined to tests plus intentional Android/installer fatal-startup paths.
+- Re-ran `cargo test -p squalr-engine`, `cargo test -p squalr-tests`, and `cargo check -p squalr-installer` on 2026-02-08; all passed with only existing warning-only diagnostics.
