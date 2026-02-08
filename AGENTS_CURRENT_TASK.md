@@ -39,7 +39,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
 
-- [ ] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
+- [x] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
 - [ ] Create `squalr-engine-domain` and move domain semantics from `squalr-engine-api` there (`structures/data_types/*`, `structures/structs/*`, registries, privileged string conversion traits, conversions).
 - [ ] Create `squalr-engine-session` and move session/state orchestration there (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
 - [ ] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
@@ -74,6 +74,7 @@ Information discovered during iteration:
 - `squalr-engine-api` is depended on by most crates but is not listed as a workspace member, increasing boundary drift risk during this refactor.
 - `squalr-engine-api` `Cargo.toml` currently pulls in session/domain-heavy deps (`sysinfo`, `rayon`, `notify`, `structopt`, etc), confirming it is not yet contract-only.
 - `squalr-engine-processes` and `squalr-engine-memory` are no longer target end-state crates; their responsibilities consolidate into `squalr-operating-system`.
+- Root `Cargo.toml` workspace members now include `squalr-engine-api`, and targeted workspace wiring check passes via `cargo check -p squalr-engine-api`.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -100,3 +101,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Audited `squalr-engine-api` composition and confirmed naming confusion source; documented recommendation to separate messaging contracts from struct/data operations while keeping a single public API concept.
 - 2026-02-08: Converted owner TBDs into final branch decisions; locked crate naming (`squalr-engine-session`, internal domain crate), clarified "one public API + one internal domain crate", and updated task ordering accordingly.
 - 2026-02-08: Clarified naming for first-time readability (`squalr-engine-domain` replacing ambiguous `squalr-engine-structops`) and updated migration plan to consolidate OS work into `squalr-operating-system`.
+- 2026-02-08: Added `squalr-engine-api` to root workspace members and validated with `cargo check -p squalr-engine-api`.
