@@ -1,0 +1,1 @@
+pub mod anonymous_value_string_format;

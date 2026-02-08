@@ -11,9 +11,9 @@ impl ConversionsFromDecimal {
         to_anonymous_value_string_format: AnonymousValueStringFormat,
     ) -> Result<String, ConversionError> {
         match to_anonymous_value_string_format {
-            AnonymousValueStringFormat::Binary => Self::convert_to_binary(&decimal_string_to_convert),
-            AnonymousValueStringFormat::Hexadecimal => Self::convert_to_hexadecimal(&decimal_string_to_convert),
-            AnonymousValueStringFormat::Address => Self::convert_to_address(&decimal_string_to_convert),
+            AnonymousValueStringFormat::Binary => Self::convert_to_binary(decimal_string_to_convert),
+            AnonymousValueStringFormat::Hexadecimal => Self::convert_to_hexadecimal(decimal_string_to_convert),
+            AnonymousValueStringFormat::Address => Self::convert_to_address(decimal_string_to_convert),
             _ => Err(ConversionError::UnsupportedConversion),
         }
     }
