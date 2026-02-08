@@ -5719,37 +5719,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "squalr-engine-memory"
-version = "0.1.1"
-dependencies = [
- "bitflags 2.10.0",
- "libc",
- "log",
- "serde",
- "serde_json",
- "squalr-engine-api",
- "sysinfo",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "squalr-engine-processes"
-version = "0.1.1"
-dependencies = [
- "image",
- "log",
- "once_cell",
- "rayon",
- "regex",
- "serde",
- "squalr-engine-api",
- "sysinfo",
- "thiserror 2.0.18",
- "windows-sys 0.61.2",
- "zip",
-]
-
-[[package]]
 name = "squalr-engine-projects"
 version = "0.1.1"
 dependencies = [

@@ -8,8 +8,6 @@ members = [
     "squalr-engine-session",
     "squalr-operating-system",
     "squalr-engine",
-    "squalr-engine-memory",
-    "squalr-engine-processes",
     "squalr-engine-projects",
     "squalr-engine-scanning",
     "squalr-android",
