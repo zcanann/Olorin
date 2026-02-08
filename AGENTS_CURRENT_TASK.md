@@ -24,6 +24,8 @@ Important information discovered during work about the current state of the task
 - Legacy Slint assets were used as reference and then removed once parity/polish validation was completed.
 - Installer now uses a dedicated egui theme preset aligned to `squalr` colors and panel structure.
 - Installer visuals were re-audited against `squalr` theme/layout and are currently aligned; repeat this audit after future installer UI feature additions.
+- Installer now uses `squalr` app icons for both runtime viewport icon (`IconData`) and Windows executable resources.
+- Installer header now renders a centered single-line status message; log panel now fills available width before first log line.
 
 ## Agent Scratchpad and Notes
 Smaller notes should go here, and can be erased and compacted as needed during iteration.
@@ -37,3 +39,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Audited `squalr-installer` visuals against `squalr` theme references; no parity regressions found; `cargo test -p squalr-installer` passes.
 - 2026-02-08: Re-audited `pr/installer` with current tree; installer remains `eframe`-based with no installer-local regressions found; `cargo test -p squalr-installer` passes.
 - 2026-02-08: Re-ran installer task audit and validation; `cargo fmt --all` and `cargo test -p squalr-installer` pass; `cargo clippy -p squalr-installer --all-targets -- -D warnings` is blocked by pre-existing non-installer warnings/errors in `squalr-engine-api`.
+- 2026-02-08: Polished installer parity items: centered header status text, footer recolor to `squalr` accent blue, explicit foreground colors for section headers, full-width readonly log viewer from first render, and unified installer icon usage (`build.rs` resource icon + runtime viewport icon); `cargo fmt --all` and `cargo test -p squalr-installer` pass.

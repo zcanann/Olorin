@@ -2,7 +2,7 @@
 
 use eframe::NativeOptions;
 use eframe::egui;
-use eframe::egui::{Align, Color32, Frame, Layout, Margin, RichText, ScrollArea, Stroke, ViewportBuilder};
+use eframe::egui::{Align, Color32, Frame, IconData, Layout, Margin, RichText, ScrollArea, Stroke, ViewportBuilder};
 use eframe::epaint::CornerRadius;
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 use squalr_engine::app_provisioner::app_provisioner_config::AppProvisionerConfig;
@@ -17,6 +17,7 @@ use std::time::Duration;
 
 const APP_NAME: &str = "Squalr Installer";
 const MAX_LOG_BUFFER_BYTES: usize = 256 * 1024;
+static ICON_APP: &[u8] = include_bytes!("../../squalr/images/app/app_icon.png");
 
 #[derive(Clone)]
 struct InstallerUiState {
@@ -222,6 +223,14 @@ fn install_phase_string(install_phase: InstallPhase) -> &'static str {
     }
 }
 
+fn installer_status_string(ui_state: &InstallerUiState) -> &'static str {
+    if ui_state.install_complete {
+        "Squalr installed successfully."
+    } else {
+        "Installing Squalr, please wait..."
+    }
+}
+
 impl eframe::App for InstallerApp {
     fn update(
         &mut self,
@@ -235,11 +244,8 @@ impl eframe::App for InstallerApp {
             Err(_) => InstallerUiState::new(),
         };
 
-        let progress_status_text = if state_snapshot.install_complete {
-            "Squalr installed successfully."
-        } else {
-            install_phase_string(state_snapshot.installer_phase)
-        };
+        let progress_status_text = install_phase_string(state_snapshot.installer_phase);
+        let header_status_text = installer_status_string(&state_snapshot);
 
         egui::TopBottomPanel::top("header")
             .resizable(false)
@@ -250,15 +256,13 @@ impl eframe::App for InstallerApp {
                     .inner_margin(Margin::symmetric(14, 10)),
             )
             .show(context, |ui| {
-                ui.horizontal(|ui| {
-                    ui.vertical(|ui| {
-                        ui.label(RichText::new("Squalr").strong().size(22.0));
-                        ui.label(
-                            RichText::new("Installer")
-                                .size(13.0)
-                                .color(self.installer_theme.color_foreground_preview),
-                        );
-                    });
+                ui.with_layout(Layout::top_down(Align::Center), |ui| {
+                    ui.label(
+                        RichText::new(header_status_text)
+                            .strong()
+                            .size(14.0)
+                            .color(self.installer_theme.color_foreground),
+                    );
                 });
             });
 
@@ -266,7 +270,7 @@ impl eframe::App for InstallerApp {
             .resizable(false)
             .frame(
                 Frame::new()
-                    .fill(self.installer_theme.color_background_primary)
+                    .fill(self.installer_theme.color_border_blue)
                     .stroke(Stroke::new(1.0, self.installer_theme.color_border_panel))
                     .inner_margin(Margin::symmetric(14, 10)),
             )
@@ -299,7 +303,12 @@ impl eframe::App for InstallerApp {
                         .corner_radius(CornerRadius::same(self.installer_theme.corner_radius_panel))
                         .inner_margin(Margin::same(12))
                         .show(ui, |ui| {
-                            ui.label(RichText::new("Installation Status").strong().size(15.0));
+                            ui.label(
+                                RichText::new("Installation Status")
+                                    .strong()
+                                    .size(15.0)
+                                    .color(self.installer_theme.color_foreground),
+                            );
                             ui.label(
                                 RichText::new(progress_status_text)
                                     .size(13.0)
@@ -325,7 +334,12 @@ impl eframe::App for InstallerApp {
                         .inner_margin(Margin::same(12))
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
-                                ui.label(RichText::new("Installer Log").strong().size(14.0));
+                                ui.label(
+                                    RichText::new("Installer Log")
+                                        .strong()
+                                        .size(14.0)
+                                        .color(self.installer_theme.color_foreground),
+                                );
                                 if state_snapshot.install_complete {
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                         ui.label(
@@ -345,14 +359,15 @@ impl eframe::App for InstallerApp {
                                 .show(ui, |ui| {
                                     ui.set_min_height(290.0);
                                     ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-                                        ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
-                                            ui.label(
-                                                RichText::new(state_snapshot.installer_logs.as_str())
-                                                    .monospace()
-                                                    .size(12.0)
-                                                    .color(self.installer_theme.color_foreground_preview),
-                                            );
-                                        });
+                                        let mut installer_logs_text = state_snapshot.installer_logs.clone();
+                                        ui.add_sized(
+                                            ui.available_size(),
+                                            egui::TextEdit::multiline(&mut installer_logs_text)
+                                                .interactive(false)
+                                                .desired_width(f32::INFINITY)
+                                                .desired_rows(16)
+                                                .font(egui::TextStyle::Monospace),
+                                        );
                                     });
                                 });
                         });
@@ -414,8 +429,19 @@ pub fn main() {
         eprintln!("Failed to initialize installer logger: {}", error);
     }
 
+    let icon = image::load_from_memory(ICON_APP)
+        .unwrap_or_default()
+        .into_rgba8();
+    let icon_width = icon.width();
+    let icon_height = icon.height();
+
     let native_options = NativeOptions {
         viewport: ViewportBuilder::default()
+            .with_icon(IconData {
+                rgba: icon.into_raw(),
+                width: icon_width,
+                height: icon_height,
+            })
             .with_inner_size([640.0, 640.0])
             .with_min_inner_size([480.0, 420.0]),
         ..NativeOptions::default()
