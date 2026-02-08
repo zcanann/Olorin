@@ -16,8 +16,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- Audit remaining API surface for additional engine-coupled internals that can be migrated from transitional to contract-safe namespaces without breaking compatibility.
-
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
@@ -62,6 +60,10 @@ Information discovered during iteration:
 - Narrowed `squalr-engine-api::api::types::projects::project_items` to reference DTOs and kept engine-coupled project item internals behind `api::types::projects_legacy`.
 - Evaluated settings command family context: settings remain engine-global configuration commands and are intentionally modeled as stateless DTOs without session handles.
 - `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_process_compatibility --test api_contract_trackable_tasks_compatibility --test api_contract_memory_compatibility --test api_contract_project_compatibility --test api_contract_project_items_compatibility --test api_contract_scan_compatibility --test api_contract_scan_results_compatibility --test api_contract_settings_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after this iteration (pre-existing warnings unchanged).
+- Narrowed stateless project-items contract response shape to use `ProjectItemRef` (`opened_project_root_ref`) instead of engine-coupled `ProjectItem`.
+- Marked runtime-coupled `api::commands` helper exports (`{un,}privileged_command{,_request,_response}`) as `#[doc(hidden)]` to keep them compatibility-only while discouraging new contract usage.
+- Added stateless-vs-legacy JSON compatibility assertion for project-items list responses in `api_contract_project_items_compatibility.rs`.
+- `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_project_items_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after this iteration (pre-existing warnings unchanged).
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -80,3 +82,4 @@ Append logs for each session here. Compact redundency occasionally:
 - Added a stateless memory API contract (`api::commands::stateless::memory`) with explicit process session context and a new compatibility test suite; re-validated with `cargo fmt`, targeted API contract tests, and `cargo check` for API + engine crates.
 - Added stateless `project`, `scan`, and `scan_results` API contracts with explicit context handles, added three per-family compatibility test suites, and re-validated with `cargo fmt`, expanded targeted API contract tests, and `cargo check` for API + engine crates.
 - Added stateless `project_items` and `settings` API contracts, narrowed `api::types` scanning/snapshot/project-item exposures with legacy shims, and re-validated with `cargo fmt`, expanded targeted API contract tests, and `cargo check` for API + engine crates.
+- Audited remaining API command/type surface, replaced stateless project-items root payload with `ProjectItemRef` to avoid engine-coupled `ProjectItem`, marked runtime command helper exports as doc-hidden compatibility paths, added project-items response field-compatibility assertions, and re-validated with `cargo fmt`, targeted API contract tests, and `cargo check` for API + engine crates.

@@ -1,6 +1,6 @@
 use crate::api::commands::stateless::project::ProjectSessionHandle;
 use crate::structures::projects::project_info::ProjectInfo;
-use crate::structures::projects::project_items::project_item::ProjectItem;
+use crate::structures::projects::project_items::project_item_ref::ProjectItemRef;
 use serde::{Deserialize, Serialize};
 
 /// Stateless project-items command request payloads.
@@ -42,5 +42,5 @@ pub struct ProjectItemsListRequest {
 pub struct ProjectItemsListResponse {
     pub session_handle: ProjectSessionHandle,
     pub opened_project_info: Option<ProjectInfo>,
-    pub opened_project_root: Option<ProjectItem>,
+    pub opened_project_root_ref: Option<ProjectItemRef>,
 }

@@ -63,7 +63,7 @@ fn stateless_project_items_contract_json_round_trip_responses() {
     let list_response = StatelessProjectItemsResponse::List(squalr_engine_api::api::commands::stateless::project_items::ProjectItemsListResponse {
         session_handle,
         opened_project_info: None,
-        opened_project_root: None,
+        opened_project_root_ref: None,
     });
 
     let serialized_activate_response = serde_json::to_string(&activate_response).expect("Stateless project-items activate response should serialize.");
@@ -85,7 +85,7 @@ fn stateless_project_items_contract_json_round_trip_responses() {
         StatelessProjectItemsResponse::List(project_items_list_response) => {
             assert_eq!(project_items_list_response.session_handle.session_id, session_handle.session_id);
             assert!(project_items_list_response.opened_project_info.is_none());
-            assert!(project_items_list_response.opened_project_root.is_none());
+            assert!(project_items_list_response.opened_project_root_ref.is_none());
         }
         _ => panic!("Deserialized stateless project-items response did not match list variant."),
     }
@@ -158,4 +158,34 @@ fn stateless_project_items_list_request_contains_legacy_payload_fields() {
         .remove("session_handle");
 
     assert_eq!(legacy_serialized_request, stateless_serialized_request);
+}
+
+#[test]
+fn stateless_project_items_list_response_contains_legacy_payload_fields() {
+    let legacy_list_response = LegacyProjectItemsListResponse {
+        opened_project_info: None,
+        opened_project_root: None,
+    };
+    let stateless_list_response = squalr_engine_api::api::commands::stateless::project_items::ProjectItemsListResponse {
+        session_handle: ProjectSessionHandle {
+            session_id: Uuid::from_u128(0xF0E0D0C0B0A090807060504030201000),
+        },
+        opened_project_info: legacy_list_response.opened_project_info.clone(),
+        opened_project_root_ref: None,
+    };
+
+    let legacy_serialized_response = serde_json::to_value(&legacy_list_response).expect("Legacy project-items list response should serialize.");
+    let mut stateless_serialized_response = serde_json::to_value(&stateless_list_response).expect("Stateless project-items list response should serialize.");
+    stateless_serialized_response
+        .as_object_mut()
+        .expect("Serialized stateless project-items list response should be a JSON object.")
+        .remove("session_handle");
+
+    let serialized_object = stateless_serialized_response
+        .as_object_mut()
+        .expect("Serialized stateless project-items list response should be a JSON object.");
+    serialized_object.remove("opened_project_root_ref");
+    serialized_object.insert("opened_project_root".to_string(), serde_json::Value::Null);
+
+    assert_eq!(legacy_serialized_response, serde_json::Value::Object(serialized_object.clone()));
 }
