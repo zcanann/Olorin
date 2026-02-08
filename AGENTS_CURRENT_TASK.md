@@ -7,10 +7,12 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 ----------------------
 
-- Edit me if necessary
+- `squalr-installer` now boots directly with `eframe`, while installation logic remains in `squalr-engine::app_provisioner`.
+- Keep legacy Slint assets as temporary visual reference only; they are no longer part of the installer build path.
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
+- Validate installer visual parity and interaction polish against the old Slint layout, then delete stale Slint/view-model glue.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -27,3 +29,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - It is currently unclear if it makes sense to attempt to share elements (buttons, title bar, footer) between the `squalr` project, and `squalr-installer`. The alternative is just to maintain a copy. This may be acceptable given that the number of total elements is small (header, footer, progress bar, buttons), however maintaining two themes can be tedius.
 
 ### Concise Session Log (append-or-compact-only, keep very short and compact as it grows)
+- 2026-02-08: Replaced `squalr-installer` Slint startup with `eframe` UI (status text, progress bar, log panel, launch button); removed Slint compile step from `build.rs`; added log-buffer unit tests; `cargo test -p squalr-installer` passes.
