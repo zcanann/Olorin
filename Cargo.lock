@@ -5708,6 +5708,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "squalr-engine-domain"
+version = "0.1.0"
+
+[[package]]
 name = "squalr-engine-memory"
 version = "0.1.1"
 dependencies = [

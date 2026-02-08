@@ -76,6 +76,7 @@ Information discovered during iteration:
 - `squalr-engine-processes` and `squalr-engine-memory` are no longer target end-state crates; their responsibilities consolidate into `squalr-operating-system`.
 - Root `Cargo.toml` workspace members now include `squalr-engine-api`, and targeted workspace wiring check passes via `cargo check -p squalr-engine-api`.
 - Memory interface traits were renamed to `MemoryWriterTrait`, `MemoryReaderTrait`, and `MemoryQueryerTrait`; dependent imports/impls in `squalr-engine-memory`, `squalr-engine-scanning`, and `squalr-engine` were updated and compile checks pass.
+- Root `Cargo.toml` workspace members now include `squalr-engine-domain`, and targeted crate wiring check passes via `cargo check -p squalr-engine-domain`.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -104,3 +105,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Clarified naming for first-time readability (`squalr-engine-domain` replacing ambiguous `squalr-engine-structops`) and updated migration plan to consolidate OS work into `squalr-operating-system`.
 - 2026-02-08: Added `squalr-engine-api` to root workspace members and validated with `cargo check -p squalr-engine-api`.
 - 2026-02-08: Completed trait rename cleanup for memory interfaces (`IMemory*` -> `*Trait`) across engine/memory/scanning crates and validated with targeted cargo checks.
+- 2026-02-08: Added scaffold crate `squalr-engine-domain` and wired it into workspace membership; validated with `cargo check -p squalr-engine-domain`.
