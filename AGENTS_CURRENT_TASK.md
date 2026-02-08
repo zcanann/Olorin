@@ -13,7 +13,11 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
-- No remaining tangible installer checklist items are currently open. Continue routine audit + validation passes.
+
+- `installer_main_window_view.rs` needs to be modularized a bit more. A separate file should be made for the log view should be made (much how `squalr` has `output_view.rs`).
+- The window currently renders with a harsh white border instead of transparency, despite having `clear_color` set up exactly like `squalr`. Somehow, `squalr` does render the transparent border correctly, meaning that the installer is set up wrong in some fundamental way for clearing the background color.
+- the installer has the wrong app icon in the title bar, We should use the one from `squalr`.
+- The title bar button has the wrong mouseover color. The buttons in `installer_title_bar_view.rs` appear different than that of `main_title_bar_view.rs`, and they should look the same.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
