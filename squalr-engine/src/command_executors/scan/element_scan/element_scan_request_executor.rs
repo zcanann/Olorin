@@ -7,10 +7,14 @@ use squalr_engine_api::registries::scan_rules::element_scan_rule_registry::Eleme
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::constraints::scan_constraint_finalized::ScanConstraintFinalized;
 use squalr_engine_api::structures::scanning::plans::element_scan::element_scan_plan::ElementScanPlan;
+use squalr_engine_api::structures::tasks::trackable_task::TrackableTask;
 use squalr_engine_scanning::scan_settings_config::ScanSettingsConfig;
-use squalr_engine_scanning::scanners::element_scan_executor_task::ElementScanExecutorTask;
+use squalr_engine_scanning::scanners::element_scan_executor_task::ElementScanExecutor;
+use squalr_engine_scanning::scanners::scan_execution_context::ScanExecutionContext;
 use std::sync::Arc;
 use std::thread;
+
+const TASK_NAME: &str = "Element Scan Executor";
 
 impl PrivilegedCommandRequestExecutor for ElementScanRequest {
     type ResponseType = ElementScanResponse;
@@ -69,10 +73,18 @@ impl PrivilegedCommandRequestExecutor for ElementScanRequest {
             );
 
             // Start the task to perform the scan.
-            let task = ElementScanExecutorTask::start_task(process_info, snapshot, element_scan_plan, true);
+            let task = TrackableTask::create(TASK_NAME.to_string(), None);
             let task_handle = task.get_task_handle();
             let engine_privileged_state = engine_privileged_state.clone();
             let progress_receiver = task.subscribe_to_progress_updates();
+            let task_for_execution = task.clone();
+            let cancellation_token = task_for_execution.get_cancellation_token();
+            let progress_reporter: Arc<dyn Fn(f32) + Send + Sync> = {
+                let task_for_progress = task_for_execution.clone();
+                Arc::new(move |progress: f32| {
+                    task_for_progress.set_progress(progress);
+                })
+            };
 
             engine_privileged_state
                 .get_trackable_task_manager()
@@ -83,6 +95,12 @@ impl PrivilegedCommandRequestExecutor for ElementScanRequest {
                 while let Ok(progress) = progress_receiver.recv() {
                     log::info!("Progress: {:.2}%", progress);
                 }
+            });
+
+            thread::spawn(move || {
+                let scan_execution_context = ScanExecutionContext::new(Some(cancellation_token), Some(progress_reporter));
+                ElementScanExecutor::execute_scan(process_info, snapshot, element_scan_plan, true, &scan_execution_context);
+                task_for_execution.complete();
             });
 
             thread::spawn(move || {
