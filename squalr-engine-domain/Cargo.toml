@@ -5,3 +5,5 @@ authors = ["Zachary Canann"]
 edition = "2024"
 
 [dependencies]
+num-traits = { version = "0.2.19" }
+thiserror = "2.0.18"

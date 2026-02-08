@@ -5700,6 +5700,7 @@ dependencies = [
  "serde_json",
  "slab",
  "smallvec",
+ "squalr-engine-domain",
  "structopt",
  "sysinfo",
  "thiserror 2.0.18",
@@ -5710,6 +5711,10 @@ dependencies = [
 [[package]]
 name = "squalr-engine-domain"
 version = "0.1.0"
+dependencies = [
+ "num-traits",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "squalr-engine-memory"
