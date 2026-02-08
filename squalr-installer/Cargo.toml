@@ -12,6 +12,7 @@ binary-mode = []
 [dependencies]
 squalr-engine = { path = "../squalr-engine" }
 eframe = ">=0.32.3"
+epaint = ">=0.32.3"
 log = { version = ">=0.4.27" }
 image = ">=0.25.6"
 

@@ -5,6 +5,7 @@ use crate::ui_state::InstallerUiState;
 use crate::views::main_window::installer_main_window_view::InstallerMainWindowView;
 use eframe::egui;
 use eframe::egui::Visuals;
+use epaint::Rgba;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -39,7 +40,7 @@ impl eframe::App for InstallerApp {
         &self,
         _visuals: &Visuals,
     ) -> [f32; 4] {
-        [0.0, 0.0, 0.0, 0.0]
+        Rgba::TRANSPARENT.to_array()
     }
 
     fn update(
