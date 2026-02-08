@@ -93,3 +93,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Ran `cargo fmt`, `cargo test -p squalr-engine`, `cargo check -p squalr-cli`, `cargo check -p squalr`, and `cargo check -p squalr-tests`.
 - Fixed `squalr-tests` integration helper (`create_test_state`) to unwrap `EnginePrivilegedState::new_with_os_providers` via explicit `match` + failure panic message, aligning test expectations with typed startup failures.
 - Ran `cargo test -p squalr-tests` (passing).
+- Re-validated `pr/error_handling` checkpoint with `cargo test -p squalr-engine` and `cargo test -p squalr-tests`; both passed and startup fail-fast regression tests remain green.
