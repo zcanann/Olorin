@@ -10,21 +10,8 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- [x] Define canonical error boundaries and ownership: engine/internal crates use typed errors (`thiserror`), CLI/GUI/TUI entrypoints use `anyhow::Result`.
-  - Progress: Completed typed-error migration for remaining engine/internal `Result<_, String>` surfaces (`SymbolRegistry`, `ValuedStruct`, legacy string metadata parsing), while CLI/TUI/desktop GUI entrypoints remain on `anyhow::Result`.
-- [x] Replace `Result<_, String>` in process query + OS provider path with typed errors.
-  Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
-- [x] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
-  Files: `squalr-engine/src/engine_bindings/interprocess/**`, `squalr-engine/src/engine_bindings/standalone/**`.
-- [x] Replace `Result<_, String>` in snapshot region memory reader with typed scan I/O errors.
-  File: `squalr-engine-scanning/src/scanners/snapshot_region_memory_reader.rs`.
-- [x] Replace runtime `unwrap()` in non-test crates with safe handling (`Result` propagation, guarded fallback, or structured log and early return).
-  Initial files: `squalr-tui/src/main.rs`, `squalr-cli/src/main.rs`, `squalr/src/views/struct_viewer/struct_viewer_entry_view.rs`, `squalr-engine-api/src/structures/tasks/trackable_task.rs`, `squalr-engine-processes/src/process_query/android/android_process_query.rs`, `squalr-engine-api/src/structures/results/snapshot_region_scan_results.rs`.
-- [x] Replace runtime `panic!` in app entrypoints with error returns and consistent startup failure reporting.
-  Initial files: `squalr/src/main.rs`, `squalr-cli/src/main.rs`, `squalr-tui/src/main.rs`, `squalr-android/src/lib.rs`.
-- [x] Update API response payloads that currently embed `Result<T, String>` where appropriate to use typed serializable error payloads.
-  Initial files: `squalr-engine-api/src/commands/settings/*/list/*_response.rs`.
-- [x] Add focused tests for new error conversions and propagation (process query + IPC + scan memory reader), and keep panic-based test assertions only in tests.
+- [x] Audit `pr/error_handling` for regressions in runtime error-handling rules (`unwrap`, `panic!`, `Result<_, String>`) in non-test Rust crates.
+- [x] Run relevant crate and integration tests for the error-handling migration and record the results.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -54,6 +41,8 @@ Discovered during iteration:
 - Settings list response payloads (`general/memory/scan`) now use typed serializable `SettingsError` instead of `String`, and engine list executors now emit scope-specific typed read failures.
 - Added focused unit tests for `SnapshotRegionMemoryReadError` and `SettingsError`, and updated settings command tests to exercise typed settings-list error payloads end-to-end.
 - Eliminated remaining non-test `Result<_, String>` signatures by introducing `SymbolRegistryError` + `ValuedStructError`, and removed stale commented UI `unwrap()` usage from struct viewer row rendering.
+- Post-migration audit confirmed no non-test `unwrap()`, no non-test `panic!`, and no `Result<_, String>` signatures remain in Rust source.
+- Verification run completed successfully for `squalr-engine-processes`, `squalr-engine-api`, `squalr-engine-scanning`, and `squalr-tests`.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -75,4 +64,6 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Replaced settings list response payloads from `Result<T, String>` to `Result<T, SettingsError>` and updated command executors/tests.
 - Ran `cargo fmt`, `cargo test -p squalr-engine-scanning snapshot_region_memory_read_error`, `cargo test -p squalr-engine-api settings_error`, `cargo check -p squalr-engine -p squalr-cli -p squalr-engine-scanning`, and `cargo test -p squalr-tests --test settings_command_tests`.
 - Added `SymbolRegistryError` and `ValuedStructError`, migrated remaining typed-error boundaries, and ran `cargo fmt`, `cargo test -p squalr-engine-api symbol_registry_error`, `cargo test -p squalr-engine-api valued_struct_error`, `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine`, and `cargo check -p squalr`.
+- Audited for regressions with `rg` checks over Rust sources: no non-test runtime `unwrap!`/`panic!` and no `Result<_, String>` signatures found.
+- Ran `cargo test -p squalr-engine-processes`, `cargo test -p squalr-engine-api`, `cargo test -p squalr-engine-scanning`, and `cargo test -p squalr-tests` (all passing).
 
