@@ -17,7 +17,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
 - Inventory and classify all public `squalr-engine-api` modules/types into `public contract`, `internal`, and `transitional`.
-- Propose and implement a public prelude/namespace layout (`api::commands`, `api::events`, `api::types`) and stop exposing deep module trees by default.
 - Move engine-coupled abstractions out of contract-facing types where possible (`Registries`, `ProjectItemType`, singleton registries, and scan internals).
 - Separate `structopt` parsing concerns from API DTO definitions for request types.
 - Design and implement a stateless command prototype for one vertical slice (process open/list/close) to validate the migration model.
@@ -44,6 +43,8 @@ Information discovered during iteration:
 - Added `squalr-engine-api::engine::engine_api_privileged_bindings` as the corrected module and retained `engine_api_priviliged_bindings` as a deprecation shim re-export for compatibility.
 - Updated `squalr-engine-api` and `squalr-engine` call sites to import from `engine_api_privileged_bindings`.
 - `cargo check -p squalr-engine-api` and `cargo check -p squalr-engine` both pass after the migration (warnings unchanged and pre-existing).
+- Added compatibility-safe API namespace exports in `squalr-engine-api` via `api::commands`, `api::events`, and `api::types` while preserving existing top-level module exports for current callers.
+- `cargo fmt`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after the namespace addition (existing warnings remain pre-existing).
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -55,3 +56,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 Append logs for each session here. Compact redundency occasionally:
 - Audited README + API contract task scope, scanned `squalr-engine-api` public surface, validated compile health with `cargo check`, and produced staged plan for boundary hardening + stateless API migration.
 - Implemented `engine_api_priviliged_bindings` -> `engine_api_privileged_bindings` migration with a deprecated compatibility shim, updated engine/api imports, ran `cargo fmt`, then verified with `cargo check -p squalr-engine-api` and `cargo check -p squalr-engine`.
+- Implemented a new `squalr-engine-api::api` namespace with `commands`, `events`, and `types` re-export modules, formatted, and re-validated API/engine crates with `cargo check`.
