@@ -286,11 +286,6 @@ Branch: `pr/pointer-scanning`
 
 Pointer scans need to be implemented. The actual algorithm is too complex for an agent, as this is on the cutting edge of knowledge, but the APIs can be made, and it can be co-authored with an agent.
 
-### Nightly Build Upgrade
-Branch: `pr/nightly-upgrade`
-
-The latest version of Rust nightly breaks the SIMD SupportedLanes and LaneCount, cascading into a massive breakage that will require some refactors to get scanning working again.
-
 ### Release Test
 Branch: `pr/release-test`
 
