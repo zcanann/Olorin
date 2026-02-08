@@ -48,7 +48,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move session/state orchestration into `squalr-engine-session` (`EngineUnprivilegedState`, event routing, log dispatch, and project manager ownership moved out of `squalr-engine-api`).
 - [x] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
 - [x] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
-- [ ] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
+- [x] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
 - [ ] Move scan execution code that creates `TrackableTask` out of compute paths (`squalr-engine-scanning/*_task.rs`) so engine APIs are blocking/stateless.
 - [ ] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
 - [ ] Refactor OS layer implementation to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations only.
@@ -95,6 +95,8 @@ Information discovered during iteration:
 - Introduced `squalr-engine-api::engine::engine_execution_context::EngineExecutionContext` so API command/binding traits depend on context capabilities instead of concrete session type.
 - Updated consumers (`squalr-engine`, `squalr`, `squalr-cli`, `squalr-tests`) to depend on `squalr-engine-session` for concrete unprivileged state access.
 - Added `squalr-operating-system` crate, migrated `squalr-engine-memory` and `squalr-engine-processes` source modules into it, and rewired active consumers (`squalr-engine`, `squalr-engine-scanning`, `squalr-tests`) to use the unified OS crate.
+- `squalr-engine` no longer directly depends on `squalr-operating-system` or `sysinfo`; OS provider abstraction (`EngineOsProviders`) and OS type imports were moved behind `squalr-engine-session::os`.
+- Removed `squalr-engine/src/os/*` and rewired privileged state + command executors to consume session-layer OS exports, preserving behavior while tightening crate boundaries.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -134,3 +136,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Migrated `EngineUnprivilegedState` and engine logging implementation from `squalr-engine-api` into `squalr-engine-session`; introduced `EngineExecutionContext` abstraction in API traits to avoid crate cycles; rewired engine/cli/gui/tests imports and validated with `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine-session`, `cargo check -p squalr-engine`, `cargo check -p squalr-cli`, `cargo check -p squalr-tests`, `cargo test -p squalr-engine-session`, and `cargo test -p squalr-tests --no-run`.
 - 2026-02-08: Added `squalr-operating-system` and migrated memory/process modules into it; rewired engine/scanning/tests imports and dependencies from `squalr-engine-memory`/`squalr-engine-processes` to `squalr-operating-system`; validated with `cargo check -p squalr-operating-system`, `cargo check -p squalr-engine-scanning`, `cargo check -p squalr-engine`, `cargo check -p squalr-tests`, `cargo test -p squalr-operating-system`, and `cargo test -p squalr-tests --no-run`.
 - 2026-02-08: Removed `squalr-engine-memory` and `squalr-engine-processes` from root workspace members after migration completion; validated with `cargo check -p squalr-operating-system -p squalr-engine-scanning -p squalr-engine -p squalr-tests`, `cargo test -p squalr-operating-system`, and `cargo test -p squalr-tests --no-run`.
+- 2026-02-08: Removed direct OS deps from `squalr-engine` by moving `EngineOsProviders` into `squalr-engine-session::os`, re-exporting required OS types from the session layer, deleting `squalr-engine/src/os/*`, and validating with `cargo check -p squalr-engine-session -p squalr-engine`, `cargo test -p squalr-engine-session`, and `cargo test -p squalr-engine --no-run`.

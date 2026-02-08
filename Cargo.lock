@@ -5669,9 +5669,7 @@ dependencies = [
  "squalr-engine-projects",
  "squalr-engine-scanning",
  "squalr-engine-session",
- "squalr-operating-system",
  "structopt",
- "sysinfo",
  "tempfile",
  "thiserror 2.0.18",
  "ureq",
@@ -5758,6 +5756,8 @@ dependencies = [
  "log",
  "log4rs",
  "squalr-engine-api",
+ "squalr-operating-system",
+ "sysinfo",
 ]
 
 [[package]]

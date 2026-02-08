@@ -2,7 +2,6 @@ use crate::engine_bindings::interprocess::interprocess_engine_api_privileged_bin
 use crate::engine_bindings::standalone::standalone_engine_api_privileged_bindings::StandalonePrivilegedEngine;
 use crate::engine_initialization_error::EngineInitializationError;
 use crate::engine_mode::EngineMode;
-use crate::os::engine_os_provider::EngineOsProviders;
 use crate::tasks::trackable_task_manager::TrackableTaskManager;
 use crossbeam_channel::Receiver;
 use squalr_engine_api::engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings;
@@ -15,7 +14,8 @@ use squalr_engine_api::registries::scan_rules::element_scan_rule_registry::Eleme
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::snapshots::snapshot::Snapshot;
 use squalr_engine_scanning::freeze_task::snapshot_scan_result_freeze_task::SnapshotScanResultFreezeTask;
-use squalr_operating_system::process::process_manager::ProcessManager;
+use squalr_engine_session::os::ProcessManager;
+use squalr_engine_session::os::engine_os_provider::EngineOsProviders;
 use std::sync::{Arc, RwLock};
 
 /// Tracks critical engine state for internal use. This includes executing engine tasks, commands, and events.
@@ -229,11 +229,11 @@ impl EnginePrivilegedState {
 mod tests {
     use super::EnginePrivilegedState;
     use crate::engine_mode::EngineMode;
-    use crate::os::engine_os_provider::{EngineOsProviders, ProcessQueryProvider};
     use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
     use squalr_engine_api::structures::processes::process_info::ProcessInfo;
-    use squalr_operating_system::process_query::process_query_error::ProcessQueryError;
-    use squalr_operating_system::process_query::process_query_options::ProcessQueryOptions;
+    use squalr_engine_session::os::ProcessQueryError;
+    use squalr_engine_session::os::ProcessQueryOptions;
+    use squalr_engine_session::os::engine_os_provider::{EngineOsProviders, ProcessQueryProvider};
     use std::sync::Arc;
 
     struct FailingProcessQueryProvider;
