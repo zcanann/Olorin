@@ -9,11 +9,15 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 - `squalr-installer` now boots directly with `eframe`, while installation logic remains in `squalr-engine::app_provisioner`.
 - Legacy Slint installer assets and view-model glue have been deleted from `squalr-installer` after parity validation.
+- The architecture should mirror `squalr` for gui creation / rendering as best as possible, where it makes sense to do so.
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- No open installer task items right now.
+- There is a weird gap between the title bar and footer. This causes transparency to bleed through in a line.
+- There is also a white line below the title bar, possibly a similar root cause
+- app.rs violates the architecture of `squalr`, which has distinct controls (ie `main_window_view.rs` has `main_title_bar_view.rs` and `main_footer_view.rs`). The installer should have distinct installer versions of these, incorporated in a similar manner. Doing this may resolve the strange visual bugs above, as these are not present in `squalr`.
+- An audit should be performed against our rendering and file setup vs that of `squalr` to ensure we are properly mirroring `squalr` and modularizing in a similar way.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
