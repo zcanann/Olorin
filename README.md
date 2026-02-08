@@ -249,31 +249,6 @@ Branch: `pr/tui`
 
 Needs a full implementation of a TUI that behaves as similar to the GUI as possible where it makes sense, and perhaps like a CLI in other ways. Need to investigate TUI options, and which makes the most sense to use.
 
-### Scan Commands
-Branch: `pr/scan-commands`
-
-We are on , and should better organize the commands that we fire. First, we have improperly organized scanning as a scan command.
-
-There should be scan (element scan) and pscan (pointer scan). These are not related. It is unclear at this point in time whether struct scans are abstracted under element scans, but if it makes sense to decouple this should be done as well.
-
-In a CLI, it would actually be ideal for scan commands to be blocking (ie the response includes the results rather than a task handle), where as a TUI/GUI would prefer the task handle with progress updates for showing a progress bar, to free up the user to do other things. Maybe this can be a default arg?
-
-### Engine Event Hooks
-Branch: `pr/engine-event-hooks`
-
-When the engine emits events, it would be nice for listeners and plugins to hook into these.
-
-### Registry Synchronization
-Branch: `pr/registry-synchronization`
-
-Currently, there is a global singleton of the registry that exists for both the unprivileged side, and the privileged side. In a standalone build, this is the same registry, with only one instance.
-
-This is not a system that makes sense for a long term plugin based approach. Ideally, plugins could register new things to the registries, and then this would be synchronized with the unprivileged GUI.
-
-This needs to be done such that the GUI can make snap decisions without chatty traffic to the privileged side.
-
-Very challenging task.
-
 ### Conversion Testing
 Branch: `pr/conversion-testing`
 
@@ -291,11 +266,56 @@ Branch: `pr/release-test`
 
 We need to orchestrate a full attempt at a v1.0.0 release to see how the process goes.
 
-### API Contract
-Branch: `pr/api-contract`
+### Engine Refactor
+Branch: `pr/engine-refactor`
 
-We need to ensure that everything in squalr-api makes sense to be visible to the public. This is the universal interaction point between CLI, GUI, TUI, MCP, and anything that wants to use Squalr as a library.
+Goal: make the public API sane, and make the engine truly stateless + reusable.
 
-Additionally, it would be nice to evaluate whether it makes sense to move from session based (tracking state for open processes and the like) to completely API based. If API based, the state would need to be moved out of the engine and tracked by callers.
+#### Hard decisions (do not bikeshed in this branch)
+- **`squalr-engine` is pure compute.** It does scans, rules, snapshot merge logic (given read results), filter RLE, pagination math.  
+  **No OS calls. No persistent state. No task handles.**
+- **OS integration is not "engine."** Process enumeration, open/close handles, region/module enumeration, read/write memory, icons, bitness, permissions, IPC transport — this all lives under **`squalr-os*`** (name TBD, but it is explicitly *operating-system layer*).
+- **Interactive state lives in a state shim** (name TBD, but think `squalr-runtime`):
+  - caches (process/icon cache, snapshot buffers, filter sets)
+  - monitoring loops
+  - projects/freezes
+  - progress/cancel if we want it
+  This shim is compiled into GUI/TUI/interactive CLI and links to the engine directly (no IPC hop).
 
-In other words, this would mean that the API are the building blocks, invoking things is stateless (all context is passed by caller), any long term state is tracked by the app itself. This may be more feasible for expanding to MCP, where agents want to just be able to call things.
+#### IPC rule (don’t shoot ourselves in the foot)
+- In IPC/privileged mode, **do not ship multi-GB snapshots over IPC**.
+- Prefer: privileged side reads memory and (optionally) runs scans close to memory, returning **compressed filter results + metadata**. UI asks for specific values on-demand, as is currently the case.
+
+#### CLI modes
+- **One-shot CLI**: blocking, "grep-like", no interactive state.
+- **Interactive CLI/TUI/GUI**: uses the state shim (stateful), engine stays blocking/stateless.
+Undecided: are these separate binaries? boot arg for interactive mode?
+
+#### Plugin/registry scope
+- This branch should not attempt "full registry sync" or a marketplace.
+- Just ensure we don’t rely on global singleton registries leaking across boundaries. Any real sync work is a later branch.
+
+### Engine Event Hooks
+Branch: `pr/engine-event-hooks`
+
+When the engine emits events, it would be nice for listeners and plugins to hook into these.
+
+### Registry Synchronization
+Branch: `pr/registry-synchronization`
+
+Currently, there is a global singleton of the registry that exists for both the unprivileged side, and the privileged side. In a standalone build, this is the same registry, with only one instance.
+
+This is not a system that makes sense for a long term plugin based approach. Ideally, plugins could register new things to the registries, and then this would be synchronized with the unprivileged GUI.
+
+This needs to be done such that the GUI can make snap decisions without chatty traffic to the privileged side.
+
+Very challenging task.
+
+### Scan Commands
+Branch: `pr/scan-commands`
+
+We should better organize the commands that we fire. First, we have improperly organized scanning as a scan command.
+
+There should be scan (element scan) and pscan (pointer scan). These are not related. It is unclear at this point in time whether struct scans are abstracted under element scans, but if it makes sense to decouple this should be done as well.
+
+In a CLI, it would actually be ideal for scan commands to be blocking (ie the response includes the results rather than a task handle), where as a TUI/GUI would prefer the task handle with progress updates for showing a progress bar, to free up the user to do other things. Maybe this can be a default arg?
