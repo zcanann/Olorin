@@ -50,9 +50,14 @@ We need deterministic tests for privileged executors that currently call static 
 ## Agent Scratchpad and Notes
 
 ### Current Tasklist (Remove as things are completed, add remaining tangible tasks)
-- Keep `scan_results add_to_project` coverage at contract-level only until project-item mutation hooks are implemented.
-- Add failure-path OS-behavior tests in `squalr-tests` (read/write/open failures) using existing mock toggles.
-- Add CI coverage for `cargo test -p squalr-tests`.
+- Add PR CI workflow to enforce `cargo test -p squalr-tests` on `pr/unit-tests` changes.
+- Add failure-path OS-behavior tests for privileged executors using existing mock toggles:
+  - `memory_read` failure assertions (error response shape + no unintended state mutation).
+  - `memory_write` failure assertions (error response shape + no unintended freeze/value mutation).
+  - `process_open` failure assertions when target process handle cannot be resolved.
+  - `scan_results` failure-path coverage for `query`, `list`, `refresh`, `freeze`, and `set_property`.
+- Add parser rejection tests per command family for malformed or incomplete args (missing required flags, invalid enum/value strings).
+- Keep `scan_results add_to_project` at contract-level coverage only until project-item mutation hooks are implemented; add deterministic behavior tests immediately after hooks land.
 
 ### Architecture Plan (Modify sparringly as new information is learned. Keep minimal and simple)
 - Phase 1: command parsing + request dispatch + typed response decode via engine API mocks. [done]
@@ -72,6 +77,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Fixed bool deanonymization for supported formats so `set_property is_frozen` decodes boolean payloads correctly.
 - `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes (107 integration tests) and singleton usage under `scan_results` remains isolated to the intentional `add_to_project` stub path (`scan_results_add_to_project_request_executor`).
 - `pr/unit-tests`: Audited test framework on 2026-02-08 and recorded prioritized gaps in `audit.txt` (CI enforcement missing, failure-path depth gaps, `scan_results add_to_project` still stub-bound for behavior testing).
+- `pr/unit-tests`: Converted 2026-02-08 `audit.txt` findings into actionable `AGENTS.MD` tasklist items focused on CI enforcement, OS failure-path depth, and parser rejection coverage.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
