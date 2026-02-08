@@ -66,4 +66,6 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Added `SymbolRegistryError` and `ValuedStructError`, migrated remaining typed-error boundaries, and ran `cargo fmt`, `cargo test -p squalr-engine-api symbol_registry_error`, `cargo test -p squalr-engine-api valued_struct_error`, `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine`, and `cargo check -p squalr`.
 - Audited for regressions with `rg` checks over Rust sources: no non-test runtime `unwrap!`/`panic!` and no `Result<_, String>` signatures found.
 - Ran `cargo test -p squalr-engine-processes`, `cargo test -p squalr-engine-api`, `cargo test -p squalr-engine-scanning`, and `cargo test -p squalr-tests` (all passing).
+- Re-ran branch validation audit: `rg` checks confirmed no non-test `unwrap()` usage and only test-only `panic!`; no `Result<_, String>` signatures detected in current Rust sources.
+- Re-ran relevant verification suites: `cargo test -p squalr-engine-processes`, `cargo test -p squalr-engine-api`, `cargo test -p squalr-engine-scanning`, and `cargo test -p squalr-tests` (all passing; existing unrelated warning-only diagnostics remain).
 
