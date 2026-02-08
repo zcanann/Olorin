@@ -8,14 +8,20 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ----------------------
 
+- **Locked crate naming (do not bikeshed in this branch):**
+  - **`squalr-engine-domain`** is the internal domain-model crate (rename plan target for prior `squalr-engine-structops` wording).
+    Reason: `structops` is ambiguous; `domain` clearly communicates "shared engine data semantics and registries."
+  - **`squalr-operating-system`** is the only OS integration crate.
+    It replaces `squalr-engine-processes` + `squalr-engine-memory` during this refactor.
+
 - **Five layers (do not mix them):**
   - **`squalr-engine-api` (public contract):** shared protocol types + versioned IPC request/response/event structs.
     No OS calls, no caches/monitors, no session ownership, no global mutable singletons.
-  - **`squalr-engine-structops` (internal domain crate):** `DataType`/`DataValue`, symbol + scan-rule registries, struct parsing/formatting, privileged string conversions.
+  - **`squalr-engine-domain` (internal domain semantics):** `DataType`/`DataValue`, symbol + scan-rule registries, struct parsing/formatting, privileged string conversions.
     Not an IPC surface. Used by `squalr-engine` and `squalr-engine-session`.
   - **`squalr-engine` (pure compute):** scans/rules/RLE/pagination/snapshot merge logic given read results.
     No OS deps (`windows-sys`, `sysinfo`, ptrace, etc). No persistent state. No task handles.
-  - **OS layer crates (`squalr-engine-processes`, `squalr-engine-memory`):** immediate process + memory operations only.
+  - **`squalr-operating-system` (OS primitives):** process enumeration, handle lifecycle, module/region enumeration, read/write memory, icons/bitness/permissions, IPC transport primitives.
     No long-lived caches/monitors/singletons.
   - **`squalr-engine-session` (state/policy layer):** interactive state + orchestration.
     Owns caches, monitors, process selection, snapshots, projects, progress/cancel, and command execution policy.
@@ -23,27 +29,29 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - **IPC rule:** do not ship huge snapshots over IPC. Prefer compressed filters + metadata, then read specific values on demand.
 
 - **Rule of thumb:**
-  - OS calls -> OS layer crates (`squalr-engine-processes`, `squalr-engine-memory`)
+  - OS calls -> `squalr-operating-system`
   - compute on bytes -> `squalr-engine`
   - anything remembered across interactions -> `squalr-engine-session`
   - shared protocol/types -> `squalr-engine-api`
-  - struct/data semantics -> `squalr-engine-structops` (not IPC)
+  - struct/data semantics -> `squalr-engine-domain` (not IPC)
   - if a file is getting overloaded with responsibilities, split it
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
 
 - [ ] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
-- [ ] Create `squalr-engine-structops` and move `squalr-engine-api` internals there (`structures/data_types/*`, `structures/structs/*`, registries, privileged string conversion traits, conversions).
-- [ ] Create `squalr-engine-session` (rename from runtime concept) and move session/state orchestration there (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
-- [ ] Remove OS crate dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
+- [ ] Create `squalr-engine-domain` and move domain semantics from `squalr-engine-api` there (`structures/data_types/*`, `structures/structs/*`, registries, privileged string conversion traits, conversions).
+- [ ] Create `squalr-engine-session` and move session/state orchestration there (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
+- [ ] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
+- [ ] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
+- [ ] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
 - [ ] Move scan execution code that creates `TrackableTask` out of compute paths (`squalr-engine-scanning/*_task.rs`) so engine APIs are blocking/stateless.
 - [ ] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
-- [ ] Refactor OS crates to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations.
+- [ ] Refactor OS layer implementation to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations only.
 - [ ] Update IPC contracts in `squalr-engine-api` so scan flows return compressed metadata/results without `TrackableTaskHandle`.
 - [ ] Keep `squalr-engine-scanning` as a compute sub-crate in this branch, but enforce strict no-OS and no-task boundaries.
 - [ ] Rewire CLI/TUI/GUI boot paths: one-shot CLI blocking/stateless, interactive modes use `squalr-engine-session`.
-- [ ] Fix `IMemoryWriter` `IMemoryReader` `IMemoryQueryer` naming. I prefix was a vestige from the C# port, and not idiomatic to rust.
+- [ ] Rename `IMemoryWriter`, `IMemoryReader`, `IMemoryQueryer` to idiomatic Rust trait names without `I` prefixes.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -65,12 +73,13 @@ Information discovered during iteration:
 - `UnprivilegedCommandRequest` is coupled to session state (`EngineUnprivilegedState`) instead of pure transport contracts.
 - `squalr-engine-api` is depended on by most crates but is not listed as a workspace member, increasing boundary drift risk during this refactor.
 - `squalr-engine-api` `Cargo.toml` currently pulls in session/domain-heavy deps (`sysinfo`, `rayon`, `notify`, `structopt`, etc), confirming it is not yet contract-only.
+- `squalr-engine-processes` and `squalr-engine-memory` are no longer target end-state crates; their responsibilities consolidate into `squalr-operating-system`.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
-- Split out domain internals to a second crate: `squalr-engine-structops` is required and is internal-only (not a second public API).
+- Split out domain internals to a second crate: `squalr-engine-domain` is required and is internal-only (not a second public API).
 - Rename runtime shim crate to `squalr-engine-session` and move all stateful orchestration there.
-- Keep OS as two crates in this branch (`squalr-engine-processes`, `squalr-engine-memory`) to minimize churn; enforce primitive-only behavior and remove singleton state.
+- Consolidate OS integration into one crate: `squalr-operating-system` replaces `squalr-engine-processes` + `squalr-engine-memory`.
 - Keep `squalr-engine-scanning` as a compute sub-crate in this branch; merging into `squalr-engine` is deferred.
 - Move `TrackableTask*` out of API contracts now (not temporary); progress/cancel stays session-local.
 - Keep `squalr-engine-projects` as persistence/domain support, but session owns all project lifecycle state.
@@ -82,11 +91,12 @@ Append below and compact regularly to relevant recent notes, keep under ~20 line
 - Engine stays blocking/stateless. Progress/cancel is session-only.
 - Do not solve plugin registry sync in this branch.
 - Keep IPC snapshot-local; return compressed scan/filter metadata.
-- Keep one public API contract crate; split struct/data internals into `squalr-engine-structops`.
+- Keep one public API contract crate; split struct/data internals into `squalr-engine-domain`.
 - Active architecture terminology uses `session`; legacy `runtime` references are retained only when describing existing code names.
 
 ### Concise Session Log
 Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Audited layer violations and rewrote plan/tasklist for `pr/engine-refactor` with ordered migration steps and owner questions.
 - 2026-02-08: Audited `squalr-engine-api` composition and confirmed naming confusion source; documented recommendation to separate messaging contracts from struct/data operations while keeping a single public API concept.
-- 2026-02-08: Converted owner TBDs into final branch decisions; locked crate naming (`squalr-engine-session`, `squalr-engine-structops`), clarified "one public API + one internal structops crate", and updated task ordering accordingly.
+- 2026-02-08: Converted owner TBDs into final branch decisions; locked crate naming (`squalr-engine-session`, internal domain crate), clarified "one public API + one internal domain crate", and updated task ordering accordingly.
+- 2026-02-08: Clarified naming for first-time readability (`squalr-engine-domain` replacing ambiguous `squalr-engine-structops`) and updated migration plan to consolidate OS work into `squalr-operating-system`.
