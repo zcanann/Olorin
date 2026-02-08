@@ -9,7 +9,6 @@
   - checkpointing with a commit,
   - Update the relevant fields in `AGENTS_CURRENT_TASK.md`, compacting information as necessary.
 
-
 ## Coding Conventions
 - Variable names must be coherent and specific. `i`, `idx`, and generic `index` are forbidden. Use names like `snapshot_index`, `range_index`, `scan_result_index`, etc. You are a systems programmer, not an academic.
 - No unhandled `unwrap()`, panics, etc. On failure: return a `Result` or log via `log!` macros.
