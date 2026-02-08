@@ -10,8 +10,8 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- [ ] Define canonical error boundaries and ownership: engine/internal crates use typed errors (`thiserror`), CLI/GUI/TUI entrypoints use `anyhow::Result`.
-  - Progress: CLI/TUI/desktop GUI entrypoints now use `anyhow::Result`; process query + OS provider now uses typed errors; engine/internal typed-error migration remains.
+- [x] Define canonical error boundaries and ownership: engine/internal crates use typed errors (`thiserror`), CLI/GUI/TUI entrypoints use `anyhow::Result`.
+  - Progress: Completed typed-error migration for remaining engine/internal `Result<_, String>` surfaces (`SymbolRegistry`, `ValuedStruct`, legacy string metadata parsing), while CLI/TUI/desktop GUI entrypoints remain on `anyhow::Result`.
 - [x] Replace `Result<_, String>` in process query + OS provider path with typed errors.
   Files: `squalr-engine-processes/src/process_query/process_queryer.rs`, `squalr-engine/src/os/engine_os_provider.rs`, platform-specific process query files.
 - [x] Replace `Result<_, String>` in interprocess bindings/pipes with typed errors and preserve context instead of flattening to `String`.
@@ -53,6 +53,7 @@ Discovered during iteration:
 - Snapshot region memory reads now return typed `SnapshotRegionMemoryReadError` values (including chunk-first-failure context) while preserving tombstone behavior for failed read addresses.
 - Settings list response payloads (`general/memory/scan`) now use typed serializable `SettingsError` instead of `String`, and engine list executors now emit scope-specific typed read failures.
 - Added focused unit tests for `SnapshotRegionMemoryReadError` and `SettingsError`, and updated settings command tests to exercise typed settings-list error payloads end-to-end.
+- Eliminated remaining non-test `Result<_, String>` signatures by introducing `SymbolRegistryError` + `ValuedStructError`, and removed stale commented UI `unwrap()` usage from struct viewer row rendering.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -73,4 +74,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Replaced snapshot region memory reader `Result<_, String>` signatures with typed `SnapshotRegionMemoryReadError` and added structured failure propagation.
 - Replaced settings list response payloads from `Result<T, String>` to `Result<T, SettingsError>` and updated command executors/tests.
 - Ran `cargo fmt`, `cargo test -p squalr-engine-scanning snapshot_region_memory_read_error`, `cargo test -p squalr-engine-api settings_error`, `cargo check -p squalr-engine -p squalr-cli -p squalr-engine-scanning`, and `cargo test -p squalr-tests --test settings_command_tests`.
+- Added `SymbolRegistryError` and `ValuedStructError`, migrated remaining typed-error boundaries, and ran `cargo fmt`, `cargo test -p squalr-engine-api symbol_registry_error`, `cargo test -p squalr-engine-api valued_struct_error`, `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine`, and `cargo check -p squalr`.
 
