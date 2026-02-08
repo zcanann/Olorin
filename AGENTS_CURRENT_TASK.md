@@ -20,7 +20,7 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 - [x] Upgrade GUI/CLI/TUI/installer/android crate dependencies and resolve platform-specific breakages.
   - Note: Android does not currently compile. Blind upgrades are possibly acceptable, as this is a future task to fix android anyways.
 - [x] Run full workspace validation (`cargo check`, relevant tests), remove dead code/imports, and prepare commit.
-- [ ] Ensure Cargo.toml versions match the downloaded versions (even minor version).
+- [x] Ensure Cargo.toml versions match the downloaded versions (even minor version).
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -35,6 +35,7 @@ Important information discovered during work about the current state of the task
 - High-friction dependency wave completed: `bincode` moved to `2.x` (with `serde` feature), `rodio` to `0.21.1`, `slint` to `1.15.0`, `windows-sys` to `0.61.2`, and `zip` to `7.4.0`.
 - Required API migrations applied for compatibility: `bincode` encode/decode API updates, `windows-sys` BOOL import/constant updates, `rodio` stream/sink API updates, and `egui` font layout calls switched to `fonts_mut`.
 - Current validation after upgrade wave: `cargo check --workspace --exclude squalr-android` passes and `cargo test -p squalr-tests` passes (124 tests).
+- Manifest alignment pass completed: all direct dependency constraints using `>=`/range forms in workspace manifests were pinned to exact currently resolved versions from `cargo tree --depth 1` (for example `sysinfo=0.38.0`, `serde=1.0.228`, `serde_json=1.0.149`, `log=0.4.29`, `windows-sys=0.61.2`, `zip=7.4.0`).
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -48,3 +49,4 @@ Append logs for each session here. Compact redundency occasionally:
 - 2026-02-08: Completed dependency risk inventory via `cargo metadata`; upgraded direct `sysinfo` pins across all crates and updated lockfile to `sysinfo v0.38.1`.
 - 2026-02-08: Verified `cargo check --workspace --exclude squalr-android` and `cargo test -p squalr-tests`; recorded known pre-existing Android compile blockers under Important Information.
 - 2026-02-08: Completed remaining package-upgrade wave (`bincode`/`rodio`/`slint`/`windows-sys`/`zip`), resolved resulting API breakages, removed newly surfaced unused imports, and revalidated with `cargo check --workspace --exclude squalr-android` + `cargo test -p squalr-tests`.
+- 2026-02-08: Completed manifest-version alignment by pinning remaining `>=` dependency requirements to exact resolved versions across crate manifests; revalidated with `cargo check --workspace --exclude squalr-android` and `cargo test -p squalr-tests` (all pass, existing warnings unchanged).
