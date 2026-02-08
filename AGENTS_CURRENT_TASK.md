@@ -17,6 +17,8 @@ Note from owner: Panic is actually acceptable in some situations! Let us revert 
 - [x] Enforce startup invariants in standalone bindings (`StandaloneEngineApiUnprivilegedBindings::new`) by replacing "log and continue with `None`" behavior with hard invariant failure (`panic!`/`expect`) for impossible states.
 - [x] Decide Android fatal-startup policy and implement consistently: either panic on unrecoverable `android_main` init failures (preferred for critical bootstrap) or return explicit startup status to caller with centralized fatal handler.
 - [x] Add regression tests for startup failure behavior (engine init + IPC init) to ensure critical-system bootstrap failures are fail-fast and no longer degrade silently.
+- [ ] Note from owner: Installer main.rs is still logging errors instead of panic.
+- [ ] Note from onwer: I see uses of eprintln instead of logging in 3 instances (2 in installer, 1 in project_manager.rs). Fix.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
