@@ -18,9 +18,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 
 - Move engine-coupled abstractions out of contract-facing types where possible (`Registries`, `ProjectItemType`, singleton registries, and scan internals).
 - Separate `structopt` parsing concerns from API DTO definitions for request types.
-- Design and implement a stateless command prototype for one vertical slice (process open/list/close) to validate the migration model.
-- Add compatibility tests for serialization/deserialization of command/event payloads and typed response mapping.
-- Run `cargo check` for affected workspace crates and update call sites incrementally.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
@@ -47,6 +44,9 @@ Information discovered during iteration:
 - Added `squalr-engine-api/API_SURFACE_INVENTORY.md` to classify crate-level exports into `public contract`, `transitional`, and `internal`.
 - Marked internal crate-level modules in `squalr-engine-api/src/lib.rs` as `#[doc(hidden)]` and documented `api` as the preferred semver-sensitive namespace.
 - `cargo fmt`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` pass after the classification/boundary-hardening pass (pre-existing warnings remain).
+- Added a stateless process contract prototype under `squalr-engine-api::api::commands::stateless::process` with explicit `ProcessSessionHandle` context for open/close requests and responses.
+- Added API compatibility tests in `squalr-engine-api/tests/api_contract_process_compatibility.rs` to cover process command/event serde round-trips and typed privileged response mapping.
+- `cargo fmt`, `cargo test -p squalr-engine-api --test api_contract_process_compatibility`, `cargo check -p squalr-engine-api`, and `cargo check -p squalr-engine` all pass after the stateless prototype and tests.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
@@ -60,3 +60,4 @@ Append logs for each session here. Compact redundency occasionally:
 - Implemented `engine_api_priviliged_bindings` -> `engine_api_privileged_bindings` migration with a deprecated compatibility shim, updated engine/api imports, ran `cargo fmt`, then verified with `cargo check -p squalr-engine-api` and `cargo check -p squalr-engine`.
 - Implemented a new `squalr-engine-api::api` namespace with `commands`, `events`, and `types` re-export modules, formatted, and re-validated API/engine crates with `cargo check`.
 - Added API surface inventory documentation, marked non-contract root modules as `#[doc(hidden)]`, documented `api` as preferred contract entrypoint, and re-validated with `cargo check -p squalr-engine-api` + `cargo check -p squalr-engine`.
+- Implemented a stateless process API prototype (`api::commands::stateless::process`) and added process contract compatibility tests for serde round-trips plus typed response mapping; validated with `cargo fmt`, targeted `cargo test`, and `cargo check` for API + engine crates.
