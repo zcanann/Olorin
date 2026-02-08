@@ -23,4 +23,6 @@ This file classifies the current crate-level public modules for `pr/api-contract
 - Internal modules are marked `#[doc(hidden)]` to discourage new external usage.
 - Future steps can move internal modules to crate-private visibility once call sites are migrated.
 - `api::types::projects` is now narrowed to contract-safe project DTO modules; engine-coupled project item internals remain available only via `api::types::projects_legacy`.
-- `api::commands::stateless` currently includes `process` and `trackable_tasks` command DTOs that are intentionally free of CLI parsing derives.
+- `api::types::scanning` now exposes only contract-safe scanning DTO paths (`comparisons`, `constraints`, `memory_read_mode`, `plans`); scanner internals remain available only via `api::types::scanning_legacy`.
+- `api::types::snapshots` now exposes only `snapshot`; `snapshot_region` remains available only via `api::types::snapshots_legacy`.
+- `api::commands::stateless` now includes `process`, `trackable_tasks`, `memory`, `project`, `project_items`, `scan`, `scan_results`, and `settings` command DTO contracts intentionally free of CLI parsing derives.
