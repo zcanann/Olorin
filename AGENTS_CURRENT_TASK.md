@@ -94,3 +94,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Fixed `squalr-tests` integration helper (`create_test_state`) to unwrap `EnginePrivilegedState::new_with_os_providers` via explicit `match` + failure panic message, aligning test expectations with typed startup failures.
 - Ran `cargo test -p squalr-tests` (passing).
 - Re-validated `pr/error_handling` checkpoint with `cargo test -p squalr-engine` and `cargo test -p squalr-tests`; both passed and startup fail-fast regression tests remain green.
+- Re-validated `pr/error_handling` on 2026-02-08 with `cargo test -p squalr-engine` and `cargo test -p squalr-tests`; both passed, with only pre-existing warning-only diagnostics.
