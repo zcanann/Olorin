@@ -9,17 +9,8 @@ impl PrivilegedCommandRequestExecutor for ScanResultsAddToProjectRequest {
 
     fn execute(
         &self,
-        engine_privileged_state: &Arc<EnginePrivilegedState>,
+        _engine_privileged_state: &Arc<EnginePrivilegedState>,
     ) -> <Self as PrivilegedCommandRequestExecutor>::ResponseType {
-        let snapshot = engine_privileged_state.get_snapshot();
-        let snapshot_guard = match snapshot.read() {
-            Ok(snapshot) => snapshot,
-            Err(error) => {
-                log::error!("Failed to acquire read lock on Snapshot: {}", error);
-
-                return ScanResultsAddToProjectResponse::default();
-            }
-        };
         /*
         let project_manager = engine_privileged_state.get_project_manager();
         let mut project_changed = false;

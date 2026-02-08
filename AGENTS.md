@@ -41,7 +41,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `MockEngineBindings` is centralized in `squalr-tests/src/mocks/mock_engine_bindings.rs` and reused by all command contract suites.
 - Deterministic OS-behavior tests exist in `squalr-tests/tests/os_behavior_command_tests.rs` for memory read/write, process list/open/close, scan-new page bounds merge flow, and scan-results query/list/refresh/freeze/set-property flows.
 - `scan_results add_to_project` remains a stubbed executor in this branch because project-item mutation hooks are not wired yet.
-- `cargo test -p squalr-tests` is currently passing (107 integration tests).
+- `cargo test -p squalr-tests` is currently passing (107 integration tests; revalidated on 2026-02-08).
 
 ### If something is too hard to test
 - Stub the test, and write down **why** (architecture limitation) + what would need to change.
@@ -68,6 +68,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Expanded deterministic OS-behavior tests (`os_behavior_command_tests`) to cover scan-results query/list/refresh/freeze provider usage.
 - `pr/unit-tests`: Added deterministic `scan_results set_property` OS-behavior tests for value writes and freeze/unfreeze toggling through injected providers.
 - `pr/unit-tests`: Fixed bool deanonymization for supported formats so `set_property is_frozen` decodes boolean payloads correctly.
+- `pr/unit-tests`: Kept `scan_results add_to_project` at contract-level coverage, cleaned unused stub executor binding, and revalidated `cargo test -p squalr-tests` (107 integration tests).
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
