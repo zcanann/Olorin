@@ -298,11 +298,6 @@ Branch: `pr/nightly-upgrade`
 
 The latest version of Rust nightly breaks the SIMD SupportedLanes and LaneCount, cascading into several refactors.
 
-### Package Upgrades
-Branch: `pr/package-upgrades`
-
-Many packages need upgrading, some with breaking changes that may cause refactors.
-
 ### Release Test
 Branch: `pr/release-test`
 
