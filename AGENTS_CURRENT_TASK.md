@@ -14,6 +14,9 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
+- Fix an issue causing the egui app in squalr-installer to render with a harsh white window background, whereas the egui app in squalr correctly renders to transparency, allowing for the custom window title bar and the likes. While the installer does have this custom title bar, the background is not rendering to transparent despite the presence of a clear_color function. It must not be hooked up the same way (or some subtle issue like version mismatch, wrong crates, etc). Carefully compare `squalr` to `squalr-installer`, and only make the change when absolutely certain of the root cause. We have attempted to fix this issue 5 times without success.
+- Note from owner: It looks like the issue was "fixed" in the hackiest and worst way possible. The BG color now just matches the app color. This defeats the purpose. The title bar and footer have rounded edges. The BG MUST render to transparent, not just some non-white color as you have changed it to be. Completely useless.
+
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
