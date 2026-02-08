@@ -44,7 +44,8 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move conversion core modules (`base_system_conversions`, `command_line_conversions`, `conversion_error`, `conversions_from_primitives`, `storage_size_conversions`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Move format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Move privileged string conversion traits into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
-- [ ] Create `squalr-engine-session` and move session/state orchestration there (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
+- [x] Create scaffold crate `squalr-engine-session` and add it to workspace membership for incremental state migration.
+- [ ] Move session/state orchestration into `squalr-engine-session` (`src/engine/*` runtime/session behavior, event routing, log dispatch, project manager ownership).
 - [ ] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
 - [ ] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
 - [ ] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
@@ -89,6 +90,7 @@ Information discovered during iteration:
 - `ContainerType` and `AnonymousValueString` now live in `squalr-engine-domain::structures::data_values`, with compatibility preserved via `squalr-engine-api::structures::data_values` re-export modules.
 - `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` now live in `squalr-engine-domain::structures::data_types`, with compatibility preserved via `squalr-engine-api::structures::data_types` re-export modules.
 - `FloatingPointTolerance::get_value` now avoids unchecked unwraps and falls back to epsilon when conversion fails, aligning with the branch rule against panic-style failure paths.
+- Root `Cargo.toml` workspace members now include `squalr-engine-session`, with initial scaffold crate wiring in place for incremental session-orchestration migration.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -124,3 +126,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Moved `AnonymousValueStringFormat` and format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain`, preserved API compatibility via re-exports in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Moved `ContainerType` and `AnonymousValueString` into `squalr-engine-domain::structures::data_values`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Moved `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` into `squalr-engine-domain::structures::data_types`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
+- 2026-02-08: Added scaffold crate `squalr-engine-session`, wired it into root workspace members, and validated with `cargo check -p squalr-engine-session`.

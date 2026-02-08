@@ -1,0 +1,7 @@
+[package]
+name = "squalr-engine-session"
+version = "0.1.0"
+authors = ["Zachary Canann"]
+edition = "2024"
+
+[dependencies]

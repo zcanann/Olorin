@@ -5,6 +5,7 @@ members = [
     "squalr-tests",
     "squalr-engine-api",
     "squalr-engine-domain",
+    "squalr-engine-session",
     "squalr-engine",
     "squalr-engine-memory",
     "squalr-engine-processes",

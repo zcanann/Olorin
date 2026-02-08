@@ -5781,6 +5781,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "squalr-engine-session"
+version = "0.1.0"
+
+[[package]]
 name = "squalr-installer"
 version = "0.1.1"
 dependencies = [
