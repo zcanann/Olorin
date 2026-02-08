@@ -60,6 +60,7 @@ Discovered during iteration:
 - Standalone unprivileged bindings now require an `Arc<EnginePrivilegedState>` directly, enforcing startup invariant at construction.
 - Android startup policy now uses fatal panic-on-bootstrap-failure semantics in `android_main`.
 - Added fail-fast regression tests in `squalr-engine` for privileged startup monitor failure and IPC spawn/bind startup failures.
+- Follow-up verification found one integration-test compile regression after startup API hardening: `squalr-tests/tests/os_behavior_command_tests.rs` assumed direct `Arc<EnginePrivilegedState>` return from `new_with_os_providers`; fixed helper to handle the typed startup `Result` explicitly.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -90,3 +91,5 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Restored fail-fast bootstrap flow across privileged engine startup, IPC unprivileged host startup, standalone invariant construction, and Android fatal startup semantics.
 - Added `EngineInitializationError`, refactored startup constructors to return typed errors, and added regression tests under `squalr-engine`.
 - Ran `cargo fmt`, `cargo test -p squalr-engine`, `cargo check -p squalr-cli`, `cargo check -p squalr`, and `cargo check -p squalr-tests`.
+- Fixed `squalr-tests` integration helper (`create_test_state`) to unwrap `EnginePrivilegedState::new_with_os_providers` via explicit `match` + failure panic message, aligning test expectations with typed startup failures.
+- Ran `cargo test -p squalr-tests` (passing).
