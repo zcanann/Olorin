@@ -52,3 +52,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - `cargo fmt --all` + `cargo test -p squalr-installer` pass; workspace still has pre-existing non-installer warnings + rustfmt `fn_args_layout` deprecation.
 - Re-verified on 2026-02-08: `cargo fmt --all -- --check` and `cargo test -p squalr-installer` both pass; non-installer warnings remain unchanged.
 - Fixed recurring white installer background by reapplying installer visuals in every frame update, preventing fallback to default light panel visuals.
+- Checkpointed on 2026-02-08: branch remains clean for `pr/installer`; `cargo fmt --all -- --check` and `cargo test -p squalr-installer` pass with only pre-existing non-installer warnings.
