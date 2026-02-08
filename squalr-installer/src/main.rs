@@ -4,7 +4,8 @@ use eframe::NativeOptions;
 use eframe::egui;
 use eframe::egui::viewport::ViewportCommand;
 use eframe::egui::{
-    Align, Color32, ColorImage, CornerRadius, Frame, IconData, Layout, Margin, RichText, ScrollArea, Sense, Stroke, TextureHandle, ViewportBuilder,
+    Align, Color32, ColorImage, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Frame, IconData, Layout, Margin, RichText, ScrollArea, Sense,
+    Stroke, TextureHandle, ViewportBuilder,
 };
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 use squalr_engine::app_provisioner::app_provisioner_config::AppProvisionerConfig;
@@ -20,6 +21,36 @@ use std::time::Duration;
 const APP_NAME: &str = "Squalr Installer";
 const MAX_LOG_BUFFER_BYTES: usize = 256 * 1024;
 static ICON_APP: &[u8] = include_bytes!("../../squalr/images/app/app_icon.png");
+static ICON_CLOSE: &[u8] = include_bytes!("../../squalr/images/app/close.png");
+static ICON_MAXIMIZE: &[u8] = include_bytes!("../../squalr/images/app/maximize.png");
+static ICON_MINIMIZE: &[u8] = include_bytes!("../../squalr/images/app/minimize.png");
+static FONT_NOTO_SANS: &[u8] = include_bytes!("../../squalr/fonts/NotoSans.ttf");
+static FONT_UBUNTU_MONO_BOLD: &[u8] = include_bytes!("../../squalr/fonts/UbuntuMonoBold.ttf");
+
+#[derive(Clone)]
+struct InstallerFontLibrary {
+    font_normal: FontId,
+    font_window_title: FontId,
+    font_ubuntu_mono_normal: FontId,
+}
+
+impl InstallerFontLibrary {
+    fn new() -> Self {
+        Self {
+            font_normal: FontId::new(13.0, FontFamily::Name("noto_sans".into())),
+            font_window_title: FontId::new(14.0, FontFamily::Name("noto_sans".into())),
+            font_ubuntu_mono_normal: FontId::new(15.0, FontFamily::Name("ubuntu_mono_bold".into())),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct InstallerIconLibrary {
+    app: TextureHandle,
+    close: TextureHandle,
+    maximize: TextureHandle,
+    minimize: TextureHandle,
+}
 
 #[derive(Clone)]
 struct InstallerUiState {
@@ -99,7 +130,7 @@ impl Log for InstallerLogger {
 struct InstallerApp {
     ui_state: Arc<Mutex<InstallerUiState>>,
     installer_theme: InstallerTheme,
-    app_icon_texture: Option<TextureHandle>,
+    installer_icon_library: Option<InstallerIconLibrary>,
 }
 
 impl InstallerApp {
@@ -108,13 +139,14 @@ impl InstallerApp {
         ui_state: Arc<Mutex<InstallerUiState>>,
     ) -> Self {
         let installer_theme = InstallerTheme::default();
-        let app_icon_texture = load_installer_icon_texture(context);
         installer_theme.apply(context);
+        install_fonts(context);
+        let installer_icon_library = load_installer_icon_library(context);
         start_installer(ui_state.clone());
         Self {
             ui_state,
             installer_theme,
-            app_icon_texture,
+            installer_icon_library,
         }
     }
 
@@ -129,10 +161,141 @@ impl InstallerApp {
             }
         }
     }
+
+    fn render_installer_title_bar(
+        &self,
+        context: &egui::Context,
+    ) {
+        egui::TopBottomPanel::top("title_bar")
+            .exact_height(self.installer_theme.title_bar_height)
+            .resizable(false)
+            .frame(Frame::new().fill(Color32::TRANSPARENT))
+            .show(context, |ui| {
+                let title_bar_rectangle = ui.max_rect();
+                ui.painter().rect_filled(
+                    title_bar_rectangle,
+                    CornerRadius {
+                        nw: self.installer_theme.corner_radius_panel,
+                        ne: self.installer_theme.corner_radius_panel,
+                        sw: 0,
+                        se: 0,
+                    },
+                    self.installer_theme.color_background_primary,
+                );
+
+                let mut button_cluster_rectangle: Option<egui::Rect> = None;
+                ui.allocate_ui_with_layout(title_bar_rectangle.size(), Layout::left_to_right(Align::Center), |ui| {
+                    ui.add_space(8.0);
+
+                    if let Some(installer_icon_library) = &self.installer_icon_library {
+                        ui.add(egui::Image::new((installer_icon_library.app.id(), egui::vec2(18.0, 18.0))));
+                        ui.add_space(4.0);
+                    }
+
+                    ui.label(
+                        RichText::new(APP_NAME)
+                            .font(self.installer_theme.fonts.font_window_title.clone())
+                            .color(self.installer_theme.color_foreground),
+                    );
+
+                    ui.add_space(ui.available_width());
+
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        let button_size = egui::vec2(36.0, self.installer_theme.title_bar_height);
+
+                        let close_button_response = ui.add_sized(button_size, egui::Button::new("").frame(false));
+                        if let Some(installer_icon_library) = &self.installer_icon_library {
+                            draw_icon(ui, close_button_response.rect, &installer_icon_library.close);
+                        }
+                        if close_button_response.clicked() {
+                            context.send_viewport_cmd(ViewportCommand::Close);
+                        }
+
+                        let maximize_button_response = ui.add_sized(button_size, egui::Button::new("").frame(false));
+                        if let Some(installer_icon_library) = &self.installer_icon_library {
+                            draw_icon(ui, maximize_button_response.rect, &installer_icon_library.maximize);
+                        }
+                        if maximize_button_response.clicked() {
+                            let currently_maximized = context.input(|input_state| input_state.viewport().maximized.unwrap_or(false));
+                            context.send_viewport_cmd(ViewportCommand::Maximized(!currently_maximized));
+                        }
+
+                        let minimize_button_response = ui.add_sized(button_size, egui::Button::new("").frame(false));
+                        if let Some(installer_icon_library) = &self.installer_icon_library {
+                            draw_icon(ui, minimize_button_response.rect, &installer_icon_library.minimize);
+                        }
+                        if minimize_button_response.clicked() {
+                            context.send_viewport_cmd(ViewportCommand::Minimized(true));
+                        }
+
+                        button_cluster_rectangle = Some(
+                            close_button_response
+                                .rect
+                                .union(maximize_button_response.rect)
+                                .union(minimize_button_response.rect),
+                        );
+                    });
+                });
+
+                let drag_region_right_edge = button_cluster_rectangle
+                    .map(|rectangle| rectangle.min.x)
+                    .unwrap_or(title_bar_rectangle.max.x);
+                let drag_region = egui::Rect::from_min_max(title_bar_rectangle.min, egui::pos2(drag_region_right_edge, title_bar_rectangle.max.y));
+                let drag_response = ui.interact(drag_region, ui.id().with("installer_title_bar_drag"), Sense::click_and_drag());
+
+                if drag_response.drag_started() {
+                    context.send_viewport_cmd(ViewportCommand::StartDrag);
+                }
+
+                if drag_response.double_clicked() {
+                    let currently_maximized = context.input(|input_state| input_state.viewport().maximized.unwrap_or(false));
+                    context.send_viewport_cmd(ViewportCommand::Maximized(!currently_maximized));
+                }
+            });
+    }
+
+    fn render_installer_footer(
+        &self,
+        context: &egui::Context,
+        install_complete: bool,
+    ) {
+        egui::TopBottomPanel::bottom("footer")
+            .exact_height(self.installer_theme.footer_height)
+            .resizable(false)
+            .frame(Frame::new().fill(Color32::TRANSPARENT))
+            .show(context, |ui| {
+                let footer_rectangle = ui.max_rect();
+                ui.painter().rect_filled(
+                    footer_rectangle,
+                    CornerRadius {
+                        nw: 0,
+                        ne: 0,
+                        sw: self.installer_theme.corner_radius_panel,
+                        se: self.installer_theme.corner_radius_panel,
+                    },
+                    self.installer_theme.color_border_blue,
+                );
+
+                ui.allocate_ui_with_layout(footer_rectangle.size(), Layout::left_to_right(Align::Center), |ui| {
+                    ui.add_space(8.0);
+                    ui.label(
+                        RichText::new("Install location: default user application directory.")
+                            .font(self.installer_theme.fonts.font_normal.clone())
+                            .color(self.installer_theme.color_foreground),
+                    );
+                    ui.add_space(ui.available_width());
+
+                    if install_complete && ui.button("Launch Squalr").clicked() {
+                        self.launch_app();
+                    }
+                });
+            });
+    }
 }
 
 #[derive(Clone)]
 struct InstallerTheme {
+    fonts: InstallerFontLibrary,
     color_background_primary: Color32,
     color_background_panel: Color32,
     color_background_control: Color32,
@@ -151,11 +314,14 @@ struct InstallerTheme {
     color_border_panel: Color32,
     color_log_background: Color32,
     corner_radius_panel: u8,
+    title_bar_height: f32,
+    footer_height: f32,
 }
 
 impl Default for InstallerTheme {
     fn default() -> Self {
         Self {
+            fonts: InstallerFontLibrary::new(),
             color_background_primary: Color32::from_rgb(0x33, 0x33, 0x33),
             color_background_panel: Color32::from_rgb(0x27, 0x27, 0x27),
             color_background_control: Color32::from_rgb(0x44, 0x44, 0x44),
@@ -174,6 +340,8 @@ impl Default for InstallerTheme {
             color_border_panel: Color32::from_rgb(0x20, 0x1C, 0x1C),
             color_log_background: Color32::from_rgb(0x1E, 0x1E, 0x1E),
             corner_radius_panel: 8,
+            title_bar_height: 32.0,
+            footer_height: 24.0,
         }
     }
 }
@@ -233,11 +401,58 @@ impl InstallerTheme {
     }
 }
 
-fn load_installer_icon_texture(context: &egui::Context) -> Option<TextureHandle> {
-    let icon = image::load_from_memory(ICON_APP).ok()?.into_rgba8();
+fn install_fonts(context: &egui::Context) {
+    let mut font_definitions = FontDefinitions::default();
+    font_definitions
+        .font_data
+        .insert("noto_sans".to_owned(), FontData::from_static(FONT_NOTO_SANS).into());
+    font_definitions
+        .font_data
+        .insert("ubuntu_mono_bold".to_owned(), FontData::from_static(FONT_UBUNTU_MONO_BOLD).into());
+
+    font_definitions
+        .families
+        .insert(FontFamily::Name("noto_sans".into()), vec!["noto_sans".to_owned()]);
+    font_definitions
+        .families
+        .insert(FontFamily::Name("ubuntu_mono_bold".into()), vec!["ubuntu_mono_bold".to_owned()]);
+
+    context.set_fonts(font_definitions);
+}
+
+fn load_installer_icon(
+    context: &egui::Context,
+    identifier: &str,
+    icon_bytes: &[u8],
+) -> Option<TextureHandle> {
+    let icon = image::load_from_memory(icon_bytes).ok()?.into_rgba8();
     let icon_size = [icon.width() as usize, icon.height() as usize];
     let icon_color_image = ColorImage::from_rgba_unmultiplied(icon_size, icon.as_raw());
-    Some(context.load_texture("installer_app_icon", icon_color_image, egui::TextureOptions::LINEAR))
+    Some(context.load_texture(identifier, icon_color_image, egui::TextureOptions::LINEAR))
+}
+
+fn load_installer_icon_library(context: &egui::Context) -> Option<InstallerIconLibrary> {
+    Some(InstallerIconLibrary {
+        app: load_installer_icon(context, "installer_app_icon", ICON_APP)?,
+        close: load_installer_icon(context, "installer_close_icon", ICON_CLOSE)?,
+        maximize: load_installer_icon(context, "installer_maximize_icon", ICON_MAXIMIZE)?,
+        minimize: load_installer_icon(context, "installer_minimize_icon", ICON_MINIMIZE)?,
+    })
+}
+
+fn draw_icon(
+    ui: &egui::Ui,
+    bounds_rectangle: egui::Rect,
+    icon_texture: &TextureHandle,
+) {
+    let [texture_width, texture_height] = icon_texture.size();
+    let icon_rectangle = egui::Rect::from_center_size(bounds_rectangle.center(), egui::vec2(texture_width as f32, texture_height as f32));
+    ui.painter().image(
+        icon_texture.id(),
+        icon_rectangle,
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+        Color32::WHITE,
+    );
 }
 
 fn log_color_for_line(
@@ -291,123 +506,8 @@ impl eframe::App for InstallerApp {
         let progress_status_text = install_phase_string(state_snapshot.installer_phase);
         let header_status_text = installer_status_string(&state_snapshot);
 
-        egui::TopBottomPanel::top("title_bar")
-            .resizable(false)
-            .frame(
-                Frame::new()
-                    .fill(self.installer_theme.color_background_primary)
-                    .stroke(Stroke::new(1.0, self.installer_theme.color_border_blue))
-                    .inner_margin(Margin::symmetric(8, 6)),
-            )
-            .show(context, |ui| {
-                let title_bar_rectangle = ui.available_rect_before_wrap();
-                let mut button_cluster_rectangle: Option<egui::Rect> = None;
-
-                ui.allocate_ui_with_layout(title_bar_rectangle.size(), Layout::left_to_right(Align::Center), |ui| {
-                    if let Some(app_icon_texture) = &self.app_icon_texture {
-                        ui.add(egui::Image::new((app_icon_texture.id(), egui::vec2(18.0, 18.0))));
-                        ui.add_space(4.0);
-                    }
-
-                    ui.label(
-                        RichText::new(APP_NAME)
-                            .strong()
-                            .size(14.0)
-                            .color(self.installer_theme.color_foreground),
-                    );
-
-                    ui.add_space(ui.available_width());
-
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        let button_size = egui::vec2(28.0, 22.0);
-
-                        let close_button_response = ui.add_sized(
-                            button_size,
-                            egui::Button::new(
-                                RichText::new("X")
-                                    .size(12.0)
-                                    .color(self.installer_theme.color_foreground),
-                            ),
-                        );
-                        if close_button_response.clicked() {
-                            context.send_viewport_cmd(ViewportCommand::Close);
-                        }
-
-                        let maximize_button_text = if context.input(|input_state| input_state.viewport().maximized.unwrap_or(false)) {
-                            "[]"
-                        } else {
-                            "[ ]"
-                        };
-                        let maximize_button_response = ui.add_sized(
-                            button_size,
-                            egui::Button::new(
-                                RichText::new(maximize_button_text)
-                                    .size(11.0)
-                                    .color(self.installer_theme.color_foreground),
-                            ),
-                        );
-                        if maximize_button_response.clicked() {
-                            let currently_maximized = context.input(|input_state| input_state.viewport().maximized.unwrap_or(false));
-                            context.send_viewport_cmd(ViewportCommand::Maximized(!currently_maximized));
-                        }
-
-                        let minimize_button_response = ui.add_sized(
-                            button_size,
-                            egui::Button::new(
-                                RichText::new("_")
-                                    .size(13.0)
-                                    .color(self.installer_theme.color_foreground),
-                            ),
-                        );
-                        if minimize_button_response.clicked() {
-                            context.send_viewport_cmd(ViewportCommand::Minimized(true));
-                        }
-
-                        button_cluster_rectangle = Some(
-                            close_button_response
-                                .rect
-                                .union(maximize_button_response.rect)
-                                .union(minimize_button_response.rect),
-                        );
-                    });
-                });
-
-                let drag_region_right_edge = button_cluster_rectangle
-                    .map(|rectangle| rectangle.min.x)
-                    .unwrap_or(title_bar_rectangle.max.x);
-                let drag_region = egui::Rect::from_min_max(title_bar_rectangle.min, egui::pos2(drag_region_right_edge, title_bar_rectangle.max.y));
-                let drag_response = ui.interact(drag_region, ui.id().with("installer_title_bar_drag"), Sense::click_and_drag());
-                if drag_response.drag_started() {
-                    context.send_viewport_cmd(ViewportCommand::StartDrag);
-                }
-                if drag_response.double_clicked() {
-                    let currently_maximized = context.input(|input_state| input_state.viewport().maximized.unwrap_or(false));
-                    context.send_viewport_cmd(ViewportCommand::Maximized(!currently_maximized));
-                }
-            });
-
-        egui::TopBottomPanel::bottom("footer")
-            .resizable(false)
-            .frame(
-                Frame::new()
-                    .fill(self.installer_theme.color_border_blue)
-                    .stroke(Stroke::new(1.0, self.installer_theme.color_border_panel))
-                    .inner_margin(Margin::symmetric(8, 6)),
-            )
-            .show(context, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(
-                        RichText::new("Install location: default user application directory.")
-                            .color(self.installer_theme.color_foreground_preview)
-                            .size(14.0),
-                    );
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if state_snapshot.install_complete && ui.button("Launch Squalr").clicked() {
-                            self.launch_app();
-                        }
-                    });
-                });
-            });
+        self.render_installer_title_bar(context);
+        self.render_installer_footer(context, state_snapshot.install_complete);
 
         egui::CentralPanel::default()
             .frame(
@@ -419,8 +519,7 @@ impl eframe::App for InstallerApp {
                 ui.with_layout(Layout::top_down(Align::Min), |ui| {
                     ui.label(
                         RichText::new(header_status_text)
-                            .strong()
-                            .size(14.0)
+                            .font(self.installer_theme.fonts.font_window_title.clone())
                             .color(self.installer_theme.color_foreground),
                     );
 
@@ -431,13 +530,12 @@ impl eframe::App for InstallerApp {
                         .show(ui, |ui| {
                             ui.label(
                                 RichText::new("Installation Status")
-                                    .strong()
-                                    .size(15.0)
+                                    .font(self.installer_theme.fonts.font_window_title.clone())
                                     .color(self.installer_theme.color_foreground),
                             );
                             ui.label(
                                 RichText::new(progress_status_text)
-                                    .size(13.0)
+                                    .font(self.installer_theme.fonts.font_normal.clone())
                                     .color(self.installer_theme.color_foreground_preview),
                             );
                             ui.add_space(4.0);
@@ -461,15 +559,14 @@ impl eframe::App for InstallerApp {
                             ui.horizontal(|ui| {
                                 ui.label(
                                     RichText::new("Installer Log")
-                                        .strong()
-                                        .size(14.0)
+                                        .font(self.installer_theme.fonts.font_window_title.clone())
                                         .color(self.installer_theme.color_foreground),
                                 );
                                 if state_snapshot.install_complete {
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                         ui.label(
                                             RichText::new("Ready")
-                                                .size(12.0)
+                                                .font(self.installer_theme.fonts.font_normal.clone())
                                                 .color(self.installer_theme.color_background_control_success_dark),
                                         );
                                     });
@@ -491,16 +588,14 @@ impl eframe::App for InstallerApp {
                                             if state_snapshot.installer_logs.is_empty() {
                                                 ui.label(
                                                     RichText::new("Waiting for installer output.")
-                                                        .monospace()
-                                                        .size(12.0)
+                                                        .font(self.installer_theme.fonts.font_ubuntu_mono_normal.clone())
                                                         .color(self.installer_theme.color_foreground_preview),
                                                 );
                                             } else {
                                                 for installer_log_line in state_snapshot.installer_logs.lines() {
                                                     ui.label(
                                                         RichText::new(installer_log_line)
-                                                            .monospace()
-                                                            .size(12.0)
+                                                            .font(self.installer_theme.fonts.font_normal.clone())
                                                             .color(log_color_for_line(installer_log_line, &self.installer_theme)),
                                                     );
                                                 }
