@@ -7,7 +7,7 @@ edition = "2024"
 
 [dependencies]
 squalr-engine-api = { path = "../squalr-engine-api" }
-squalr-engine-memory = { path = "../squalr-engine-memory" }
+squalr-operating-system = { path = "../squalr-operating-system" }
 bitflags = "2.10.0"
 bytemuck = "1.25.0"
 futures = "0.3.31"

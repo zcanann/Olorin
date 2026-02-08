@@ -46,7 +46,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move privileged string conversion traits into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Create scaffold crate `squalr-engine-session` and add it to workspace membership for incremental state migration.
 - [x] Move session/state orchestration into `squalr-engine-session` (`EngineUnprivilegedState`, event routing, log dispatch, and project manager ownership moved out of `squalr-engine-api`).
-- [ ] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
+- [x] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
 - [ ] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
 - [ ] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
 - [ ] Move scan execution code that creates `TrackableTask` out of compute paths (`squalr-engine-scanning/*_task.rs`) so engine APIs are blocking/stateless.
@@ -94,6 +94,7 @@ Information discovered during iteration:
 - Session orchestration concrete type `EngineUnprivilegedState` and logging types (`LogDispatcher`, `LogHistoryAppender`) now live in `squalr-engine-session`; `squalr-engine-api` no longer contains `engine_unprivileged_state` or engine logging modules.
 - Introduced `squalr-engine-api::engine::engine_execution_context::EngineExecutionContext` so API command/binding traits depend on context capabilities instead of concrete session type.
 - Updated consumers (`squalr-engine`, `squalr`, `squalr-cli`, `squalr-tests`) to depend on `squalr-engine-session` for concrete unprivileged state access.
+- Added `squalr-operating-system` crate, migrated `squalr-engine-memory` and `squalr-engine-processes` source modules into it, and rewired active consumers (`squalr-engine`, `squalr-engine-scanning`, `squalr-tests`) to use the unified OS crate.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -131,3 +132,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Moved `DataTypeRef`, `DataTypeError`, `DataTypeSizingData`, and `FloatingPointTolerance` into `squalr-engine-domain::structures::data_types`, preserved API compatibility via re-export modules in `squalr-engine-api`, and validated with `cargo check -p squalr-engine-domain`, `cargo check -p squalr-engine-api`, and `cargo test -p squalr-engine-domain`.
 - 2026-02-08: Added scaffold crate `squalr-engine-session`, wired it into root workspace members, and validated with `cargo check -p squalr-engine-session`.
 - 2026-02-08: Migrated `EngineUnprivilegedState` and engine logging implementation from `squalr-engine-api` into `squalr-engine-session`; introduced `EngineExecutionContext` abstraction in API traits to avoid crate cycles; rewired engine/cli/gui/tests imports and validated with `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine-session`, `cargo check -p squalr-engine`, `cargo check -p squalr-cli`, `cargo check -p squalr-tests`, `cargo test -p squalr-engine-session`, and `cargo test -p squalr-tests --no-run`.
+- 2026-02-08: Added `squalr-operating-system` and migrated memory/process modules into it; rewired engine/scanning/tests imports and dependencies from `squalr-engine-memory`/`squalr-engine-processes` to `squalr-operating-system`; validated with `cargo check -p squalr-operating-system`, `cargo check -p squalr-engine-scanning`, `cargo check -p squalr-engine`, `cargo check -p squalr-tests`, `cargo test -p squalr-operating-system`, and `cargo test -p squalr-tests --no-run`.

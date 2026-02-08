@@ -14,8 +14,8 @@ use squalr_engine_api::registries::registries::Registries;
 use squalr_engine_api::registries::scan_rules::element_scan_rule_registry::ElementScanRuleRegistry;
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::snapshots::snapshot::Snapshot;
-use squalr_engine_processes::process::process_manager::ProcessManager;
 use squalr_engine_scanning::freeze_task::snapshot_scan_result_freeze_task::SnapshotScanResultFreezeTask;
+use squalr_operating_system::process::process_manager::ProcessManager;
 use std::sync::{Arc, RwLock};
 
 /// Tracks critical engine state for internal use. This includes executing engine tasks, commands, and events.
@@ -232,8 +232,8 @@ mod tests {
     use crate::os::engine_os_provider::{EngineOsProviders, ProcessQueryProvider};
     use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
     use squalr_engine_api::structures::processes::process_info::ProcessInfo;
-    use squalr_engine_processes::process_query::process_query_error::ProcessQueryError;
-    use squalr_engine_processes::process_query::process_query_options::ProcessQueryOptions;
+    use squalr_operating_system::process_query::process_query_error::ProcessQueryError;
+    use squalr_operating_system::process_query::process_query_options::ProcessQueryOptions;
     use std::sync::Arc;
 
     struct FailingProcessQueryProvider;

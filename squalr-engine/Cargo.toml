@@ -8,8 +8,7 @@ edition = "2024"
 [dependencies]
 squalr-engine-api = { path = "../squalr-engine-api" }
 squalr-engine-session = { path = "../squalr-engine-session" }
-squalr-engine-memory = { path = "../squalr-engine-memory" }
-squalr-engine-processes = { path = "../squalr-engine-processes" }
+squalr-operating-system = { path = "../squalr-operating-system" }
 squalr-engine-projects = { path = "../squalr-engine-projects" }
 squalr-engine-scanning = { path = "../squalr-engine-scanning" }
 anyhow = "1.0.101"

@@ -4,16 +4,16 @@ use squalr_engine_api::structures::memory::normalized_region::NormalizedRegion;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 use squalr_engine_api::structures::structs::valued_struct::ValuedStruct;
-use squalr_engine_memory::memory_queryer::memory_queryer::MemoryQueryer;
-use squalr_engine_memory::memory_queryer::memory_queryer_trait::MemoryQueryerTrait;
-use squalr_engine_memory::memory_queryer::page_retrieval_mode::PageRetrievalMode;
-use squalr_engine_memory::memory_reader::MemoryReader;
-use squalr_engine_memory::memory_reader::memory_reader_trait::MemoryReaderTrait;
-use squalr_engine_memory::memory_writer::MemoryWriter;
-use squalr_engine_memory::memory_writer::memory_writer_trait::MemoryWriterTrait;
-use squalr_engine_processes::process_query::process_query_error::ProcessQueryError;
-use squalr_engine_processes::process_query::process_query_options::ProcessQueryOptions;
-use squalr_engine_processes::process_query::process_queryer::ProcessQuery;
+use squalr_operating_system::memory_queryer::memory_queryer::MemoryQueryer;
+use squalr_operating_system::memory_queryer::memory_queryer_trait::MemoryQueryerTrait;
+use squalr_operating_system::memory_queryer::page_retrieval_mode::PageRetrievalMode;
+use squalr_operating_system::memory_reader::MemoryReader;
+use squalr_operating_system::memory_reader::memory_reader_trait::MemoryReaderTrait;
+use squalr_operating_system::memory_writer::MemoryWriter;
+use squalr_operating_system::memory_writer::memory_writer_trait::MemoryWriterTrait;
+use squalr_operating_system::process_query::process_query_error::ProcessQueryError;
+use squalr_operating_system::process_query::process_query_options::ProcessQueryOptions;
+use squalr_operating_system::process_query::process_queryer::ProcessQuery;
 use std::sync::Arc;
 
 pub trait ProcessQueryProvider: Send + Sync {
