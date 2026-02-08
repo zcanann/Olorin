@@ -14,8 +14,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- Fix an issue causing the egui app in squalr-installer to render with a harsh white window background, whereas the egui app in squalr correctly renders to transparency, allowing for the custom window title bar and the likes. While the installer does have this custom title bar, the background is not rendering to transparent despite the presence of a clear_color function. It must not be hooked up the same way (or some subtle issue like version mismatch, wrong crates, etc). Carefully compare `squalr` to `squalr-installer`, and only make the change when absolutely certain of the root cause. We have attempted to fix this issue 5 times without success.
-
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
@@ -38,6 +36,7 @@ Important information discovered during work about the current state of the task
 - Installer title-bar window controls now use a dedicated custom widget (`src/views/main_window/title_bar_button.rs`) with explicit hover/pressed visuals instead of raw `egui::Button`, keeping parity with `squalr` title-bar behavior.
 - Installer log panel rendering is now modularized into `src/views/main_window/installer_log_view.rs`, and `installer_main_window_view.rs` now composes it.
 - Installer title-bar button hover/pressed visuals now use `squalr`-matching tint overlays (white/black alpha) instead of blue fills/borders.
+- Installer theme visuals are now reapplied every frame in `src/app.rs::update` so integration/native theme changes cannot revert panel visuals to default light/white.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows.
@@ -52,3 +51,4 @@ Append below and compact regularly to relevant recent, keep under ~20 lines and 
 - Updated title-bar button hover/pressed states to match `squalr` tint overlays.
 - `cargo fmt --all` + `cargo test -p squalr-installer` pass; workspace still has pre-existing non-installer warnings + rustfmt `fn_args_layout` deprecation.
 - Re-verified on 2026-02-08: `cargo fmt --all -- --check` and `cargo test -p squalr-installer` both pass; non-installer warnings remain unchanged.
+- Fixed recurring white installer background by reapplying installer visuals in every frame update, preventing fallback to default light panel visuals.

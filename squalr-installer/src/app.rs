@@ -47,6 +47,9 @@ impl eframe::App for InstallerApp {
         context: &egui::Context,
         _frame: &mut eframe::Frame,
     ) {
+        // Reapply visuals each frame so native theme updates cannot restore default light panel colors.
+        self.installer_theme.apply(context);
+
         let state_snapshot = match self.ui_state.lock() {
             Ok(ui_state) => ui_state.clone(),
             Err(_) => InstallerUiState::new(),
