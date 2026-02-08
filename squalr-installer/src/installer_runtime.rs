@@ -1,4 +1,5 @@
 use crate::ui_state::InstallerUiState;
+use eframe::egui::Context;
 use squalr_engine::app_provisioner::app_provisioner_config::AppProvisionerConfig;
 use squalr_engine::app_provisioner::installer::app_installer::AppInstaller;
 use squalr_engine::app_provisioner::installer::install_phase::InstallPhase;
@@ -35,15 +36,20 @@ pub(crate) fn installer_status_string(ui_state: &InstallerUiState) -> &'static s
     }
 }
 
-pub(crate) fn start_installer(ui_state: Arc<Mutex<InstallerUiState>>) {
+pub(crate) fn start_installer(
+    ui_state: Arc<Mutex<InstallerUiState>>,
+    repaint_context: Context,
+) {
     let progress_tracker = ProgressTracker::new();
     let progress_receiver = progress_tracker.subscribe();
     let progress_ui_state = ui_state.clone();
+    let progress_repaint_context = repaint_context.clone();
 
     thread::spawn(move || {
         for install_progress in progress_receiver {
             if let Ok(mut state) = progress_ui_state.lock() {
                 state.set_progress(install_progress);
+                progress_repaint_context.request_repaint();
             }
         }
     });

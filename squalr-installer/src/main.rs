@@ -19,10 +19,6 @@ use std::sync::{Arc, Mutex};
 pub fn main() {
     let ui_state = Arc::new(Mutex::new(InstallerUiState::new()));
 
-    if let Err(error) = initialize_logger(ui_state.clone()) {
-        eprintln!("Failed to initialize installer logger: {}", error);
-    }
-
     let mut viewport_builder = ViewportBuilder::default()
         .with_decorations(false)
         .with_transparent(true)
@@ -41,7 +37,13 @@ pub fn main() {
     let run_result = eframe::run_native(
         APP_NAME,
         native_options,
-        Box::new(move |creation_context| Ok(Box::new(InstallerApp::new(&creation_context.egui_ctx, ui_state.clone())))),
+        Box::new(move |creation_context| {
+            if let Err(error) = initialize_logger(ui_state.clone(), creation_context.egui_ctx.clone()) {
+                eprintln!("Failed to initialize installer logger: {}", error);
+            }
+
+            Ok(Box::new(InstallerApp::new(&creation_context.egui_ctx, ui_state.clone())))
+        }),
     );
 
     if let Err(error) = run_result {

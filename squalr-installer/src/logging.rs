@@ -1,4 +1,5 @@
 use crate::ui_state::InstallerUiState;
+use eframe::egui::Context;
 use log::{Level, Log, Metadata, Record, SetLoggerError};
 use std::sync::{Arc, Mutex};
 
@@ -6,11 +7,15 @@ pub(crate) const MAX_LOG_BUFFER_BYTES: usize = 256 * 1024;
 
 struct InstallerLogger {
     ui_state: Arc<Mutex<InstallerUiState>>,
+    repaint_context: Context,
 }
 
 impl InstallerLogger {
-    fn new(ui_state: Arc<Mutex<InstallerUiState>>) -> Self {
-        Self { ui_state }
+    fn new(
+        ui_state: Arc<Mutex<InstallerUiState>>,
+        repaint_context: Context,
+    ) -> Self {
+        Self { ui_state, repaint_context }
     }
 }
 
@@ -34,6 +39,7 @@ impl Log for InstallerLogger {
 
         if let Ok(mut ui_state) = self.ui_state.lock() {
             ui_state.append_log(&log_message);
+            self.repaint_context.request_repaint();
         }
     }
 
@@ -56,8 +62,11 @@ pub(crate) fn trim_log_buffer(
     log_buffer.drain(..trim_start_index);
 }
 
-pub(crate) fn initialize_logger(ui_state: Arc<Mutex<InstallerUiState>>) -> Result<(), SetLoggerError> {
-    let logger = InstallerLogger::new(ui_state);
+pub(crate) fn initialize_logger(
+    ui_state: Arc<Mutex<InstallerUiState>>,
+    repaint_context: Context,
+) -> Result<(), SetLoggerError> {
+    let logger = InstallerLogger::new(ui_state, repaint_context);
     log::set_boxed_logger(Box::new(logger))?;
     log::set_max_level(log::LevelFilter::Info);
     Ok(())

@@ -7,7 +7,6 @@ use eframe::egui;
 use eframe::egui::Visuals;
 use epaint::Rgba;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 pub(crate) struct InstallerApp {
     ui_state: Arc<Mutex<InstallerUiState>>,
@@ -25,7 +24,7 @@ impl InstallerApp {
         installer_theme.install_fonts(context);
 
         let installer_icon_library = load_installer_icon_library(context);
-        start_installer(ui_state.clone());
+        start_installer(ui_state.clone(), context.clone());
 
         Self {
             ui_state,
@@ -48,8 +47,6 @@ impl eframe::App for InstallerApp {
         context: &egui::Context,
         _frame: &mut eframe::Frame,
     ) {
-        context.request_repaint_after(Duration::from_millis(50));
-
         let state_snapshot = match self.ui_state.lock() {
             Ok(ui_state) => ui_state.clone(),
             Err(_) => InstallerUiState::new(),

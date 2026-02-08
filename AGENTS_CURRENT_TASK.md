@@ -14,8 +14,6 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- The usage of context.request_repaint_after(Duration::from_millis(50)); is incredibly weird compared to how `app.rs` in squalr handles its rendering. `squalr-installer` should mirror the rendering process of `squalr` exactly.
-
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
@@ -34,6 +32,7 @@ Important information discovered during work about the current state of the task
 - Installer rendering now mirrors `squalr`'s distinct control layout with `src/views/main_window/installer_main_window_view.rs`, `src/views/main_window/installer_title_bar_view.rs`, and `src/views/main_window/installer_footer_view.rs`; `app.rs` now orchestrates state + repaint only.
 - Installer transparency now matches `squalr` behavior via `ViewportBuilder::with_transparent(true)` and transparent app clear color.
 - Installer log-buffer unit tests are no longer in `main.rs`; they now live in `src/logging.rs`.
+- Installer repaint flow is now event-driven (log/progress updates call `Context::request_repaint`) instead of a fixed `request_repaint_after` polling loop, matching `squalr`'s render/update pattern more closely.
 
 ## Agent Scratchpad and Notes
 Smaller notes should go here, and can be erased and compacted as needed during iteration.
@@ -62,3 +61,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Completed installer modularization and transparency fix: split `squalr-installer` into dedicated app/theme/assets/runtime/logger/state modules, enabled transparent viewport + transparent clear color to remove rounded-corner black artifacts, moved log-buffer tests out of `main.rs` into `src/logging.rs`; `cargo fmt --all` and `cargo test -p squalr-installer` pass (workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
 - 2026-02-08: Re-ran `pr/installer` AGENTS maintenance workflow on empty tasklist; `squalr-installer` remains clean (no `unwrap()` usage, dead helpers, or unused imports), `cargo fmt --all -- --check` and `cargo test -p squalr-installer` pass; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings.
 - 2026-02-08: Refactored installer window composition to mirror `squalr` view boundaries: introduced `views/main_window` with distinct title bar/footer/main window controls, removed title/footer rendering logic from `app.rs`, and revalidated with `cargo fmt --all` + `cargo test -p squalr-installer` (passes; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
+- 2026-02-08: Completed repaint-loop parity fix for `pr/installer`: removed `request_repaint_after(Duration::from_millis(50))` polling from installer `app.rs`, switched to event-driven repaint requests from installer progress + logging updates via shared `egui::Context`, and revalidated with `cargo fmt --all` + `cargo test -p squalr-installer` (passes; workspace still emits pre-existing non-installer warnings and rustfmt `fn_args_layout` deprecation warnings).
