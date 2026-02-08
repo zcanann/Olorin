@@ -80,6 +80,7 @@ We need deterministic tests for privileged executors that currently call static 
 - `pr/unit-tests`: Added scheduled CI workflow `.github/workflows/workspace-nightly.yml` to run `cargo test --workspace` (plus manual dispatch) for broader regression coverage outside PR path filters.
 - `pr/unit-tests`: Added warning-baseline controls to `.github/workflows/squalr-tests-pr.yml`; touched unit-test crates (`squalr-tests`, `squalr-engine`, `squalr-engine-api`) now compare warning counts against PR base and fail only on warning regressions.
 - `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` passes locally (124 integration tests) after CI warning-baseline + nightly-lane additions.
+- `pr/unit-tests`: Revalidated on 2026-02-08 that `cargo test -p squalr-tests` still passes locally (124 integration tests); active DI routing remains in place and the only singleton mentions under `scan_results add_to_project` remain inside the intentional stubbed/commented path pending project-item mutation hooks.
 
 ## Agentic Off Limits / Not ready yet
 - `pr/cli-bugs`: CLI does not spawn a window / execute commands reliably; align with GUI behavior.
