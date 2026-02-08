@@ -13,6 +13,8 @@ Modify sparringly as new information is learned. Keep minimal and simple. The go
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
+- Audit installer visuals against `squalr` after any UI feature additions.
+
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
@@ -21,6 +23,7 @@ Important information discovered during work about the current state of the task
 - It is critical to use the squalr/ repo as a guide for how to handle egui rendering (ie `app.rs`, `main_window_view.rs`, `project_selector_view.rs`, etc.)
 - The installer can be substantially more lightweight. We do not need docking, for instance.
 - Legacy Slint assets were used as reference and then removed once parity/polish validation was completed.
+- Installer now uses a dedicated egui theme preset aligned to `squalr` colors and panel structure.
 
 ## Agent Scratchpad and Notes
 Smaller notes should go here, and can be erased and compacted as needed during iteration.
@@ -30,3 +33,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 ### Concise Session Log (append-or-compact-only, keep very short and compact as it grows)
 - 2026-02-08: Replaced `squalr-installer` Slint startup with `eframe` UI (status text, progress bar, log panel, launch button); removed Slint compile step from `build.rs`; added log-buffer unit tests; `cargo test -p squalr-installer` passes.
 - 2026-02-08: Validated installer UI structure parity against legacy Slint view and removed stale `squalr-installer/ui/slint` + `squalr-installer/src/view_models` glue.
+- 2026-02-08: Re-themed `squalr-installer` UI to match `squalr` palette/layout (header, status card, log card, footer action row), added install-phase status messaging; `cargo test -p squalr-installer` passes.
