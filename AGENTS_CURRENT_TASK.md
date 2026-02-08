@@ -35,3 +35,4 @@ Smaller notes should go here, and can be erased and compacted as needed during i
 - 2026-02-08: Validated installer UI structure parity against legacy Slint view and removed stale `squalr-installer/ui/slint` + `squalr-installer/src/view_models` glue.
 - 2026-02-08: Re-themed `squalr-installer` UI to match `squalr` palette/layout (header, status card, log card, footer action row), added install-phase status messaging; `cargo test -p squalr-installer` passes.
 - 2026-02-08: Audited `squalr-installer` visuals against `squalr` theme references; no parity regressions found; `cargo test -p squalr-installer` passes.
+- 2026-02-08: Re-audited `pr/installer` with current tree; installer remains `eframe`-based with no installer-local regressions found; `cargo test -p squalr-installer` passes.
