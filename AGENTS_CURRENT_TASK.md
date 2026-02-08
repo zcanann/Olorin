@@ -1,33 +1,54 @@
 # Agentic Current Task (Readonly)
 Our current task, from `README.md`, is:
-`pr/TODO`
+`pr/api-contract`
 
 ### Architecture Plan
 Modify sparringly as new information is learned. Keep minimal and simple. The goal is to always have the architecture in mind while working on a task, as not to go adrift into minefields. The editable area is below:
 
 ----------------------
 
-- 
+- Treat `squalr-engine-api` as a stable contract crate, and move runtime/engine internals behind crate-private or engine-only modules.
+- Define explicit public API boundaries: `commands`, `events`, and external-facing `structures` DTOs should remain public; scanner internals, registries internals, and vector-comparison implementation details should not.
+- Decouple command DTO definitions from transport/runtime helper behavior (`send()`, binding locks, callback dispatch) so the same command shapes work for CLI/GUI/TUI/MCP and future non-session clients.
+- Introduce a transition path for stateful session APIs to stateless APIs by adding explicit context handles in requests/responses before removing current session assumptions.
+- Add contract tests that snapshot command/event/structure wire shapes and run as an API-semver guard.
 
 ## Current Tasklist (Remove as things are completed, add remaining tangible tasks)
 (If no tasks are listed here, audit the current task and any relevant test cases)
 
-- 
+- Inventory and classify all public `squalr-engine-api` modules/types into `public contract`, `internal`, and `transitional`.
+- Propose and implement a public prelude/namespace layout (`api::commands`, `api::events`, `api::types`) and stop exposing deep module trees by default.
+- Move engine-coupled abstractions out of contract-facing types where possible (`Registries`, `ProjectItemType`, singleton registries, and scan internals).
+- Replace misspelled `engine_api_priviliged_bindings` naming with a compatible migration path (`engine_api_privileged_bindings` + deprecation shim).
+- Separate `structopt` parsing concerns from API DTO definitions for request types.
+- Design and implement a stateless command prototype for one vertical slice (process open/list/close) to validate the migration model.
+- Add compatibility tests for serialization/deserialization of command/event payloads and typed response mapping.
+- Run `cargo check` for affected workspace crates and update call sites incrementally.
 
 ## Important Information
 Important information discovered during work about the current state of the task should be appended here.
 
 Information found in initial audit:
-- 
+- Current branch is `pr/api-contract`.
+- `squalr-engine-api/src/lib.rs` exports broad top-level modules (`commands`, `conversions`, `dependency_injection`, `engine`, `events`, `registries`, `structures`, `traits`, `utils`) with many deeply nested `pub mod` paths.
+- `squalr-engine-api` currently requires nightly (`#![feature(portable_simd)]` in `squalr-engine-api/src/lib.rs`), which makes the public contract crate nightly-bound.
+- Command request traits (`squalr-engine-api/src/commands/privileged_command_request.rs`, `squalr-engine-api/src/commands/unprivileged_command_request.rs`) include transport execution helpers that require `EngineUnprivilegedState`, coupling DTOs to session/runtime state.
+- API-exposed structures include engine-coupled internals:
+- `squalr-engine-api/src/structures/projects/project_items/project_item_type.rs` depends on engine bindings and `Registries`.
+- `squalr-engine-api/src/structures/snapshots/snapshot_region.rs` has public mutable fields and raw-pointer helpers; comment explicitly marks this as temporary.
+- Singleton registries (`SymbolRegistry`, `ElementScanRuleRegistry`) expose unsafe global access (`unwrap_unchecked`) and have deprecation JIRA comments indicating architectural mismatch for mirrored/non-standalone scenarios.
+- Naming typo exists in public module path: `engine_api_priviliged_bindings` (used across engine + api).
 
 Information discovered during iteration:
-- 
+- `cargo check -p squalr-engine-api` passes but emits multiple warnings including TODO/JIRA placeholders and unfinished paths in API-exposed code.
+- `cargo check -p squalr-cli` passes, confirming current workspace remains buildable while contract issues are primarily architectural/boundary related.
 
 ## Agent Scratchpad and Notes 
 Append below and compact regularly to relevant recent, keep under ~20 lines and discard useless information as it grows:
 
-- 
+- Start with boundary map, then perform low-risk namespace hardening (re-export/publish surface), then migrate internals.
+- Preserve backward compatibility with deprecation shims where possible before hard removals.
 
 ### Concise Session Log
 Append logs for each session here. Compact redundency occasionally:
-- 
+- Audited README + API contract task scope, scanned `squalr-engine-api` public surface, validated compile health with `cargo check`, and produced staged plan for boundary hardening + stateless API migration.
