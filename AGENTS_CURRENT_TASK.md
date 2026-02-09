@@ -21,7 +21,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
 
-- [ ] Introduce top-level command groups in `squalr-engine-api`:
+- [x] Introduce top-level command groups in `squalr-engine-api`:
   - Add explicit modules for pointer/struct scan command groups (no internal `pscan` / `sscan` module names, these keywords are reserved as cli shorthand):
     - `commands/pointer_scan/*`.
     - `commands/struct_scan/*`.
@@ -31,25 +31,25 @@ The goal is to keep the architecture in mind and not drift into minefields.
     - Add top-level `PointerScan` command with canonical command spelling `pointer-scan` and alias `pscan`.
     - Add top-level `StructScan` command with canonical command spelling `struct-scan` and alias `sscan`.
   - Update `commands/privileged_command_response.rs` with matching response variants.
-- [ ] Retarget request/response mappings:
+- [x] Retarget request/response mappings:
   - `PointerScanRequest` and `StructScanRequest` map to new top-level privileged command/response variants.
   - `PointerScanResponse` and `StructScanResponse` implement `TypedPrivilegedCommandResponse` against their new response envelopes.
   - Keep `ScanNewRequest`, `ScanResetRequest`, `ScanCollectValuesRequest`, and `ElementScanRequest` under `scan`.
-- [ ] Update engine command execution routing in `squalr-engine`:
+- [x] Update engine command execution routing in `squalr-engine`:
   - Add executor modules for explicit command groups (`command_executors/pointer_scan`, `command_executors/struct_scan`) or equivalent routing split.
   - Update `command_executors/privileged_command_executor.rs` match arms to dispatch new top-level command variants.
   - Keep existing request executors for pointer/struct behavior unchanged.
-- [ ] Update CLI response handling:
+- [x] Update CLI response handling:
   - Route new privileged response variants in `squalr-cli/src/response_handlers/mod.rs`.
   - Add dedicated pointer/struct response handlers or wire through existing execute handler explicitly.
-- [ ] Update tests in `squalr-tests`:
+- [x] Update tests in `squalr-tests`:
   - Rewrite parser assertions in `tests/scan_command_tests.rs`:
     - `scan` no longer accepts `pointer-scan` or `struct-scan`.
     - Add parser coverage for top-level `pointer-scan` / `struct-scan`.
     - Add alias coverage for `pscan` / `sscan` CLI shorthand.
   - Update dispatch assertions from `PrivilegedCommand::Scan(ScanCommand::PointerScan|StructScan)` to new top-level command variants.
   - Keep OS behavior tests unchanged unless compile fallout requires import path updates.
-- [ ] Validation pass:
+- [x] Validation pass:
   - Run focused tests first: `cargo test -p squalr-tests scan_command_tests`.
   - Then run broader regression: `cargo test -p squalr-tests`.
   - Fix unused imports/warnings introduced by module split.
@@ -77,6 +77,12 @@ Information discovered during iteration:
 - `PrivilegedCommandResponse` currently wraps all scan families into a single `Scan(ScanResponse)` variant, so response envelope split is required for clean namespace separation.
 - Direct blast radius confirmed across API/engine/CLI/tests is concentrated in scan command plumbing (11 directly-referencing files before module wiring updates), with parser + dispatch assertions primarily in `squalr-tests/tests/scan_command_tests.rs`.
 - Naming correction applied to plan: `sscan` is treated only as CLI shorthand alias, never as internal module/type naming.
+- Implemented split complete:
+  - Added top-level API modules `commands/pointer_scan/*` and `commands/struct_scan/*`.
+  - Removed nested `scan/pointer_scan/*` and `scan/struct_scan/*`.
+  - `ScanCommand`/`ScanResponse` are now element-scan lifecycle only.
+  - `PrivilegedCommand`/`PrivilegedCommandResponse` now expose `PointerScan` and `StructScan` top-level variants.
+- Parser/test detail: `cargo test -p squalr-tests scan_command_tests` filters by test name and can run zero tests; `cargo test -p squalr-tests --test scan_command_tests` was run to execute the file directly.
 
 ## Agent Scratchpad and Notes
 Append below and compact regularly to relevant recent notes, keep under ~20 lines.
@@ -89,3 +95,6 @@ Append below and compact regularly to relevant recent notes, keep under ~20 line
 Append logs for each session here. Compact redundancy occasionally.
 - Read `README.md`, `AGENTS.md`, and audited scan command architecture across API, engine, CLI, GUI call sites, and tests; drafted implementation/validation plan for `pr/scan-commands`.
 - Re-audited concrete scan command touchpoints and corrected plan naming so `sscan` remains CLI alias-only while internal naming stays `StructScan` / `PointerScan`.
+- Implemented command family split across API, engine, CLI, and tests; added top-level pointer/struct command and response envelopes with explicit routing.
+- Updated parser/dispatch tests for top-level `pointer-scan` and `struct-scan`, added `pscan`/`sscan` alias coverage, and added rejection coverage for nested `scan pointer-scan` / `scan struct-scan`.
+- Validation completed: `cargo fmt`, `cargo test -p squalr-tests scan_command_tests`, `cargo test -p squalr-tests --test scan_command_tests`, and `cargo test -p squalr-tests` all passed.
