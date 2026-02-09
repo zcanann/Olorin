@@ -1,7 +1,7 @@
 use crate::app_provisioner::updater::app_updater::AppUpdater;
 use crate::engine_bindings::standalone::standalone_engine_api_unprivileged_bindings::StandaloneEngineApiUnprivilegedBindings;
 use crate::engine_mode::EngineMode;
-use crate::engine_privileged_state::EnginePrivilegedState;
+use crate::engine_privileged_state::{EnginePrivilegedState, create_engine_privileged_state};
 use crate::vectors::Vectors;
 use crate::{
     app_provisioner::progress_tracker::ProgressTracker,
@@ -31,10 +31,10 @@ impl SqualrEngine {
 
         match engine_mode {
             EngineMode::Standalone => {
-                engine_privileged_state = Some(EnginePrivilegedState::new(engine_mode)?);
+                engine_privileged_state = Some(create_engine_privileged_state(engine_mode)?);
             }
             EngineMode::PrivilegedShell => {
-                engine_privileged_state = Some(EnginePrivilegedState::new(engine_mode)?);
+                engine_privileged_state = Some(create_engine_privileged_state(engine_mode)?);
             }
             EngineMode::UnprivilegedHost => {}
         }

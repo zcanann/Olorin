@@ -5752,10 +5752,12 @@ name = "squalr-engine-session"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "crossbeam-channel",
  "dirs",
  "log",
  "log4rs",
  "squalr-engine-api",
+ "squalr-engine-scanning",
  "squalr-operating-system",
  "sysinfo",
 ]

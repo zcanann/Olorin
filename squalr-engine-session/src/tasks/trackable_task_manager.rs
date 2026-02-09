@@ -52,7 +52,6 @@ impl TrackableTaskManager {
         &self,
         task_identifier: &String,
     ) {
-        // First attempt to get the task under a read lock.
         match self.tasks.read() {
             Ok(tasks_guard) => {
                 if let Some(task) = tasks_guard.get(task_identifier) {
@@ -65,7 +64,6 @@ impl TrackableTaskManager {
             }
         }
 
-        // Then remove the task under a write lock.
         self.unregister_task(task_identifier);
     }
 

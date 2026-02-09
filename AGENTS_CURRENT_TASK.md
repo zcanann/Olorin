@@ -50,7 +50,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
 - [x] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
 - [x] Move scan execution code that creates `TrackableTask` out of compute paths (`squalr-engine-scanning/*_task.rs`) so engine APIs are blocking/stateless.
-- [ ] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
+- [x] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
 - [x] Refactor OS layer implementation to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations only.
 - [ ] Update IPC contracts in `squalr-engine-api` so scan flows return compressed metadata/results without `TrackableTaskHandle`.
 - [ ] Keep `squalr-engine-scanning` as a compute sub-crate in this branch, but enforce strict no-OS and no-task boundaries.
@@ -99,6 +99,8 @@ Information discovered during iteration:
 - Removed `squalr-engine/src/os/*` and rewired privileged state + command executors to consume session-layer OS exports, preserving behavior while tightening crate boundaries.
 - `squalr-engine-scanning` scan executors now run as blocking compute (`ElementScanExecutor`, `ValueCollector`, `PointerScanExecutor`) with `ScanExecutionContext` cancellation/progress callbacks; `TrackableTask` creation moved to `squalr-engine` scan command executors.
 - `squalr-operating-system` process queryers no longer use global `PROCESS_CACHE`/`PROCESS_MONITOR` singletons; Windows/macOS/Android now perform immediate per-call queries and monitoring start/stop are no-op compatibility hooks.
+- `EnginePrivilegedState` now lives in `squalr-engine-session` and owns process manager, snapshot, registries, task manager, freeze bootstrap task startup, and process monitoring startup.
+- `TrackableTaskManager` moved from `squalr-engine` into `squalr-engine-session::tasks`; `squalr-engine` now provides bootstrap helpers (`create_engine_privileged_state*`) and re-exports the session state type.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -141,3 +143,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Removed direct OS deps from `squalr-engine` by moving `EngineOsProviders` into `squalr-engine-session::os`, re-exporting required OS types from the session layer, deleting `squalr-engine/src/os/*`, and validating with `cargo check -p squalr-engine-session -p squalr-engine`, `cargo test -p squalr-engine-session`, and `cargo test -p squalr-engine --no-run`.
 - 2026-02-08: Refactored scan execution to remove `TrackableTask` creation from compute paths by introducing blocking `squalr-engine-scanning` executors with `ScanExecutionContext`, then creating/registering tasks in `squalr-engine` scan command executors; validated with `cargo check -p squalr-engine-scanning`, `cargo check -p squalr-engine`, `cargo test -p squalr-engine-scanning --no-run`, and `cargo test -p squalr-engine --no-run`.
 - 2026-02-09: Removed OS-layer process query singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) from `squalr-operating-system` by switching Windows/macOS/Android process enumeration to immediate per-call querying and deleting obsolete monitor helpers; validated with `cargo check -p squalr-operating-system`, `cargo check -p squalr-engine-session`, and `cargo check -p squalr-engine`.
+- 2026-02-09: Moved privileged orchestration state into `squalr-engine-session` by relocating `EnginePrivilegedState` and `TrackableTaskManager`, updated `squalr-engine` to bootstrap via `create_engine_privileged_state*`, rewired tests/mocks for session OS providers, and validated with `cargo check -p squalr-engine-session -p squalr-engine -p squalr-tests`, `cargo test -p squalr-engine --no-run`, and `cargo test -p squalr-tests --no-run`.

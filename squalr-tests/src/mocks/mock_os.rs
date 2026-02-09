@@ -1,4 +1,6 @@
-use squalr_engine::os::engine_os_provider::{EngineOsProviders, MemoryQueryProvider, MemoryReadProvider, MemoryWriteProvider, ProcessQueryProvider};
+use squalr_engine_session::os::engine_os_provider::{
+    EngineOsProviders, MemoryQueryProvider, MemoryReadProvider, MemoryWriteProvider, ProcessQueryProvider,
+};
 use squalr_engine_api::structures::data_values::data_value::DataValue;
 use squalr_engine_api::structures::memory::normalized_module::NormalizedModule;
 use squalr_engine_api::structures::memory::normalized_region::NormalizedRegion;
