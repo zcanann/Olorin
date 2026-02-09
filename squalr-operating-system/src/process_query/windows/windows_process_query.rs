@@ -2,17 +2,13 @@ use crate::process_query::process_query_error::ProcessQueryError;
 use crate::process_query::process_query_options::ProcessQueryOptions;
 use crate::process_query::process_queryer::ProcessQueryer;
 use crate::process_query::windows::windows_icon_handle::{DcHandle, IconHandle};
-use crate::process_query::windows::windows_process_monitor::WindowsProcessMonitor;
-use once_cell::sync::Lazy;
 use squalr_engine_api::structures::memory::bitness::Bitness;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_icon::ProcessIcon;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
-use std::collections::HashMap;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
-use std::sync::{Mutex, RwLock};
-use sysinfo::Pid;
+use sysinfo::{Pid, ProcessesToUpdate, System};
 use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HANDLE, HWND, LPARAM, TRUE};
 use windows_sys::Win32::Graphics::Gdi::{BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, GetDC, GetDIBits};
 use windows_sys::Win32::System::ProcessStatus::K32GetModuleFileNameExW;
@@ -23,9 +19,6 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{EnumWindows, IsWindowVisible};
 use windows_sys::Win32::UI::WindowsAndMessaging::{GetIconInfo, ICONINFO};
 use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindowThreadProcessId, HICON};
 use windows_sys::core::BOOL;
-
-pub(crate) static PROCESS_MONITOR: Lazy<Mutex<WindowsProcessMonitor>> = Lazy::new(|| Mutex::new(WindowsProcessMonitor::new()));
-static PROCESS_CACHE: Lazy<RwLock<HashMap<Pid, ProcessInfo>>> = Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub struct WindowsProcessQuery {}
 
@@ -173,44 +166,16 @@ impl WindowsProcessQuery {
 
         result
     }
-
-    fn update_cache(
-        process_id: Pid,
-        name: String,
-        is_windowed: bool,
-        icon: Option<ProcessIcon>,
-    ) {
-        if let Ok(mut cache) = PROCESS_CACHE.write() {
-            cache.insert(process_id, ProcessInfo::new(process_id.as_u32(), name, is_windowed, icon));
-        }
-    }
-
-    fn get_from_cache(process_id: &Pid) -> Option<ProcessInfo> {
-        PROCESS_CACHE
-            .read()
-            .ok()
-            .and_then(|cache| cache.get(process_id).cloned())
-    }
 }
 
 impl ProcessQueryer for WindowsProcessQuery {
     fn start_monitoring() -> Result<(), ProcessQueryError> {
-        let mut monitor = PROCESS_MONITOR
-            .lock()
-            .map_err(|error| ProcessQueryError::process_monitor_lock_poisoned("start_monitoring", error.to_string()))?;
-
-        monitor.start_monitoring();
-
+        // Windows process query now exposes immediate operations only.
         Ok(())
     }
 
     fn stop_monitoring() -> Result<(), ProcessQueryError> {
-        let mut monitor = PROCESS_MONITOR
-            .lock()
-            .map_err(|error| ProcessQueryError::process_monitor_lock_poisoned("stop_monitoring", error.to_string()))?;
-
-        monitor.stop_monitoring();
-
+        // Windows process query now exposes immediate operations only.
         Ok(())
     }
 
@@ -246,94 +211,50 @@ impl ProcessQueryer for WindowsProcessQuery {
     }
 
     fn get_processes(process_query_options: ProcessQueryOptions) -> Vec<ProcessInfo> {
-        let process_monitor_guard = match PROCESS_MONITOR.lock() {
-            Ok(guard) => guard,
-            Err(error) => {
-                log::error!("Failed to acquire process monitor lock: {}", error);
-                return Vec::new();
-            }
-        };
+        let mut system = System::new_all();
+        system.refresh_processes(ProcessesToUpdate::All, true);
 
-        let system = process_monitor_guard.get_system();
-        let system_guard = match system.read() {
-            Ok(guard) => guard,
-            Err(error) => {
-                log::error!("Failed to acquire system read lock: {}", error);
-                return Vec::new();
-            }
-        };
-
-        // Process and filter in a single pass, using cache when possible
-        let filtered_processes: Vec<ProcessInfo> = system_guard
+        system
             .processes()
             .iter()
             .filter_map(|(process_id, process)| {
-                // Try to get from cache first
-                let process_info = if let Some(cached_info) = Self::get_from_cache(process_id) {
-                    // If icons are required but not in cache, update the icon
-                    if process_query_options.fetch_icons && cached_info.get_icon().is_none() {
-                        let mut updated_info = cached_info.clone();
-                        updated_info.set_icon(Self::get_icon(process_id));
-                        // Update cache with new icon
-                        Self::update_cache(
-                            *process_id,
-                            updated_info.get_name().to_string(),
-                            updated_info.get_is_windowed(),
-                            updated_info.get_icon().clone(),
-                        );
-                        updated_info
-                    } else {
-                        cached_info
+                let process_name = process.name().to_string_lossy().into_owned();
+
+                if let Some(required_process_id) = process_query_options.required_process_id {
+                    if process_id.as_u32() != required_process_id.as_u32() {
+                        return None;
                     }
-                } else {
-                    // Create new ProcessInfo and cache it.
-                    let icon = if process_query_options.fetch_icons {
-                        Self::get_icon(process_id)
-                    } else {
-                        None
-                    };
-                    let new_info = ProcessInfo::new(
-                        process_id.as_u32(),
-                        process.name().to_string_lossy().into_owned(),
-                        Self::is_process_windowed(process_id),
-                        icon,
-                    );
-                    Self::update_cache(
-                        *process_id,
-                        new_info.get_name().to_string(),
-                        new_info.get_is_windowed(),
-                        new_info.get_icon().clone(),
-                    );
-                    new_info
-                };
-
-                let mut matches = true;
-
-                // Apply filters
-                if process_query_options.require_windowed {
-                    matches &= process_info.get_is_windowed();
                 }
 
                 if let Some(ref term) = process_query_options.search_name {
                     if process_query_options.match_case {
-                        matches &= process_info.get_name().contains(term);
+                        if !process_name.contains(term) {
+                            return None;
+                        }
                     } else {
-                        matches &= process_info
-                            .get_name()
-                            .to_lowercase()
-                            .contains(&term.to_lowercase());
+                        let process_name_lowercase = process_name.to_lowercase();
+                        let term_lowercase = term.to_lowercase();
+                        if !process_name_lowercase.contains(&term_lowercase) {
+                            return None;
+                        }
                     }
                 }
 
-                if let Some(required_process_id) = process_query_options.required_process_id {
-                    matches &= process_info.get_process_id_raw() == required_process_id.as_u32();
+                let process_is_windowed = Self::is_process_windowed(process_id);
+
+                if process_query_options.require_windowed && !process_is_windowed {
+                    return None;
                 }
 
-                matches.then_some(process_info)
+                let process_icon = if process_query_options.fetch_icons {
+                    Self::get_icon(process_id)
+                } else {
+                    None
+                };
+
+                Some(ProcessInfo::new(process_id.as_u32(), process_name, process_is_windowed, process_icon))
             })
             .take(process_query_options.limit.unwrap_or(usize::MAX as u64) as usize)
-            .collect();
-
-        filtered_processes
+            .collect()
     }
 }

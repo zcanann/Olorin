@@ -1,16 +1,11 @@
 use crate::process_query::process_query_error::ProcessQueryError;
 use crate::process_query::process_query_options::ProcessQueryOptions;
 use crate::process_query::process_queryer::ProcessQueryer;
-use once_cell::sync::Lazy;
 use squalr_engine_api::structures::memory::bitness::Bitness;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_icon::ProcessIcon;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
-use std::collections::HashMap;
-use std::sync::RwLock;
 use sysinfo::{Pid, ProcessesToUpdate, System};
-
-static PROCESS_CACHE: Lazy<RwLock<HashMap<Pid, ProcessInfo>>> = Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub struct MacOsProcessQuery {}
 
@@ -23,22 +18,6 @@ impl MacOsProcessQuery {
     fn get_icon(_process_id: &Pid) -> Option<ProcessIcon> {
         // Requires NSWorkspace / NSImage.
         None
-    }
-
-    fn update_cache(
-        process_id: Pid,
-        info: &ProcessInfo,
-    ) {
-        if let Ok(mut cache) = PROCESS_CACHE.write() {
-            cache.insert(process_id, info.clone());
-        }
-    }
-
-    fn get_from_cache(process_id: &Pid) -> Option<ProcessInfo> {
-        PROCESS_CACHE
-            .read()
-            .ok()
-            .and_then(|cache| cache.get(process_id).cloned())
     }
 }
 
@@ -74,28 +53,11 @@ impl ProcessQueryer for MacOsProcessQuery {
             .processes()
             .iter()
             .filter_map(|(process_id, process)| {
-                let process_info = if let Some(cached) = Self::get_from_cache(process_id) {
-                    if options.fetch_icons && cached.get_icon().is_none() {
-                        let mut updated = cached.clone();
-                        updated.set_icon(Self::get_icon(process_id));
-                        Self::update_cache(*process_id, &updated);
-                        updated
-                    } else {
-                        cached
-                    }
-                } else {
-                    let icon = if options.fetch_icons { Self::get_icon(process_id) } else { None };
+                let process_name = process.name().to_string_lossy().to_string();
+                let process_is_windowed = Self::is_process_windowed(process_id);
+                let process_icon = if options.fetch_icons { Self::get_icon(process_id) } else { None };
 
-                    let info = ProcessInfo::new(
-                        process_id.as_u32(),
-                        process.name().to_string_lossy().to_string(),
-                        Self::is_process_windowed(process_id),
-                        icon,
-                    );
-
-                    Self::update_cache(*process_id, &info);
-                    info
-                };
+                let process_info = ProcessInfo::new(process_id.as_u32(), process_name, process_is_windowed, process_icon);
 
                 let mut matches = true;
 

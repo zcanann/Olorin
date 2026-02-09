@@ -1,10 +1,9 @@
 use crate::process_info::{Bitness, OpenedProcessInfo, ProcessIcon, ProcessInfo};
-use crate::process_query::android::android_process_monitor::AndroidProcessMonitor;
+use crate::process_query::android::android_process_info::AndroidProcessInfo;
 use crate::process_query::process_query_error::ProcessQueryError;
 use crate::process_query::process_query_options::ProcessQueryOptions;
 use crate::process_query::process_queryer::ProcessQueryer;
 use image::ImageReader;
-use once_cell::sync::Lazy;
 use regex::bytes::Regex;
 use squalr_engine_common::logging::log_level::LogLevel;
 use squalr_engine_common::logging::logger::Logger;
@@ -15,11 +14,7 @@ use std::io::BufReader;
 use std::io::Cursor;
 use std::io::Read;
 use std::path::Path;
-use std::sync::RwLock;
 use zip::ZipArchive;
-
-pub(crate) static PROCESS_MONITOR: Lazy<RwLock<AndroidProcessMonitor>> = Lazy::new(|| RwLock::new(AndroidProcessMonitor::new()));
-static PACKAGE_CACHE: Lazy<RwLock<HashMap<String, String>>> = Lazy::new(|| RwLock::new(HashMap::new()));
 
 /// Minimum UID for user-installed apps.
 const MIN_USER_UID: u32 = 10000;
@@ -55,78 +50,52 @@ impl AndroidProcessQuery {
 
     /// Parses `/data/system/packages.xml` (ABX Binary XML) and extracts package → APK path mapping.
     /// This is done with a greedy binary regex solution, to avoid the need to write a complex binary XML parser.
-    fn parse_packages_xml() {
-        // Early exit if we have already parsed the xml file.
-        {
-            let package_map_cache = match PACKAGE_CACHE.read() {
-                Ok(cache) => cache,
-                Err(_) => {
-                    Logger::log(LogLevel::Error, "Failed to acquire PACKAGE_CACHE read lock.", None);
-                    return;
-                }
-            };
-
-            if !package_map_cache.is_empty() {
-                return;
-            }
-        }
-
-        let mut package_map_cache = match PACKAGE_CACHE.write() {
-            Ok(cache) => cache,
-            Err(_) => {
-                Logger::log(LogLevel::Error, "Failed to acquire PACKAGE_CACHE write lock.", None);
-                return;
-            }
-        };
-
+    fn parse_packages_xml() -> HashMap<String, String> {
+        let mut package_map = HashMap::new();
         Logger::log(LogLevel::Info, "Scanning packages.xml...", None);
         let file = match File::open("/data/system/packages.xml") {
             Ok(file) => file,
             Err(error) => {
                 Logger::log(LogLevel::Error, &format!("Error opening packages.xml: {}", error), None);
-                return;
+                return package_map;
             }
         };
 
         let mut buffer = vec![];
         if let Err(error) = BufReader::new(file).read_to_end(&mut buffer) {
             Logger::log(LogLevel::Error, &format!("Error reading packages.xml: {}", error), None);
-            return;
+            return package_map;
         }
 
         let regex = match Regex::new(r"/data/app(?:/[^/]+)?/(?P<package_name>[a-zA-Z0-9_.]+)-[^/]+/") {
             Ok(regex) => regex,
             Err(error) => {
                 Logger::log(LogLevel::Error, &format!("Failed to compile regex: {}", error), None);
-                return;
+                return package_map;
             }
         };
 
-        for cap in regex.captures_iter(&buffer) {
-            if let Some(path) = cap.get(0) {
-                if let Some(package_name) = cap.name("package_name") {
-                    let package_name = String::from_utf8_lossy(package_name.as_bytes()).to_string();
-                    let path = String::from_utf8_lossy(path.as_bytes()).to_string();
+        for capture_result in regex.captures_iter(&buffer) {
+            if let Some(path_match) = capture_result.get(0) {
+                if let Some(package_name_match) = capture_result.name("package_name") {
+                    let package_name = String::from_utf8_lossy(package_name_match.as_bytes()).to_string();
+                    let package_path = String::from_utf8_lossy(path_match.as_bytes()).to_string();
 
-                    package_map_cache.insert(package_name, path);
+                    package_map.insert(package_name, package_path);
                 }
             }
         }
 
-        Logger::log(LogLevel::Info, &format!("Found {} packages.", package_map_cache.len()), None);
+        Logger::log(LogLevel::Info, &format!("Found {} packages.", package_map.len()), None);
+
+        package_map
     }
 
-    fn get_apk_path(package_name: &str) -> Option<String> {
-        Self::parse_packages_xml();
-        let package_cache_guard = match PACKAGE_CACHE.read() {
-            Ok(guard) => guard,
-            Err(error) => {
-                Logger::log(LogLevel::Error, &format!("Failed to acquire PACKAGE_CACHE read lock: {}", error), None);
-                return None;
-            }
-        };
-
-        package_cache_guard.get(package_name).cloned().map(|mut path| {
+    fn get_apk_path(
+        package_name: &str,
+        package_paths: &HashMap<String, String>,
+    ) -> Option<String> {
+        package_paths.get(package_name).cloned().map(|mut path| {
             if Path::new(&path).is_dir() {
                 path.push_str("/base.apk");
             }
@@ -159,27 +128,73 @@ impl AndroidProcessQuery {
 
         None
     }
+
+    fn get_live_process_maps() -> (HashMap<u32, AndroidProcessInfo>, HashMap<u32, AndroidProcessInfo>) {
+        let mut all_processes = HashMap::new();
+        let mut zygote_processes = HashMap::new();
+
+        if let Ok(process_entries) = fs::read_dir("/proc") {
+            for process_entry in process_entries.flatten() {
+                if let Ok(process_id_string) = process_entry.file_name().into_string() {
+                    if process_id_string
+                        .chars()
+                        .all(|char_value| char_value.is_ascii_digit())
+                    {
+                        if let Ok(process_id) = process_id_string.parse::<u32>() {
+                            let mut package_name = String::new();
+                            let mut parent_process_id = 0;
+
+                            let cmdline_path = format!("/proc/{}/cmdline", process_id);
+                            if let Ok(cmdline_content) = fs::read_to_string(&cmdline_path) {
+                                package_name = cmdline_content
+                                    .split('\0')
+                                    .next()
+                                    .unwrap_or("")
+                                    .split(':')
+                                    .next()
+                                    .unwrap_or("")
+                                    .to_string();
+                            }
+
+                            let stat_path = format!("/proc/{}/stat", process_id);
+                            if let Ok(stat_content) = fs::read_to_string(&stat_path) {
+                                let stat_parts: Vec<&str> = stat_content.split_whitespace().collect();
+                                if stat_parts.len() > 3 {
+                                    if let Ok(parsed_parent_process_id) = stat_parts[3].parse::<u32>() {
+                                        parent_process_id = parsed_parent_process_id;
+                                    }
+                                }
+                            }
+
+                            let process_info = AndroidProcessInfo {
+                                process_id,
+                                parent_process_id,
+                                package_name: package_name.clone(),
+                            };
+
+                            all_processes.insert(process_id, process_info.clone());
+
+                            if package_name == "zygote" || package_name == "zygote64" {
+                                zygote_processes.insert(process_id, process_info);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        (all_processes, zygote_processes)
+    }
 }
 
 impl ProcessQueryer for AndroidProcessQuery {
     fn start_monitoring() -> Result<(), ProcessQueryError> {
-        let mut monitor = PROCESS_MONITOR
-            .write()
-            .map_err(|error| ProcessQueryError::process_monitor_lock_poisoned("start_monitoring", error.to_string()))?;
-
-        Logger::log(LogLevel::Error, "Monitoring system processes...", None);
-        monitor.start_monitoring();
-
+        // Android process query now exposes immediate operations only.
         Ok(())
     }
 
     fn stop_monitoring() -> Result<(), ProcessQueryError> {
-        let mut monitor = PROCESS_MONITOR
-            .write()
-            .map_err(|error| ProcessQueryError::process_monitor_lock_poisoned("stop_monitoring", error.to_string()))?;
-
-        monitor.stop_monitoring();
-
+        // Android process query now exposes immediate operations only.
         Ok(())
     }
 
@@ -200,39 +215,12 @@ impl ProcessQueryer for AndroidProcessQuery {
     }
 
     fn get_processes(options: ProcessQueryOptions) -> Vec<ProcessInfo> {
-        let process_monitor_guard = match PROCESS_MONITOR.read() {
-            Ok(guard) => guard,
-            Err(error) => {
-                Logger::log(LogLevel::Error, &format!("Failed to acquire process monitor lock: {}", error), None);
-                return Vec::new();
-            }
-        };
-
-        let all_processes_lock = process_monitor_guard.get_all_processes();
-        let zygote_processes_lock = process_monitor_guard.get_zygote_processes();
-
-        let all_processes_guard = match all_processes_lock.read() {
-            Ok(guard) => guard,
-            Err(error) => {
-                Logger::log(LogLevel::Error, &format!("Failed to acquire process read lock: {}", error), None);
-                return Vec::new();
-            }
-        };
-
-        let zygote_processes_guard = match zygote_processes_lock.read() {
-            Ok(guard) => guard,
-            Err(error) => {
-                Logger::log(LogLevel::Error, &format!("Failed to acquire zygote process read lock: {}", error), None);
-                return Vec::new();
-            }
-        };
-
-        let all_processes = all_processes_guard.clone();
-        let zygote_processes = zygote_processes_guard.clone();
-        let mut results = vec![];
+        let package_paths = Self::parse_packages_xml();
+        let (all_processes, zygote_processes) = Self::get_live_process_maps();
+        let mut results = Vec::new();
 
         for android_process_info in all_processes.values() {
-            let apk_path = Self::get_apk_path(&android_process_info.package_name);
+            let apk_path = Self::get_apk_path(&android_process_info.package_name, &package_paths);
             let is_windowed = apk_path.is_some()
                 && zygote_processes.contains_key(&android_process_info.parent_process_id)
                 && Self::is_user_app(android_process_info.process_id);
@@ -247,7 +235,7 @@ impl ProcessQueryer for AndroidProcessQuery {
                 process_id: android_process_info.process_id,
                 name: android_process_info.package_name.clone(),
                 is_windowed,
-                icon: icon,
+                icon,
             };
             let mut matches = true;
 
