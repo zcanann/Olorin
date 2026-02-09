@@ -39,25 +39,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
 
-- [x] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
-- [x] Complete data-type domain migration by moving `squalr-engine-api::structures::data_types/*` into `squalr-engine-domain` (plus required `memory::endian`, scanning comparison/constraint contracts, and `symbols` registry) while preserving API compatibility via re-exports.
-- [x] Migrate or re-scope remaining `squalr-engine-api` registries (`scan_rules`, `freeze_list`, `project_item_types`, aggregate `Registries`) so only domain-safe registries live in `squalr-engine-domain`.
-- [x] Move `DataValue` and the remaining struct-domain models (`SymbolicFieldDefinition`, `SymbolicStructDefinition`, `ValuedStruct`, `ValuedStructField`) into `squalr-engine-domain`, introduce `SymbolResolver` abstraction, and keep `squalr-engine-api` compatibility through module re-exports.
-- [x] Move conversion core modules (`base_system_conversions`, `command_line_conversions`, `conversion_error`, `conversions_from_primitives`, `storage_size_conversions`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
-- [x] Move format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
-- [x] Move privileged string conversion traits into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
-- [x] Create scaffold crate `squalr-engine-session` and add it to workspace membership for incremental state migration.
-- [x] Move session/state orchestration into `squalr-engine-session` (`EngineUnprivilegedState`, event routing, log dispatch, and project manager ownership moved out of `squalr-engine-api`).
-- [x] Create `squalr-operating-system`, move code from `squalr-engine-processes` + `squalr-engine-memory` into it, and switch dependents to the unified crate.
-- [x] Remove `squalr-engine-processes` and `squalr-engine-memory` from the workspace once their code has been migrated and callers are updated.
-- [x] Remove OS dependencies from `squalr-engine/Cargo.toml` and keep only compute-facing dependencies.
-- [x] Move scan execution code that creates `TrackableTask` out of compute paths (`squalr-engine-scanning/*_task.rs`) so engine APIs are blocking/stateless.
-- [x] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
-- [x] Refactor OS layer implementation to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations only.
-- [x] Update IPC contracts in `squalr-engine-api` so scan flows return compressed metadata/results without `TrackableTaskHandle`.
-- [x] Keep `squalr-engine-scanning` as a compute sub-crate in this branch, but enforce strict no-OS and no-task boundaries.
-- [x] Rewire CLI/TUI/GUI boot paths: one-shot CLI blocking/stateless, interactive modes use `squalr-engine-session`.
-- [x] Rename `IMemoryWriter`, `IMemoryReader`, `IMemoryQueryer` to idiomatic Rust trait names without `I` prefixes.
+- [ ] No remaining concrete tasks are queued in this branch plan; awaiting next `pr/engine-refactor` objective.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -166,3 +148,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-09: Re-scoped aggregate registry ownership by moving concrete `Registries` into `squalr-engine-session`, added `squalr-engine-api::registries::registry_context::RegistryContext` for API-level registry access contracts, updated project item contracts to depend on the trait instead of a concrete API registry container, and validated with `cargo fmt --all`, `cargo check -p squalr-engine-api -p squalr-engine-session -p squalr-engine -p squalr-tests`, `cargo test -p squalr-engine-session --no-run`, and `cargo test -p squalr-tests --no-run`.
 - 2026-02-09: Removed unused CLI logging scaffolding (`squalr-cli/src/logging/*`), cleaned placeholder response handler argument warnings, and validated with `cargo fmt --all`, `cargo check -p squalr-cli -p squalr-engine -p squalr-engine-session -p squalr-tests`, `cargo check -p squalr-engine -p squalr-engine-session -p squalr-tests`, and `cargo test -p squalr-cli --no-run`.
 - 2026-02-09: Re-validated refactor-critical crates without source changes by running `cargo check -p squalr-engine-api -p squalr-engine-domain -p squalr-engine-session -p squalr-operating-system -p squalr-engine-scanning -p squalr-engine -p squalr-cli -p squalr-tests` and `cargo test -p squalr-engine-api -p squalr-engine-domain -p squalr-engine-session -p squalr-operating-system -p squalr-engine-scanning -p squalr-engine -p squalr-cli -p squalr-tests --no-run`.
+- 2026-02-09: Compacted `Current Tasklist` to remaining work only (none queued) and repeated refactor-critical validation with `cargo check -p squalr-engine-api -p squalr-engine-domain -p squalr-engine-session -p squalr-operating-system -p squalr-engine-scanning -p squalr-engine -p squalr-cli -p squalr-tests` plus `cargo test -p squalr-engine-api -p squalr-engine-domain -p squalr-engine-session -p squalr-operating-system -p squalr-engine-scanning -p squalr-engine -p squalr-cli -p squalr-tests --no-run`.
