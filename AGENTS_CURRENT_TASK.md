@@ -40,7 +40,8 @@ The goal is to keep the architecture in mind and not drift into minefields.
 (Remove as completed, add remaining concrete tasks.)
 
 - [x] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
-- [ ] Complete domain migration by moving remaining domain semantics from `squalr-engine-api` into `squalr-engine-domain` (`structures/data_types/*`, registries) while preserving API compatibility via re-exports.
+- [x] Complete data-type domain migration by moving `squalr-engine-api::structures::data_types/*` into `squalr-engine-domain` (plus required `memory::endian`, scanning comparison/constraint contracts, and `symbols` registry) while preserving API compatibility via re-exports.
+- [ ] Migrate or re-scope remaining `squalr-engine-api` registries (`scan_rules`, `freeze_list`, `project_item_types`, aggregate `Registries`) so only domain-safe registries live in `squalr-engine-domain`.
 - [x] Move `DataValue` and the remaining struct-domain models (`SymbolicFieldDefinition`, `SymbolicStructDefinition`, `ValuedStruct`, `ValuedStructField`) into `squalr-engine-domain`, introduce `SymbolResolver` abstraction, and keep `squalr-engine-api` compatibility through module re-exports.
 - [x] Move conversion core modules (`base_system_conversions`, `command_line_conversions`, `conversion_error`, `conversions_from_primitives`, `storage_size_conversions`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Move format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
@@ -108,6 +109,10 @@ Information discovered during iteration:
 - `DataValue`, `SymbolicFieldDefinition`, `SymbolicStructDefinition`, `ValuedStruct`, and `ValuedStructField` now live in `squalr-engine-domain`; `squalr-engine-api` counterparts are re-export modules to preserve path compatibility.
 - Added domain trait `SymbolResolver` so moved struct-domain logic can resolve defaults/symbolic structs without depending on `squalr-engine-api` registries; `squalr-engine-api::SymbolRegistry` now implements this trait.
 - `FromStringPrivileged` implementations for moved domain types are now context-generic (`ContextType`) instead of hard-coupled to `Registries`, reducing cross-layer coupling.
+- `squalr-engine-api::structures::data_types` is now a domain re-export surface; full data type implementation modules (`built_in_types`, `comparisons`, `generics`, `data_type`) now live in `squalr-engine-domain`.
+- Scan contract structures required by moved data types (`structures::scanning::comparisons` and `structures::scanning::constraints`) now live in `squalr-engine-domain` and are re-exported from `squalr-engine-api`.
+- `Endian` now lives in `squalr-engine-domain::structures::memory`, and `squalr-engine-api::structures::memory::endian` is a compatibility re-export module.
+- `SymbolRegistry` + `SymbolRegistryError` now live in `squalr-engine-domain::registries::symbols`; `squalr-engine-api::registries::symbols` is now a compatibility re-export module.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -155,3 +160,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-09: Enforced `squalr-engine-scanning` compute boundaries by removing OS/task ownership (`freeze_task` moved to `squalr-engine-session`), injecting process memory reads via `ScanExecutionContext`, and dropping OS deps from scanning crate; validated with `cargo check -p squalr-engine-scanning -p squalr-engine-session -p squalr-engine` and `cargo test -p squalr-engine-scanning --no-run -p squalr-engine-session --no-run -p squalr-engine --no-run`.
 - 2026-02-09: Rewired CLI boot behavior for `pr/engine-refactor` one-shot mode by adding blocking single-command execution in `squalr-cli` (`squalr-cli <command ...>`) while preserving interactive loop and IPC shell behavior; validated with `cargo check -p squalr-cli` and `cargo test -p squalr-cli --no-run`.
 - 2026-02-09: Migrated `DataValue` and remaining struct-domain models into `squalr-engine-domain`, added `SymbolResolver` abstraction + `SymbolRegistry` impl for decoupled symbol lookup, re-exported moved modules from `squalr-engine-api`, and validated with `cargo fmt --all`, `cargo check -p squalr-engine-domain -p squalr-engine-api`, `cargo check -p squalr-engine -p squalr-engine-session -p squalr-cli -p squalr-tests`, `cargo test -p squalr-engine-domain`, and `cargo test -p squalr-engine-api --no-run`.
+- 2026-02-09: Migrated full `structures/data_types/*` implementation into `squalr-engine-domain` (plus required `structures/scanning::{comparisons,constraints}`, `structures/memory::endian`, and `registries::symbols`), converted corresponding `squalr-engine-api` modules to compatibility re-exports, and validated with `cargo fmt --all`, `cargo check -p squalr-engine-domain -p squalr-engine-api`, `cargo test -p squalr-engine-domain`, and `cargo test -p squalr-engine-api --no-run`.
