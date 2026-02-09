@@ -52,7 +52,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move scan execution code that creates `TrackableTask` out of compute paths (`squalr-engine-scanning/*_task.rs`) so engine APIs are blocking/stateless.
 - [x] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
 - [x] Refactor OS layer implementation to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations only.
-- [ ] Update IPC contracts in `squalr-engine-api` so scan flows return compressed metadata/results without `TrackableTaskHandle`.
+- [x] Update IPC contracts in `squalr-engine-api` so scan flows return compressed metadata/results without `TrackableTaskHandle`.
 - [ ] Keep `squalr-engine-scanning` as a compute sub-crate in this branch, but enforce strict no-OS and no-task boundaries.
 - [ ] Rewire CLI/TUI/GUI boot paths: one-shot CLI blocking/stateless, interactive modes use `squalr-engine-session`.
 - [x] Rename `IMemoryWriter`, `IMemoryReader`, `IMemoryQueryer` to idiomatic Rust trait names without `I` prefixes.
@@ -66,9 +66,9 @@ Information found in initial audit:
 
 Information discovered during iteration:
 - `squalr-engine` now depends on `squalr-operating-system` (legacy direct dependencies on `squalr-engine-memory`/`squalr-engine-processes` were removed).
-- `squalr-engine-scanning` now depends on `squalr-operating-system`; it still owns task-oriented execution entry points.
+- `squalr-engine-scanning` now depends on `squalr-operating-system`; scan entry points are blocking compute with cancellation/progress callbacks but no task ownership.
 - `squalr-engine-api` contains session behavior today (`engine_unprivileged_state`, bindings, log dispatch, project manager ownership).
-- Scan responses currently expose optional `TrackableTaskHandle` in API surface.
+- Scan command responses (`element/pointer/collect-values/struct`) now expose compact `ScanResultsMetadata` instead of `TrackableTaskHandle`.
 - `squalr-engine-api` currently mixes protocol + session + domain logic:
   - session: `src/engine/engine_unprivileged_state.rs`, `structures/projects/project_manager.rs`, log dispatcher;
   - domain/structops: `structures/data_types/*`, `structures/structs/*`, registries;
@@ -144,3 +144,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-08: Refactored scan execution to remove `TrackableTask` creation from compute paths by introducing blocking `squalr-engine-scanning` executors with `ScanExecutionContext`, then creating/registering tasks in `squalr-engine` scan command executors; validated with `cargo check -p squalr-engine-scanning`, `cargo check -p squalr-engine`, `cargo test -p squalr-engine-scanning --no-run`, and `cargo test -p squalr-engine --no-run`.
 - 2026-02-09: Removed OS-layer process query singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) from `squalr-operating-system` by switching Windows/macOS/Android process enumeration to immediate per-call querying and deleting obsolete monitor helpers; validated with `cargo check -p squalr-operating-system`, `cargo check -p squalr-engine-session`, and `cargo check -p squalr-engine`.
 - 2026-02-09: Moved privileged orchestration state into `squalr-engine-session` by relocating `EnginePrivilegedState` and `TrackableTaskManager`, updated `squalr-engine` to bootstrap via `create_engine_privileged_state*`, rewired tests/mocks for session OS providers, and validated with `cargo check -p squalr-engine-session -p squalr-engine -p squalr-tests`, `cargo test -p squalr-engine --no-run`, and `cargo test -p squalr-tests --no-run`.
+- 2026-02-09: Updated scan IPC contracts to remove `TrackableTaskHandle` from scan responses in favor of `ScanResultsMetadata`; made scan command executors return metadata after blocking execution and kept update notifications via `ScanResultsUpdatedEvent`; validated with `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine -p squalr-tests`, and `cargo test -p squalr-tests --test scan_command_tests`.
