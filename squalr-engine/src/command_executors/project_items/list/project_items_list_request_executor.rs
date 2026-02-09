@@ -9,7 +9,7 @@ impl UnprivilegedCommandRequestExecutor for ProjectItemsListRequest {
 
     fn execute(
         &self,
-        engine_unprivileged_state: &Arc<dyn EngineExecutionContext>,
+        _engine_unprivileged_state: &Arc<dyn EngineExecutionContext>,
     ) -> <Self as UnprivilegedCommandRequestExecutor>::ResponseType {
         /*
         match engine_privileged_state
@@ -33,6 +33,6 @@ impl UnprivilegedCommandRequestExecutor for ProjectItemsListRequest {
                 return ProjectItemsListResponse::default();
             }
         }*/
-        return ProjectItemsListResponse::default();
+        ProjectItemsListResponse::default()
     }
 }

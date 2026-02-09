@@ -1,7 +1,8 @@
-use crate::registries::{
-    freeze_list::freeze_list_registry::FreezeListRegistry, project_item_types::project_item_type_registry::ProjectItemTypeRegistry,
-    scan_rules::element_scan_rule_registry::ElementScanRuleRegistry, symbols::symbol_registry::SymbolRegistry,
-};
+use squalr_engine_api::registries::freeze_list::freeze_list_registry::FreezeListRegistry;
+use squalr_engine_api::registries::project_item_types::project_item_type_registry::ProjectItemTypeRegistry;
+use squalr_engine_api::registries::registry_context::RegistryContext;
+use squalr_engine_api::registries::scan_rules::element_scan_rule_registry::ElementScanRuleRegistry;
+use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use std::sync::{Arc, RwLock};
 
 pub struct Registries {
@@ -32,24 +33,26 @@ impl Registries {
             symbol_registry,
         }
     }
+}
 
+impl RegistryContext for Registries {
     /// Gets the registry for the list of addresses that have been marked as frozen.
-    pub fn get_freeze_list_registry(&self) -> Arc<RwLock<FreezeListRegistry>> {
+    fn get_freeze_list_registry(&self) -> Arc<RwLock<FreezeListRegistry>> {
         self.freeze_list_registry.clone()
     }
 
     /// Gets the registry for project item types.
-    pub fn get_project_item_type_registry(&self) -> Arc<RwLock<ProjectItemTypeRegistry>> {
+    fn get_project_item_type_registry(&self) -> Arc<RwLock<ProjectItemTypeRegistry>> {
         self.project_item_type_registry.clone()
     }
 
     /// Gets the registry for element scan rules.
-    pub fn get_element_scan_rule_registry(&self) -> Arc<RwLock<ElementScanRuleRegistry>> {
+    fn get_element_scan_rule_registry(&self) -> Arc<RwLock<ElementScanRuleRegistry>> {
         self.element_scan_rule_registry.clone()
     }
 
     /// Gets the registry for symbolic struct definitions.
-    pub fn get_symbol_registry(&self) -> Arc<RwLock<SymbolRegistry>> {
+    fn get_symbol_registry(&self) -> Arc<RwLock<SymbolRegistry>> {
         self.symbol_registry.clone()
     }
 }

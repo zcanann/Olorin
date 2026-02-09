@@ -1,6 +1,7 @@
 use crate::os::ProcessManager;
 use crate::os::ProcessQueryError;
 use crate::os::engine_os_provider::EngineOsProviders;
+use crate::registries::registries::Registries;
 use crate::tasks::snapshot_scan_result_freeze_task::SnapshotScanResultFreezeTask;
 use crate::tasks::trackable_task_manager::TrackableTaskManager;
 use crossbeam_channel::Receiver;
@@ -9,7 +10,7 @@ use squalr_engine_api::engine::engine_binding_error::EngineBindingError;
 use squalr_engine_api::events::engine_event::{EngineEvent, EngineEventRequest};
 use squalr_engine_api::registries::freeze_list::freeze_list_registry::FreezeListRegistry;
 use squalr_engine_api::registries::project_item_types::project_item_type_registry::ProjectItemTypeRegistry;
-use squalr_engine_api::registries::registries::Registries;
+use squalr_engine_api::registries::registry_context::RegistryContext;
 use squalr_engine_api::registries::scan_rules::element_scan_rule_registry::ElementScanRuleRegistry;
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::snapshots::snapshot::Snapshot;

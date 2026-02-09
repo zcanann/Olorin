@@ -9,7 +9,7 @@ impl UnprivilegedCommandRequestExecutor for ProjectItemsActivateRequest {
 
     fn execute(
         &self,
-        engine_unprivileged_state: &Arc<dyn EngineExecutionContext>,
+        _engine_unprivileged_state: &Arc<dyn EngineExecutionContext>,
     ) -> <Self as UnprivilegedCommandRequestExecutor>::ResponseType {
         /*
         match engine_privileged_state
