@@ -1,5 +1,4 @@
 use crate::os::ProcessManager;
-use crate::os::ProcessQueryError;
 use crate::os::engine_os_provider::EngineOsProviders;
 use crate::registries::registries::Registries;
 use crate::tasks::snapshot_scan_result_freeze_task::SnapshotScanResultFreezeTask;
@@ -14,6 +13,7 @@ use squalr_engine_api::registries::registry_context::RegistryContext;
 use squalr_engine_api::registries::scan_rules::element_scan_rule_registry::ElementScanRuleRegistry;
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::snapshots::snapshot::Snapshot;
+use squalr_engine_operating_system::process_query::process_query_error::ProcessQueryError;
 use std::sync::{Arc, RwLock};
 
 /// Tracks critical privileged engine session state for command execution and event dispatch.

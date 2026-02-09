@@ -5717,6 +5717,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "squalr-engine-operating-system"
+version = "0.1.1"
+dependencies = [
+ "bitflags 2.10.0",
+ "image",
+ "libc",
+ "log",
+ "once_cell",
+ "rayon",
+ "regex",
+ "serde",
+ "serde_json",
+ "squalr-engine-api",
+ "sysinfo",
+ "thiserror 2.0.18",
+ "windows-sys 0.61.2",
+ "zip",
+]
+
+[[package]]
 name = "squalr-engine-projects"
 version = "0.1.1"
 dependencies = [
@@ -5755,8 +5775,8 @@ dependencies = [
  "log",
  "log4rs",
  "squalr-engine-api",
+ "squalr-engine-operating-system",
  "squalr-engine-scanning",
- "squalr-operating-system",
  "sysinfo",
 ]
 
@@ -5774,34 +5794,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "squalr-operating-system"
-version = "0.1.1"
-dependencies = [
- "bitflags 2.10.0",
- "image",
- "libc",
- "log",
- "once_cell",
- "rayon",
- "regex",
- "serde",
- "serde_json",
- "squalr-engine-api",
- "sysinfo",
- "thiserror 2.0.18",
- "windows-sys 0.61.2",
- "zip",
-]
-
-[[package]]
 name = "squalr-tests"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "squalr-engine",
  "squalr-engine-api",
+ "squalr-engine-operating-system",
  "squalr-engine-session",
- "squalr-operating-system",
  "structopt",
 ]
 

@@ -266,35 +266,6 @@ Branch: `pr/release-test`
 
 We need to orchestrate a full attempt at a v1.0.0 release to see how the process goes.
 
-### Engine Refactor
-Branch: `pr/engine-refactor`
-
-Goal: make the public API sane, and make the engine truly stateless + reusable.
-
-#### Hard decisions (do not bikeshed in this branch)
-- **`squalr-engine` is pure compute.** It does scans, rules, snapshot merge logic (given read results), filter RLE, pagination math. Possibly fold `squalr-engine-scanning` into this, as the existing logic in `squalr-engine` will likely be moved to runtime.
-  **No OS calls. No persistent state. No task handles.**
-- **OS integration is not "engine."** Process enumeration, open/close handles, region/module enumeration, read/write memory, icons, bitness, permissions, IPC transport all live under **`squalr-os*`** (name TBD, but it is explicitly *operating-system layer*).
-- **Interactive state lives in a state shim** (name TBD, think `squalr-runtime`):
-  - caches (process/icon cache, snapshot buffers, filter sets)
-  - monitoring loops
-  - projects/freezes
-  - progress/cancel
-  This shim is compiled into GUI/TUI/interactive CLI and links to the engine directly (no IPC hop).
-
-#### IPC rule (do not shoot ourselves in the foot)
-- In IPC/privileged mode, **do not ship multi-GB snapshots over IPC**.
-- Prefer: privileged side reads memory and (optionally) runs scans close to memory, returning **compressed filter results + metadata**. UI asks for specific values on-demand, as is currently the case.
-
-#### CLI modes
-- **One-shot CLI**: blocking, grep-like, no interactive state.
-- **Interactive CLI/TUI/GUI**: uses the state shim (stateful), engine stays blocking/stateless.
-Undecided: separate binaries vs boot arg for interactive mode.
-
-#### Plugin/registry scope
-- This branch should not attempt full registry sync or a marketplace.
-- Just ensure we do not rely on global singleton registries leaking across boundaries. Any real sync work is a later branch.
-
 ### Engine Event Hooks
 Branch: `pr/engine-event-hooks`
 
