@@ -20,7 +20,14 @@ impl PrivilegedCommandRequestExecutor for ScanCollectValuesRequest {
             .get_opened_process()
         {
             let snapshot = engine_privileged_state.get_snapshot();
-            let scan_execution_context = ScanExecutionContext::new(None, None);
+            let memory_read_provider = engine_privileged_state.get_os_providers().memory_read.clone();
+            let scan_execution_context = ScanExecutionContext::new(
+                None,
+                None,
+                Some(Arc::new(move |opened_process_info, address, values| {
+                    memory_read_provider.read_bytes(opened_process_info, address, values)
+                })),
+            );
             ValueCollector::collect_values(process_info.clone(), snapshot, true, &scan_execution_context);
             engine_privileged_state.emit_event(ScanResultsUpdatedEvent { is_new_scan: false });
 

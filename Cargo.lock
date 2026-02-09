@@ -5742,8 +5742,6 @@ dependencies = [
  "serde_json",
  "smallvec",
  "squalr-engine-api",
- "squalr-operating-system",
- "sysinfo",
  "thiserror 2.0.18",
 ]
 

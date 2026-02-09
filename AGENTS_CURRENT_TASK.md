@@ -53,7 +53,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move `EnginePrivilegedState` orchestration responsibilities (process manager, snapshot ownership, task manager, startup monitoring) into `squalr-engine-session`.
 - [x] Refactor OS layer implementation to remove global caches/monitor singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) and expose immediate primitive operations only.
 - [x] Update IPC contracts in `squalr-engine-api` so scan flows return compressed metadata/results without `TrackableTaskHandle`.
-- [ ] Keep `squalr-engine-scanning` as a compute sub-crate in this branch, but enforce strict no-OS and no-task boundaries.
+- [x] Keep `squalr-engine-scanning` as a compute sub-crate in this branch, but enforce strict no-OS and no-task boundaries.
 - [ ] Rewire CLI/TUI/GUI boot paths: one-shot CLI blocking/stateless, interactive modes use `squalr-engine-session`.
 - [x] Rename `IMemoryWriter`, `IMemoryReader`, `IMemoryQueryer` to idiomatic Rust trait names without `I` prefixes.
 
@@ -101,6 +101,8 @@ Information discovered during iteration:
 - `squalr-operating-system` process queryers no longer use global `PROCESS_CACHE`/`PROCESS_MONITOR` singletons; Windows/macOS/Android now perform immediate per-call queries and monitoring start/stop are no-op compatibility hooks.
 - `EnginePrivilegedState` now lives in `squalr-engine-session` and owns process manager, snapshot, registries, task manager, freeze bootstrap task startup, and process monitoring startup.
 - `TrackableTaskManager` moved from `squalr-engine` into `squalr-engine-session::tasks`; `squalr-engine` now provides bootstrap helpers (`create_engine_privileged_state*`) and re-exports the session state type.
+- `squalr-engine-scanning` no longer depends on `squalr-operating-system`/`sysinfo` and no longer exposes `freeze_task`; memory reads are now supplied through `ScanExecutionContext` callbacks.
+- `SnapshotScanResultFreezeTask` moved into `squalr-engine-session::tasks` and now uses `EngineOsProviders` for memory query/write operations, keeping task ownership in the session layer.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -145,3 +147,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-09: Removed OS-layer process query singletons (`PROCESS_CACHE`, `PROCESS_MONITOR`) from `squalr-operating-system` by switching Windows/macOS/Android process enumeration to immediate per-call querying and deleting obsolete monitor helpers; validated with `cargo check -p squalr-operating-system`, `cargo check -p squalr-engine-session`, and `cargo check -p squalr-engine`.
 - 2026-02-09: Moved privileged orchestration state into `squalr-engine-session` by relocating `EnginePrivilegedState` and `TrackableTaskManager`, updated `squalr-engine` to bootstrap via `create_engine_privileged_state*`, rewired tests/mocks for session OS providers, and validated with `cargo check -p squalr-engine-session -p squalr-engine -p squalr-tests`, `cargo test -p squalr-engine --no-run`, and `cargo test -p squalr-tests --no-run`.
 - 2026-02-09: Updated scan IPC contracts to remove `TrackableTaskHandle` from scan responses in favor of `ScanResultsMetadata`; made scan command executors return metadata after blocking execution and kept update notifications via `ScanResultsUpdatedEvent`; validated with `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine -p squalr-tests`, and `cargo test -p squalr-tests --test scan_command_tests`.
+- 2026-02-09: Enforced `squalr-engine-scanning` compute boundaries by removing OS/task ownership (`freeze_task` moved to `squalr-engine-session`), injecting process memory reads via `ScanExecutionContext`, and dropping OS deps from scanning crate; validated with `cargo check -p squalr-engine-scanning -p squalr-engine-session -p squalr-engine` and `cargo test -p squalr-engine-scanning --no-run -p squalr-engine-session --no-run -p squalr-engine --no-run`.

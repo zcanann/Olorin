@@ -60,7 +60,7 @@ impl ValueCollector {
 
             // Attempt to read new (or initial) memory values. Ignore failed regions, as these are generally just deallocated pages.
             // JIRA: We probably want some way of tombstoning deallocated pages.
-            let _result = snapshot_region.read_all_memory(&process_info);
+            let _result = snapshot_region.read_all_memory(&process_info, scan_execution_context);
 
             // Report progress periodically (not every time for performance)
             let processed = processed_region_count.fetch_add(1, Ordering::SeqCst);

@@ -75,7 +75,7 @@ impl ElementScanExecutor {
 
             // Attempt to read new (or initial) memory values. Ignore failures as they usually indicate deallocated pages. // JIRA: Remove failures somehow.
             if element_scan_plan.get_memory_read_mode() == MemoryReadMode::ReadInterleavedWithScan {
-                let _ = snapshot_region.read_all_memory(&process_info);
+                let _ = snapshot_region.read_all_memory(&process_info, scan_execution_context);
             }
 
             /*
