@@ -5700,7 +5700,6 @@ dependencies = [
  "smallvec",
  "squalr-engine-domain",
  "structopt",
- "sysinfo",
  "thiserror 2.0.18",
  "typetag",
  "uuid",

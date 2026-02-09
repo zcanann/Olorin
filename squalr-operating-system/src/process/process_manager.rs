@@ -11,6 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
+use sysinfo::Pid;
 
 pub struct ProcessManager {
     opened_process: Arc<RwLock<Option<OpenedProcessInfo>>>,
@@ -97,7 +98,7 @@ impl ProcessManager {
                 };
 
                 let process_query_options = ProcessQueryOptions {
-                    required_process_id: Some(opened_process_id),
+                    required_process_id: Some(Pid::from_u32(opened_process_id)),
                     search_name: None,
                     require_windowed: false,
                     match_case: false,
