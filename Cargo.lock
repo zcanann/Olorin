@@ -5710,6 +5710,7 @@ dependencies = [
 name = "squalr-engine-domain"
 version = "0.1.0"
 dependencies = [
+ "log",
  "num-traits",
  "serde",
  "serde_json",

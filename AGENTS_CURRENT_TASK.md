@@ -40,7 +40,8 @@ The goal is to keep the architecture in mind and not drift into minefields.
 (Remove as completed, add remaining concrete tasks.)
 
 - [x] Add `squalr-engine-api` to workspace members immediately to enforce boundary checks during this refactor.
-- [ ] Create `squalr-engine-domain` and move domain semantics from `squalr-engine-api` there (`structures/data_types/*`, `structures/structs/*`, registries, privileged string conversion traits, conversions).
+- [ ] Complete domain migration by moving remaining domain semantics from `squalr-engine-api` into `squalr-engine-domain` (`structures/data_types/*`, registries) while preserving API compatibility via re-exports.
+- [x] Move `DataValue` and the remaining struct-domain models (`SymbolicFieldDefinition`, `SymbolicStructDefinition`, `ValuedStruct`, `ValuedStructField`) into `squalr-engine-domain`, introduce `SymbolResolver` abstraction, and keep `squalr-engine-api` compatibility through module re-exports.
 - [x] Move conversion core modules (`base_system_conversions`, `command_line_conversions`, `conversion_error`, `conversions_from_primitives`, `storage_size_conversions`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Move format-aware conversion adapters (`conversions_from_binary`, `conversions_from_decimal`, `conversions_from_hexadecimal`) into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
 - [x] Move privileged string conversion traits into `squalr-engine-domain` and re-export them from `squalr-engine-api`.
@@ -104,6 +105,9 @@ Information discovered during iteration:
 - `squalr-engine-scanning` no longer depends on `squalr-operating-system`/`sysinfo` and no longer exposes `freeze_task`; memory reads are now supplied through `ScanExecutionContext` callbacks.
 - `SnapshotScanResultFreezeTask` moved into `squalr-engine-session::tasks` and now uses `EngineOsProviders` for memory query/write operations, keeping task ownership in the session layer.
 - `squalr-cli` now supports one-shot blocking command execution (`squalr-cli <command ...>`) by dispatching a single command through `EngineUnprivilegedState`, waiting for the response callback, then exiting; interactive loop behavior remains default when no command tokens are provided.
+- `DataValue`, `SymbolicFieldDefinition`, `SymbolicStructDefinition`, `ValuedStruct`, and `ValuedStructField` now live in `squalr-engine-domain`; `squalr-engine-api` counterparts are re-export modules to preserve path compatibility.
+- Added domain trait `SymbolResolver` so moved struct-domain logic can resolve defaults/symbolic structs without depending on `squalr-engine-api` registries; `squalr-engine-api::SymbolRegistry` now implements this trait.
+- `FromStringPrivileged` implementations for moved domain types are now context-generic (`ContextType`) instead of hard-coupled to `Registries`, reducing cross-layer coupling.
 
 Decisions locked for this branch:
 - Keep one public API crate: `squalr-engine-api` is the only messaging/IPC contract surface.
@@ -150,3 +154,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - 2026-02-09: Updated scan IPC contracts to remove `TrackableTaskHandle` from scan responses in favor of `ScanResultsMetadata`; made scan command executors return metadata after blocking execution and kept update notifications via `ScanResultsUpdatedEvent`; validated with `cargo check -p squalr-engine-api`, `cargo check -p squalr-engine -p squalr-tests`, and `cargo test -p squalr-tests --test scan_command_tests`.
 - 2026-02-09: Enforced `squalr-engine-scanning` compute boundaries by removing OS/task ownership (`freeze_task` moved to `squalr-engine-session`), injecting process memory reads via `ScanExecutionContext`, and dropping OS deps from scanning crate; validated with `cargo check -p squalr-engine-scanning -p squalr-engine-session -p squalr-engine` and `cargo test -p squalr-engine-scanning --no-run -p squalr-engine-session --no-run -p squalr-engine --no-run`.
 - 2026-02-09: Rewired CLI boot behavior for `pr/engine-refactor` one-shot mode by adding blocking single-command execution in `squalr-cli` (`squalr-cli <command ...>`) while preserving interactive loop and IPC shell behavior; validated with `cargo check -p squalr-cli` and `cargo test -p squalr-cli --no-run`.
+- 2026-02-09: Migrated `DataValue` and remaining struct-domain models into `squalr-engine-domain`, added `SymbolResolver` abstraction + `SymbolRegistry` impl for decoupled symbol lookup, re-exported moved modules from `squalr-engine-api`, and validated with `cargo fmt --all`, `cargo check -p squalr-engine-domain -p squalr-engine-api`, `cargo check -p squalr-engine -p squalr-engine-session -p squalr-cli -p squalr-tests`, `cargo test -p squalr-engine-domain`, and `cargo test -p squalr-engine-api --no-run`.
