@@ -1,5 +1,4 @@
 mod cli;
-mod logging;
 mod response_handlers;
 
 use anyhow::{Context, Result, bail};
