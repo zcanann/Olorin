@@ -10,8 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Skipping project items changed notification because opened project lock is busy. can get spammy. Either drop this entirely, make it verbose and hidden, or do nothing. It happens enough that it is meaningless as a warning.
-- Renaming a folder through the struct viewer wipes it from the project list UI.
+- No concrete `pr/project-explorer` regressions currently queued.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -112,4 +111,8 @@ Information discovered during iteration:
 - Drop operation planning now supports multi-item move/reorder while preventing self-drop and descendant-folder invalid targets.
 - Added project hierarchy unit tests for drag path collection over selected and unselected drag anchors.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (11 passed) and `cargo test -p squalr-tests --test project_items_command_tests` (19 passed).
+- `ProjectManager::notify_project_items_changed` no longer emits lock-busy warning spam when `opened_project` is contended; contention is now silently tolerated as an expected non-blocking path.
+- Struct-viewer folder renames now skip direct in-memory name-field persistence for directory items and commit via `project-items rename` as the single source of truth, avoiding the prior directory-row loss regression during rename/save cycles.
+- Added `ProjectHierarchyView` unit coverage for directory-name edit gating via `should_apply_struct_field_edit_to_project_item`.
+- Session checkpoint (2026-02-16): Ran `cargo fmt`, `cargo test -p squalr build_project_item_rename_request_for_` (2 passed), `cargo test -p squalr should_apply_struct_field_edit_to_project_item_` (3 passed), `cargo test -p squalr-engine-api notify_project_items_changed_does_not_block_when_opened_project_write_lock_is_held` (1 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
 

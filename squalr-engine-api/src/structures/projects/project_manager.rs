@@ -42,8 +42,6 @@ impl ProjectManager {
             };*/
 
             // (self.event_emitter)(ProjectItemsChangedEvent { project_root }.to_engine_event());
-        } else {
-            log::warn!("Skipping project items changed notification because opened project lock is busy.");
         }
     }
 

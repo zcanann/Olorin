@@ -147,6 +147,36 @@ mod tests {
 
         assert!(rename_request.is_none());
     }
+
+    #[test]
+    fn should_apply_struct_field_edit_to_project_item_returns_false_for_directory_name_edits() {
+        let should_apply_struct_field_edit = ProjectHierarchyView::should_apply_struct_field_edit_to_project_item(
+            ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID,
+            squalr_engine_api::structures::projects::project_items::project_item::ProjectItem::PROPERTY_NAME,
+        );
+
+        assert!(!should_apply_struct_field_edit);
+    }
+
+    #[test]
+    fn should_apply_struct_field_edit_to_project_item_returns_true_for_file_name_edits() {
+        let should_apply_struct_field_edit = ProjectHierarchyView::should_apply_struct_field_edit_to_project_item(
+            ProjectItemTypeAddress::PROJECT_ITEM_TYPE_ID,
+            squalr_engine_api::structures::projects::project_items::project_item::ProjectItem::PROPERTY_NAME,
+        );
+
+        assert!(should_apply_struct_field_edit);
+    }
+
+    #[test]
+    fn should_apply_struct_field_edit_to_project_item_returns_true_for_non_name_edits() {
+        let should_apply_struct_field_edit = ProjectHierarchyView::should_apply_struct_field_edit_to_project_item(
+            ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID,
+            ProjectItemTypeAddress::PROPERTY_MODULE,
+        );
+
+        assert!(should_apply_struct_field_edit);
+    }
 }
 
 impl Widget for ProjectHierarchyView {
@@ -494,7 +524,7 @@ impl ProjectHierarchyView {
         let opened_project_lock = project_manager.get_opened_project();
         let mut memory_write_requests = Vec::new();
         let mut rename_requests = Vec::new();
-        let mut updated_project_item_count = 0usize;
+        let mut has_persisted_property_edits = false;
         let edited_field_name = edited_field.get_name().to_string();
         let edited_name = if edited_field_name == ProjectItem::PROPERTY_NAME {
             Self::extract_string_value_from_edited_field(&edited_field)
@@ -539,11 +569,17 @@ impl ProjectHierarchyView {
                 .get_item_type()
                 .get_project_item_type_id()
                 .to_string();
+            let should_apply_field_edit = Self::should_apply_struct_field_edit_to_project_item(&project_item_type_id, &edited_field_name);
 
-            project_item
-                .get_properties_mut()
-                .set_field_data(edited_field.get_name(), edited_field.get_field_data().clone(), edited_field.get_is_read_only());
-            project_item.set_has_unsaved_changes(true);
+            if should_apply_field_edit {
+                project_item.get_properties_mut().set_field_data(
+                    edited_field.get_name(),
+                    edited_field.get_field_data().clone(),
+                    edited_field.get_is_read_only(),
+                );
+                project_item.set_has_unsaved_changes(true);
+                has_persisted_property_edits = true;
+            }
 
             if let Some(edited_name) = &edited_name {
                 if let Some(project_items_rename_request) = Self::build_project_item_rename_request(project_item_path, &project_item_type_id, edited_name) {
@@ -554,28 +590,32 @@ impl ProjectHierarchyView {
             if let Some(memory_write_request) = Self::build_memory_write_request_for_project_item_edit(project_item, &edited_field) {
                 memory_write_requests.push(memory_write_request);
             }
-
-            updated_project_item_count += 1;
         }
 
-        if updated_project_item_count == 0 {
+        if !has_persisted_property_edits && rename_requests.is_empty() && memory_write_requests.is_empty() {
             return;
         }
 
-        opened_project
-            .get_project_info_mut()
-            .set_has_unsaved_changes(true);
-
         drop(opened_project_guard);
 
-        let project_save_request = ProjectSaveRequest {};
-
-        project_save_request.send(&app_context.engine_unprivileged_state, |project_save_response| {
-            if !project_save_response.success {
-                log::error!("Failed to persist project item edit through project save command.");
+        if has_persisted_property_edits {
+            if let Ok(mut opened_project_guard) = opened_project_lock.write() {
+                if let Some(opened_project) = opened_project_guard.as_mut() {
+                    opened_project
+                        .get_project_info_mut()
+                        .set_has_unsaved_changes(true);
+                }
             }
-        });
-        project_manager.notify_project_items_changed();
+
+            let project_save_request = ProjectSaveRequest {};
+
+            project_save_request.send(&app_context.engine_unprivileged_state, |project_save_response| {
+                if !project_save_response.success {
+                    log::error!("Failed to persist project item edit through project save command.");
+                }
+            });
+            project_manager.notify_project_items_changed();
+        }
 
         for rename_request in rename_requests {
             rename_request.send(&app_context.engine_unprivileged_state, |project_items_rename_response| {
@@ -758,5 +798,12 @@ impl ProjectHierarchyView {
             project_item_path: project_item_path.to_path_buf(),
             project_item_name: renamed_project_item_name,
         })
+    }
+
+    fn should_apply_struct_field_edit_to_project_item(
+        project_item_type_id: &str,
+        edited_field_name: &str,
+    ) -> bool {
+        !(edited_field_name == ProjectItem::PROPERTY_NAME && project_item_type_id == ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID)
     }
 }
