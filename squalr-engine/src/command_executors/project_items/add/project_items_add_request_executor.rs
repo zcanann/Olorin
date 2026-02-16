@@ -59,7 +59,7 @@ impl UnprivilegedCommandRequestExecutor for ProjectItemsAddRequest {
         let opened_project = match opened_project.as_mut() {
             Some(opened_project) => opened_project,
             None => {
-                log::warn!("Cannot add scan results to project items without an opened project.");
+                log::error!("Cannot add scan results to project items without an opened project.");
 
                 return ProjectItemsAddResponse {
                     success: false,
