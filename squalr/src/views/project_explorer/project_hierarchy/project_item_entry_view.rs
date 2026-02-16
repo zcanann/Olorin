@@ -6,7 +6,7 @@ use crate::{
     },
     views::project_explorer::project_hierarchy::view_data::project_hierarchy_frame_action::ProjectHierarchyFrameAction,
 };
-use eframe::egui::{Align2, Rect, Response, Sense, TextureHandle, Ui, Widget, pos2, vec2};
+use eframe::egui::{Align2, CursorIcon, Rect, Response, Sense, TextureHandle, Ui, Widget, pos2, vec2};
 use epaint::{CornerRadius, Stroke, StrokeKind};
 use std::{path::PathBuf, sync::Arc};
 
@@ -176,6 +176,6 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
             theme.foreground_preview,
         );
 
-        response
+        response.on_hover_cursor(CursorIcon::Grab)
     }
 }

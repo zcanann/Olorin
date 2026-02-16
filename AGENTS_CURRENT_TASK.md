@@ -10,9 +10,6 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Dragging a project item should change the cursor. Egui should support this.
-- The drag target should also be highlighted.
-- Multi-item drag should be supported as well.
 - Skipping project items changed notification because opened project lock is busy. can get spammy. Either drop this entirely, make it verbose and hidden, or do nothing. It happens enough that it is meaningless as a warning.
 - Renaming a folder through the struct viewer wipes it from the project list UI.
 
@@ -110,4 +107,9 @@ Information discovered during iteration:
 - Added regression test `get_field_address_reads_u32_bytes` in `squalr-engine-api` and ran `cargo test -p squalr-engine-api project_item_type_address` (4 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
 - project-items add file naming now derives from scan-result semantics (module+offset or address) instead of fixed scan_result_{index} names, with sanitizer + numeric suffixing (_1, _2, ...) to prevent collisions and allow adding the same scan result multiple times.
 - Session checkpoint (2026-02-16): Ran cargo test -p squalr-engine project_items_add_request_executor (6 passed) and cargo test -p squalr-tests --test project_items_command_tests (19 passed).
+- Project hierarchy drag UX now sets `Grab` cursor on row hover and `Grabbing` while active drag is in progress.
+- Project hierarchy reorder/move drag state now supports multi-item drag (`dragged_project_item_paths`) and drags the current selection when drag starts on a selected row.
+- Drop operation planning now supports multi-item move/reorder while preventing self-drop and descendant-folder invalid targets.
+- Added project hierarchy unit tests for drag path collection over selected and unselected drag anchors.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (11 passed) and `cargo test -p squalr-tests --test project_items_command_tests` (19 passed).
 

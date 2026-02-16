@@ -11,7 +11,7 @@ use crate::{
     },
     views::struct_viewer::view_data::struct_viewer_view_data::StructViewerViewData,
 };
-use eframe::egui::{Align, Layout, Response, ScrollArea, TextureHandle, Ui, Widget, vec2};
+use eframe::egui::{Align, CursorIcon, Layout, Response, ScrollArea, TextureHandle, Ui, Widget, vec2};
 use epaint::{Color32, CornerRadius, Stroke, StrokeKind};
 use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
@@ -172,7 +172,7 @@ impl Widget for ProjectHierarchyView {
                 let take_over_state = project_hierarchy_view_data.take_over_state.clone();
                 let tree_entries = project_hierarchy_view_data.tree_entries.clone();
                 let selected_project_item_paths = project_hierarchy_view_data.selected_project_item_paths.clone();
-                let dragged_project_item_path = project_hierarchy_view_data.dragged_project_item_path.clone();
+                let dragged_project_item_paths = project_hierarchy_view_data.dragged_project_item_paths.clone();
                 let pending_operation = project_hierarchy_view_data.pending_operation.clone();
 
                 user_interface.add(project_hierarchy_toolbar_view);
@@ -250,12 +250,13 @@ impl Widget for ProjectHierarchyView {
                                         }
                                     });
 
-                                    let active_dragged_project_item_path = drag_started_project_item_path
+                                    let active_dragged_project_item_paths = drag_started_project_item_path
                                         .as_ref()
-                                        .or(dragged_project_item_path.as_ref());
+                                        .map(|drag_started_project_item_path| vec![drag_started_project_item_path.clone()])
+                                        .or(dragged_project_item_paths.clone());
 
-                                    if let Some(active_dragged_project_item_path) = active_dragged_project_item_path {
-                                        if active_dragged_project_item_path != &tree_entry.project_item_path && row_response.hovered() {
+                                    if let Some(active_dragged_project_item_paths) = active_dragged_project_item_paths {
+                                        if !active_dragged_project_item_paths.contains(&tree_entry.project_item_path) && row_response.hovered() {
                                             hovered_drop_target_project_item_path = Some(tree_entry.project_item_path.clone());
                                             user_interface.painter().rect_stroke(
                                                 row_response.rect,
@@ -361,14 +362,22 @@ impl Widget for ProjectHierarchyView {
             ProjectHierarchyViewData::begin_reorder_drag(self.project_hierarchy_view_data.clone(), drag_started_project_item_path);
         }
 
-        let persisted_dragged_project_item_path = self
+        let persisted_dragged_project_item_paths = self
             .project_hierarchy_view_data
             .read("Project hierarchy check active drag")
-            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.dragged_project_item_path.clone());
-        let active_dragged_project_item_path = drag_started_project_item_path.or(persisted_dragged_project_item_path);
+            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.dragged_project_item_paths.clone());
+        let active_dragged_project_item_paths = drag_started_project_item_path
+            .map(|drag_started_project_item_path| vec![drag_started_project_item_path])
+            .or(persisted_dragged_project_item_paths);
+
+        if active_dragged_project_item_paths.is_some() {
+            user_interface.output_mut(|platform_output| {
+                platform_output.cursor_icon = CursorIcon::Grabbing;
+            });
+        }
 
         if user_interface.input(|input_state| input_state.pointer.any_released()) {
-            if active_dragged_project_item_path.is_some() {
+            if active_dragged_project_item_paths.is_some() {
                 if let Some(drop_target_project_item_path) = hovered_drop_target_project_item_path {
                     ProjectHierarchyViewData::commit_reorder_drop(
                         self.project_hierarchy_view_data.clone(),

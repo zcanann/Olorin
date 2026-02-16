@@ -42,7 +42,7 @@ pub struct ProjectHierarchyViewData {
     pub selection_anchor_project_item_path: Option<PathBuf>,
     pub expanded_directory_paths: HashSet<PathBuf>,
     pub context_menu_project_item_path: Option<PathBuf>,
-    pub dragged_project_item_path: Option<PathBuf>,
+    pub dragged_project_item_paths: Option<Vec<PathBuf>>,
     pub take_over_state: ProjectHierarchyTakeOverState,
     pub pending_operation: ProjectHierarchyPendingOperation,
 }
@@ -59,7 +59,7 @@ impl ProjectHierarchyViewData {
             selection_anchor_project_item_path: None,
             expanded_directory_paths: HashSet::new(),
             context_menu_project_item_path: None,
-            dragged_project_item_path: None,
+            dragged_project_item_paths: None,
             take_over_state: ProjectHierarchyTakeOverState::None,
             pending_operation: ProjectHierarchyPendingOperation::None,
         }
@@ -106,14 +106,18 @@ impl ProjectHierarchyViewData {
 
             project_hierarchy_view_data.retain_valid_selection();
 
-            if let Some(dragged_project_item_path) = &project_hierarchy_view_data.dragged_project_item_path {
-                let is_valid_dragged_project_item = project_hierarchy_view_data
+            if let Some(dragged_project_item_paths) = &project_hierarchy_view_data.dragged_project_item_paths {
+                let visible_project_item_paths: HashSet<PathBuf> = project_hierarchy_view_data
                     .tree_entries
                     .iter()
-                    .any(|tree_entry| &tree_entry.project_item_path == dragged_project_item_path);
+                    .map(|tree_entry| tree_entry.project_item_path.clone())
+                    .collect();
+                let has_invalid_dragged_project_item = dragged_project_item_paths
+                    .iter()
+                    .any(|dragged_project_item_path| !visible_project_item_paths.contains(dragged_project_item_path));
 
-                if !is_valid_dragged_project_item {
-                    project_hierarchy_view_data.dragged_project_item_path = None;
+                if has_invalid_dragged_project_item {
+                    project_hierarchy_view_data.dragged_project_item_paths = None;
                 }
             }
 
@@ -295,7 +299,8 @@ impl ProjectHierarchyViewData {
             return;
         }
 
-        project_hierarchy_view_data.dragged_project_item_path = Some(project_item_path);
+        let dragged_project_item_paths = project_hierarchy_view_data.collect_dragged_project_item_paths(&project_item_path);
+        project_hierarchy_view_data.dragged_project_item_paths = Some(dragged_project_item_paths);
     }
 
     pub fn cancel_reorder_drag(project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>) {
@@ -304,7 +309,7 @@ impl ProjectHierarchyViewData {
             None => return,
         };
 
-        project_hierarchy_view_data.dragged_project_item_path = None;
+        project_hierarchy_view_data.dragged_project_item_paths = None;
     }
 
     pub fn commit_reorder_drop(
@@ -317,31 +322,31 @@ impl ProjectHierarchyViewData {
                 Some(project_hierarchy_view_data) => project_hierarchy_view_data,
                 None => return,
             };
-            let dragged_project_item_path = match project_hierarchy_view_data.dragged_project_item_path.clone() {
-                Some(dragged_project_item_path) => dragged_project_item_path,
-                None => return,
+            let dragged_project_item_paths = match project_hierarchy_view_data.dragged_project_item_paths.clone() {
+                Some(dragged_project_item_paths) if !dragged_project_item_paths.is_empty() => dragged_project_item_paths,
+                _ => return,
             };
 
             if project_hierarchy_view_data.pending_operation != ProjectHierarchyPendingOperation::None {
-                project_hierarchy_view_data.dragged_project_item_path = None;
+                project_hierarchy_view_data.dragged_project_item_paths = None;
                 return;
             }
 
             let drop_operation = Self::build_drop_operation(
                 project_hierarchy_view_data.opened_project_info.as_ref(),
                 &project_hierarchy_view_data.project_items,
-                &dragged_project_item_path,
+                &dragged_project_item_paths,
                 &target_project_item_path,
             );
 
             match drop_operation {
                 Some(drop_operation) => {
                     project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::Reordering;
-                    project_hierarchy_view_data.dragged_project_item_path = None;
+                    project_hierarchy_view_data.dragged_project_item_paths = None;
                     drop_operation
                 }
                 None => {
-                    project_hierarchy_view_data.dragged_project_item_path = None;
+                    project_hierarchy_view_data.dragged_project_item_paths = None;
                     return;
                 }
             }
@@ -569,52 +574,70 @@ impl ProjectHierarchyViewData {
     fn build_drop_operation(
         opened_project_info: Option<&ProjectInfo>,
         project_items: &[(ProjectItemRef, ProjectItem)],
-        dragged_project_item_path: &Path,
+        dragged_project_item_paths: &[PathBuf],
         target_project_item_path: &Path,
     ) -> Option<ProjectHierarchyDropOperation> {
+        if dragged_project_item_paths.is_empty() {
+            return None;
+        }
+
         let (_project_root_directory_path, project_item_map, mut child_paths_by_parent_path) =
             Self::build_project_hierarchy_maps(opened_project_info, project_items)?;
         let target_is_directory = Self::is_directory_path(target_project_item_path, &project_item_map);
-        let dragged_parent_path = dragged_project_item_path.parent()?.to_path_buf();
         let target_directory_path = if target_is_directory {
             target_project_item_path.to_path_buf()
         } else {
             target_project_item_path.parent()?.to_path_buf()
         };
+        let dragged_project_item_path_set = dragged_project_item_paths
+            .iter()
+            .cloned()
+            .collect::<HashSet<PathBuf>>();
 
-        if dragged_project_item_path == target_project_item_path {
+        if dragged_project_item_path_set.contains(target_project_item_path) {
             return None;
         }
 
-        if target_directory_path.starts_with(dragged_project_item_path) {
+        if dragged_project_item_paths
+            .iter()
+            .any(|dragged_project_item_path| target_directory_path.starts_with(dragged_project_item_path))
+        {
             return None;
         }
 
-        if dragged_parent_path != target_directory_path {
+        let all_dragged_items_share_target_parent = dragged_project_item_paths
+            .iter()
+            .all(|dragged_project_item_path| dragged_project_item_path.parent() == Some(target_directory_path.as_path()));
+
+        if !all_dragged_items_share_target_parent {
             return Some(ProjectHierarchyDropOperation::Move {
-                project_item_paths: vec![dragged_project_item_path.to_path_buf()],
+                project_item_paths: dragged_project_item_paths.to_vec(),
                 target_directory_path,
             });
         }
 
-        let sibling_paths = child_paths_by_parent_path.get_mut(&dragged_parent_path)?;
-        let dragged_sibling_index = sibling_paths
+        let sibling_paths = child_paths_by_parent_path.get_mut(&target_directory_path)?;
+        let dragged_paths_in_sibling_order: Vec<PathBuf> = sibling_paths
             .iter()
-            .position(|project_item_path| project_item_path == dragged_project_item_path)?;
+            .filter(|sibling_project_item_path| dragged_project_item_path_set.contains(*sibling_project_item_path))
+            .cloned()
+            .collect();
+
+        if dragged_paths_in_sibling_order.len() != dragged_project_item_path_set.len() {
+            return None;
+        }
+
+        sibling_paths.retain(|sibling_project_item_path| !dragged_project_item_path_set.contains(sibling_project_item_path));
         let target_sibling_index = sibling_paths
             .iter()
             .position(|project_item_path| project_item_path == target_project_item_path)?;
-        let dragged_path = sibling_paths.remove(dragged_sibling_index);
-        let adjusted_target_sibling_index = if dragged_sibling_index < target_sibling_index {
-            target_sibling_index.saturating_sub(1)
-        } else {
-            target_sibling_index
-        };
 
-        sibling_paths.insert(adjusted_target_sibling_index, dragged_path);
+        for (dragged_path_insert_index, dragged_project_item_path) in dragged_paths_in_sibling_order.into_iter().enumerate() {
+            sibling_paths.insert(target_sibling_index + dragged_path_insert_index, dragged_project_item_path);
+        }
 
         let mut reordered_project_item_paths = Vec::new();
-        Self::append_project_item_paths_in_order(&dragged_parent_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
+        Self::append_project_item_paths_in_order(&target_directory_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
 
         Some(ProjectHierarchyDropOperation::Reorder {
             project_item_paths: reordered_project_item_paths,
@@ -958,6 +981,26 @@ impl ProjectHierarchyViewData {
             .collect()
     }
 
+    fn collect_dragged_project_item_paths(
+        &self,
+        drag_start_project_item_path: &Path,
+    ) -> Vec<PathBuf> {
+        let mut dragged_project_item_paths = if self
+            .selected_project_item_paths
+            .contains(drag_start_project_item_path)
+        {
+            self.collect_selected_project_item_paths_in_tree_order()
+        } else {
+            Vec::new()
+        };
+
+        if dragged_project_item_paths.is_empty() {
+            dragged_project_item_paths.push(drag_start_project_item_path.to_path_buf());
+        }
+
+        dragged_project_item_paths
+    }
+
     fn collect_project_item_paths_in_range(
         &self,
         selection_start_project_item_path: &Path,
@@ -1171,5 +1214,50 @@ mod tests {
         assert!(expanded_directory_paths.contains(&project_root_path));
         assert!(expanded_directory_paths.contains(&project_root_path.join("Player")));
         assert!(expanded_directory_paths.contains(&project_root_path.join("Player").join("Stats")));
+    }
+
+    #[test]
+    fn collect_dragged_project_item_paths_uses_selected_items_when_dragging_selected_row() {
+        let root_path = PathBuf::from("C:/Projects/TestProject/project_items");
+        let first_child_path = root_path.join("First");
+        let second_child_path = root_path.join("Second");
+        let third_child_path = root_path.join("Third");
+        let mut project_hierarchy_view_data = ProjectHierarchyViewData::new();
+        project_hierarchy_view_data.tree_entries = vec![
+            create_directory_tree_entry(&root_path, 0),
+            create_directory_tree_entry(&first_child_path, 1),
+            create_directory_tree_entry(&second_child_path, 1),
+            create_directory_tree_entry(&third_child_path, 1),
+        ];
+        project_hierarchy_view_data
+            .selected_project_item_paths
+            .insert(first_child_path.clone());
+        project_hierarchy_view_data
+            .selected_project_item_paths
+            .insert(third_child_path.clone());
+
+        let dragged_project_item_paths = project_hierarchy_view_data.collect_dragged_project_item_paths(&third_child_path);
+
+        assert_eq!(dragged_project_item_paths, vec![first_child_path, third_child_path]);
+    }
+
+    #[test]
+    fn collect_dragged_project_item_paths_uses_only_anchor_when_dragging_unselected_row() {
+        let root_path = PathBuf::from("C:/Projects/TestProject/project_items");
+        let first_child_path = root_path.join("First");
+        let second_child_path = root_path.join("Second");
+        let mut project_hierarchy_view_data = ProjectHierarchyViewData::new();
+        project_hierarchy_view_data.tree_entries = vec![
+            create_directory_tree_entry(&root_path, 0),
+            create_directory_tree_entry(&first_child_path, 1),
+            create_directory_tree_entry(&second_child_path, 1),
+        ];
+        project_hierarchy_view_data
+            .selected_project_item_paths
+            .insert(first_child_path);
+
+        let dragged_project_item_paths = project_hierarchy_view_data.collect_dragged_project_item_paths(&second_child_path);
+
+        assert_eq!(dragged_project_item_paths, vec![second_child_path]);
     }
 }
