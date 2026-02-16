@@ -33,6 +33,7 @@ Information discovered during iteration:
 - Added `ScanResult::as_valued_struct` unit test ensuring only `value` is writable.
 - Updated readonly struct-viewer rows to hide commit buttons while keeping interpretation/display-type selection available.
 - Added `DataValueBoxView` options to permit readonly interpretation popup interaction and preview-style neutral text coloring.
+- Fixed struct viewer value-box text coloring so writable fields use `foreground` while read-only fields continue using `foreground_preview`.
 
 ## Agent Scratchpad and Notes
 Append below and compact regularly to relevant recent notes, keep under ~20 lines.
@@ -46,3 +47,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - Revalidated with `cargo test -p squalr-engine-domain combine_exclusive`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`; manual GUI smoke test remains pending because this session is non-interactive.
 - Fixed struct viewer `DataValueBoxView` ID conflicts and read-only enforcement, marked `is_frozen` read-only in scan-result struct projection, added a focused unit test in `squalr-engine-api`, and validated with `cargo test -p squalr-engine-api as_valued_struct_only_allows_writing_value_field`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
 - Adjusted struct viewer readonly UX to remove commit checkbox, keep display-type interaction, and use `foreground_preview` for neutral display text; validated with `cargo fmt`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
+- Corrected struct viewer `DataValueBoxView` neutral text color selection so only readonly rows use `foreground_preview`; writable rows now use `foreground`, validated with `cargo fmt` and `cargo check -p squalr`.

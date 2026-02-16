@@ -168,7 +168,7 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                     &data_value_box_id,
                 )
                 .allow_read_only_interpretation(true)
-                .use_preview_foreground(true)
+                .use_preview_foreground(self.valued_struct_field.get_is_read_only())
                 .width(value_box_width),
             );
 
