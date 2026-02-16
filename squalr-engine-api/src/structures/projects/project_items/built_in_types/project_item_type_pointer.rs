@@ -25,11 +25,7 @@ impl ProjectItemTypePointer {
         freeze_data_value_interpreter: &str,
     ) -> ProjectItem {
         let project_item_type_ref = ProjectItemTypeRef::new(Self::PROJECT_ITEM_TYPE_ID.to_string());
-        let project_item_name = if name.trim().is_empty() || name.trim() == "TODO" {
-            Self::DEFAULT_PROJECT_ITEM_NAME
-        } else {
-            name
-        };
+        let project_item_name = if name.trim().is_empty() { Self::DEFAULT_PROJECT_ITEM_NAME } else { name };
         let mut project_item = ProjectItem::new(project_item_type_ref, project_item_name);
 
         project_item.set_field_description(description);
@@ -107,9 +103,9 @@ mod tests {
     }
 
     #[test]
-    fn new_project_item_uses_new_pointer_for_todo_name() {
-        let project_item = ProjectItemTypePointer::new_project_item("TODO", "", "");
+    fn new_project_item_uses_supplied_name_when_non_empty() {
+        let project_item = ProjectItemTypePointer::new_project_item("Pointer Name", "", "");
 
-        assert_eq!(project_item.get_field_name(), ProjectItemTypePointer::DEFAULT_PROJECT_ITEM_NAME);
+        assert_eq!(project_item.get_field_name(), "Pointer Name");
     }
 }
