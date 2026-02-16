@@ -70,3 +70,7 @@ Information discovered during iteration:
 - Address project item creation now normalizes blank or placeholder (`TODO`) names to `New Address`.
 - Project item string field getters now deserialize raw UTF-8 bytes directly for name/module/description/icon/symbolic-struct fields instead of relying on placeholder display-string paths.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (5 passed), `cargo test -p squalr-engine-api project_item_type_address` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
+- Implemented concrete pointer project-item display-string field support in `ProjectItemTypePointer` via `freeze_data_value_interpreter` helpers and default-name normalization (`New Pointer`) for blank/placeholder names.
+- Project hierarchy pointer rows now use pointer freeze-display interpreter text for right-column preview with `??` fallback, replacing the static `Pointer` placeholder preview.
+- Added unit tests for pointer preview rendering in `ProjectHierarchyViewData` and pointer default-name normalization in `ProjectItemTypePointer`.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (7 passed), `cargo test -p squalr-engine-api project_item_type_pointer` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).

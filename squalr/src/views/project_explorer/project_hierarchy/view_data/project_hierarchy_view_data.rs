@@ -810,7 +810,9 @@ impl ProjectHierarchyViewData {
 
             if preview_value.is_empty() { "??".to_string() } else { preview_value }
         } else if project_item_type_id == ProjectItemTypePointer::PROJECT_ITEM_TYPE_ID {
-            "Pointer".to_string()
+            let preview_value = Self::read_string_field(project_item, ProjectItemTypePointer::PROPERTY_FREEZE_DISPLAY_VALUE);
+
+            if preview_value.is_empty() { "??".to_string() } else { preview_value }
         } else {
             String::new()
         }
@@ -966,6 +968,7 @@ mod tests {
     use crate::views::project_explorer::project_hierarchy::view_data::project_hierarchy_tree_entry::ProjectHierarchyTreeEntry;
     use squalr_engine_api::structures::projects::project_items::built_in_types::{
         project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory,
+        project_item_type_pointer::ProjectItemTypePointer,
     };
     use squalr_engine_api::structures::projects::project_items::{project_item::ProjectItem, project_item_ref::ProjectItemRef};
     use std::path::{Path, PathBuf};
@@ -1097,5 +1100,23 @@ mod tests {
                 child_three_path.clone()
             ]
         );
+    }
+
+    #[test]
+    fn build_preview_value_for_pointer_without_display_value_returns_unknown() {
+        let pointer_project_item = ProjectItemTypePointer::new_project_item("Pointer", "", "");
+
+        let preview_value = ProjectHierarchyViewData::build_preview_value(&pointer_project_item);
+
+        assert_eq!(preview_value, "??");
+    }
+
+    #[test]
+    fn build_preview_value_for_pointer_with_display_value_returns_display_value() {
+        let pointer_project_item = ProjectItemTypePointer::new_project_item("Pointer", "", "0x1234 -> 0x5678");
+
+        let preview_value = ProjectHierarchyViewData::build_preview_value(&pointer_project_item);
+
+        assert_eq!(preview_value, "0x1234 -> 0x5678");
     }
 }
