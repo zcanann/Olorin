@@ -10,7 +10,15 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- No remaining concrete tasks.
+- Project items should not vertically stack the name over preview data. This is not the intended preview data.
+- Preview data for address items should be in foreground_preview font and display the most recent currently read value, otherwise a ??. This should be positioned to the right of the name text. Very similar to scan results, although there is no "current value" to fall back on.
+- Double-click add to project should always prioritize adding to the selected directory item
+- There should be a root level folder (which is not displayed a folder) with all project items. This is to avoid conflicts with project.json
+- If no directory is selected, adding new items to the project should default to this root folder.
+- The name text should not come from the file name. It should come from a name property.
+- Struct viewer should work for project items (ie name).
+- Struct viewer should allow editing addresses to trigger a write to memory.
+- Project explorer should have a checkbox by all entries to allow activating them. For folders, this would mean activating all children recursively.
 
 ## Important Information
 Append important discoveries. Compact regularly.
