@@ -74,3 +74,4 @@ Information discovered during iteration:
 - Project hierarchy pointer rows now use pointer freeze-display interpreter text for right-column preview with `??` fallback, replacing the static `Pointer` placeholder preview.
 - Added unit tests for pointer preview rendering in `ProjectHierarchyViewData` and pointer default-name normalization in `ProjectItemTypePointer`.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (7 passed), `cargo test -p squalr-engine-api project_item_type_pointer` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
+- Session checkpoint (2026-02-16): Re-ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); no new concrete `pr/project-explorer` TODOs identified.
