@@ -236,12 +236,13 @@ impl ElementScannerResultsViewData {
         // Drop to commit the write before send(), which may execute the callback synchronously.
         drop(element_scanner_results_view_data);
 
+        let element_scanner_results_view_data_for_response = element_scanner_results_view_data_clone.clone();
         let did_dispatch = scan_results_query_request.send(&engine_unprivileged_state, move |scan_results_query_response| {
             // let audio_player = &self.audio_player;
             let byte_size_in_metric = StorageSizeConversions::value_to_metric_size(scan_results_query_response.total_size_in_bytes as u128);
             let result_count = scan_results_query_response.result_count;
 
-            if let Some(mut element_scanner_results_view_data) = element_scanner_results_view_data_clone.write("Query scan results response") {
+            if let Some(mut element_scanner_results_view_data) = element_scanner_results_view_data_for_response.write("Query scan results response") {
                 element_scanner_results_view_data.is_querying_scan_results = false;
                 element_scanner_results_view_data.cached_last_page_index = scan_results_query_response.last_page_index;
                 element_scanner_results_view_data.result_count = result_count;
@@ -301,8 +302,9 @@ impl ElementScannerResultsViewData {
         // Drop to commit the write.
         drop(element_scanner_results_view_data);
 
+        let element_scanner_results_view_data_for_response = element_scanner_results_view_data_clone.clone();
         let did_dispatch = scan_results_refresh_request.send(engine_unprivileged_state, move |scan_results_refresh_response| {
-            let mut element_scanner_results_view_data = match element_scanner_results_view_data_clone.write("Refresh scan results response") {
+            let mut element_scanner_results_view_data = match element_scanner_results_view_data_for_response.write("Refresh scan results response") {
                 Some(element_scanner_results_view_data) => element_scanner_results_view_data,
                 None => return,
             };
@@ -353,7 +355,7 @@ impl ElementScannerResultsViewData {
         // Drop to commit the write.
         drop(element_scanner_results_view_data);
 
-        // Refresh scan results with the new page index. // JIRA: Should happen in the loop technically, but we need to make the MVVM bindings deadlock resistant.
+        // Refresh scan results with the new page index.
         Self::query_scan_results(element_scanner_results_view_data_clone, engine_unprivileged_state, false);
     }
 
