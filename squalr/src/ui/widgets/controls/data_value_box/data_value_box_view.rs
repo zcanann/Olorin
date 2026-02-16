@@ -148,7 +148,7 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         let down_arrow = &theme.icon_library.icon_handle_navigation_down_arrow_small;
         let symbol_registry = SymbolRegistry::get_instance();
         let is_valid = symbol_registry.validate_value_string(&self.validation_data_type, &self.anonymous_value_string);
-        let neutral_foreground_color = match self.use_preview_foreground {
+        let foreground_color = match self.use_preview_foreground {
             true => theme.foreground_preview,
             false => theme.foreground,
         };
@@ -162,14 +162,14 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         };
         let text_color = match is_valid {
             true => match self.anonymous_value_string.get_anonymous_value_string_format() {
-                AnonymousValueStringFormat::Bool => neutral_foreground_color,
-                AnonymousValueStringFormat::String => neutral_foreground_color,
+                AnonymousValueStringFormat::Bool => foreground_color,
+                AnonymousValueStringFormat::String => foreground_color,
                 AnonymousValueStringFormat::Binary => binary_color,
-                AnonymousValueStringFormat::Decimal => neutral_foreground_color,
+                AnonymousValueStringFormat::Decimal => foreground_color,
                 AnonymousValueStringFormat::Hexadecimal => hexadecimal_color,
                 AnonymousValueStringFormat::Address => hexadecimal_color,
-                AnonymousValueStringFormat::DataTypeRef => neutral_foreground_color,
-                AnonymousValueStringFormat::Enumeration => neutral_foreground_color,
+                AnonymousValueStringFormat::DataTypeRef => foreground_color,
+                AnonymousValueStringFormat::Enumeration => foreground_color,
             },
             false => theme.error_red,
         };
