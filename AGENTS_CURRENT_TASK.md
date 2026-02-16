@@ -10,9 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Adding a new folder can cause catastrophic UI bugs where the siblings appear to disappear from the hierarchy despite existing on disk. Very basic case of 2 existing entries, add a folder as a sibling, and the existing entries get nuked.
-    - Folders do not get nuked, only address items.
-- Committing name changes does nothing for project items? It should be updating the project item.
+- No concrete `pr/project-explorer` regressions are currently queued.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -99,3 +97,7 @@ Information discovered during iteration:
 - Project hierarchy rows now use Squalr `Checkbox` control (not `egui::Checkbox`) to match scanner/settings visuals.
 - Folder expansion now toggles on single click of the arrow hitbox; arrow clicks no longer also trigger row selection.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (9 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
+- Fixed project-item reload regression after folder creation: `Project::load_from_path` now correctly identifies project-item files by `json` extension (matching `Path::extension()` behavior), so address entries are no longer dropped during post-create reload.
+- Project-item `name` edits in struct viewer now dispatch `project-items rename` (with `.json` normalization for non-directory items), so commit persists as filesystem rename instead of transient in-memory field-only edits.
+- Added regressions: extension-detection tests in `squalr-engine-projects` (`is_project_item_file_path_*`) and project-item rename-request tests in `ProjectHierarchyView` (`build_project_item_rename_request_*`).
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr-engine-projects is_project_item_file_path` (2 passed), `cargo test -p squalr build_project_item_rename_request_for_` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).

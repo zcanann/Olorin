@@ -16,16 +16,18 @@ use epaint::{Color32, CornerRadius, Stroke, StrokeKind};
 use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::project::save::project_save_request::ProjectSaveRequest;
+use squalr_engine_api::commands::project_items::rename::project_items_rename_request::ProjectItemsRenameRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
+use squalr_engine_api::structures::projects::project::Project;
 use squalr_engine_api::structures::projects::project_items::built_in_types::{
     project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory, project_item_type_pointer::ProjectItemTypePointer,
 };
 use squalr_engine_api::structures::projects::project_items::{project_item::ProjectItem, project_item_ref::ProjectItemRef};
 use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
 use std::collections::HashSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -65,7 +67,7 @@ mod tests {
     };
     use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
     use squalr_engine_api::structures::structs::valued_struct_field::{ValuedStructField, ValuedStructFieldData};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn build_memory_write_request_for_address_item_address_edit_returns_request() {
@@ -113,6 +115,37 @@ mod tests {
         let memory_write_request = ProjectHierarchyView::build_memory_write_request_for_project_item_edit(&mut project_item, &edited_field);
 
         assert!(memory_write_request.is_none());
+    }
+
+    #[test]
+    fn build_project_item_rename_request_for_directory_uses_edited_name_without_extension() {
+        let project_item_path = Path::new("C:/Projects/TestProject/project_items/Folder");
+        let rename_request =
+            ProjectHierarchyView::build_project_item_rename_request(project_item_path, ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID, "Renamed Folder");
+
+        assert!(rename_request.is_some());
+        let rename_request = rename_request.unwrap_or_else(|| panic!("Expected rename request for directory item."));
+        assert_eq!(rename_request.project_item_name, "Renamed Folder".to_string());
+    }
+
+    #[test]
+    fn build_project_item_rename_request_for_file_appends_json_extension() {
+        let project_item_path = Path::new("C:/Projects/TestProject/project_items/health.json");
+        let rename_request =
+            ProjectHierarchyView::build_project_item_rename_request(project_item_path, ProjectItemTypeAddress::PROJECT_ITEM_TYPE_ID, "player_health");
+
+        assert!(rename_request.is_some());
+        let rename_request = rename_request.unwrap_or_else(|| panic!("Expected rename request for file item."));
+        assert_eq!(rename_request.project_item_name, "player_health.json".to_string());
+    }
+
+    #[test]
+    fn build_project_item_rename_request_returns_none_when_name_is_unchanged() {
+        let project_item_path = Path::new("C:/Projects/TestProject/project_items/health.json");
+        let rename_request =
+            ProjectHierarchyView::build_project_item_rename_request(project_item_path, ProjectItemTypeAddress::PROJECT_ITEM_TYPE_ID, "health.json");
+
+        assert!(rename_request.is_none());
     }
 }
 
@@ -451,7 +484,14 @@ impl ProjectHierarchyView {
         let project_manager = app_context.engine_unprivileged_state.get_project_manager();
         let opened_project_lock = project_manager.get_opened_project();
         let mut memory_write_requests = Vec::new();
+        let mut rename_requests = Vec::new();
         let mut updated_project_item_count = 0usize;
+        let edited_field_name = edited_field.get_name().to_string();
+        let edited_name = if edited_field_name == ProjectItem::PROPERTY_NAME {
+            Self::extract_string_value_from_edited_field(&edited_field)
+        } else {
+            None
+        };
 
         let mut opened_project_guard = match opened_project_lock.write() {
             Ok(opened_project_guard) => opened_project_guard,
@@ -486,11 +526,21 @@ impl ProjectHierarchyView {
                     continue;
                 }
             };
+            let project_item_type_id = project_item
+                .get_item_type()
+                .get_project_item_type_id()
+                .to_string();
 
             project_item
                 .get_properties_mut()
                 .set_field_data(edited_field.get_name(), edited_field.get_field_data().clone(), edited_field.get_is_read_only());
             project_item.set_has_unsaved_changes(true);
+
+            if let Some(edited_name) = &edited_name {
+                if let Some(project_items_rename_request) = Self::build_project_item_rename_request(project_item_path, &project_item_type_id, edited_name) {
+                    rename_requests.push(project_items_rename_request);
+                }
+            }
 
             if let Some(memory_write_request) = Self::build_memory_write_request_for_project_item_edit(project_item, &edited_field) {
                 memory_write_requests.push(memory_write_request);
@@ -517,6 +567,14 @@ impl ProjectHierarchyView {
             }
         });
         project_manager.notify_project_items_changed();
+
+        for rename_request in rename_requests {
+            rename_request.send(&app_context.engine_unprivileged_state, |project_items_rename_response| {
+                if !project_items_rename_response.success {
+                    log::warn!("Project item rename command failed while committing name edit.");
+                }
+            });
+        }
 
         for memory_write_request in memory_write_requests {
             memory_write_request.send(&app_context.engine_unprivileged_state, |memory_write_response| {
@@ -638,5 +696,58 @@ impl ProjectHierarchyView {
         if project_directory_changed || project_items_changed || sort_order_changed {
             ProjectHierarchyViewData::refresh_project_items(self.project_hierarchy_view_data.clone(), self.app_context.clone());
         }
+    }
+
+    fn extract_string_value_from_edited_field(edited_field: &ValuedStructField) -> Option<String> {
+        let data_value = edited_field.get_data_value()?;
+        let edited_name = String::from_utf8(data_value.get_value_bytes().clone()).ok()?;
+        let edited_name = edited_name.trim();
+
+        if edited_name.is_empty() { None } else { Some(edited_name.to_string()) }
+    }
+
+    fn build_project_item_rename_request(
+        project_item_path: &Path,
+        project_item_type_id: &str,
+        edited_name: &str,
+    ) -> Option<ProjectItemsRenameRequest> {
+        let sanitized_file_name = Path::new(edited_name)
+            .file_name()
+            .and_then(|file_name| file_name.to_str())
+            .map(str::trim)
+            .filter(|file_name| !file_name.is_empty())?
+            .to_string();
+        let is_directory_project_item = project_item_type_id == ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID;
+        let renamed_project_item_name = if is_directory_project_item {
+            sanitized_file_name
+        } else {
+            let mut file_name_with_extension = sanitized_file_name.clone();
+            let expected_extension = Project::PROJECT_ITEM_EXTENSION.trim_start_matches('.');
+            let has_expected_extension = Path::new(&sanitized_file_name)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .map(|extension| extension.eq_ignore_ascii_case(expected_extension))
+                .unwrap_or(false);
+
+            if !has_expected_extension {
+                file_name_with_extension.push('.');
+                file_name_with_extension.push_str(expected_extension);
+            }
+
+            file_name_with_extension
+        };
+        let current_file_name = project_item_path
+            .file_name()
+            .and_then(|file_name| file_name.to_str())
+            .unwrap_or_default();
+
+        if current_file_name == renamed_project_item_name {
+            return None;
+        }
+
+        Some(ProjectItemsRenameRequest {
+            project_item_path: project_item_path.to_path_buf(),
+            project_item_name: renamed_project_item_name,
+        })
     }
 }

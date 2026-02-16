@@ -55,15 +55,13 @@ impl SerializableProjectFile for Project {
                     project_items.insert(dir_ref.clone(), dir_item);
 
                     load_recursive(&entry_path, project_items)?;
-                } else if let Some(extension) = entry_path.extension() {
-                    if extension == Project::PROJECT_ITEM_EXTENSION {
-                        let item_ref = ProjectItemRef::new(entry_path.clone());
-                        let project_item = ProjectItem::load_from_path(&entry_path)?;
+                } else if is_project_item_file_path(&entry_path) {
+                    let item_ref = ProjectItemRef::new(entry_path.clone());
+                    let project_item = ProjectItem::load_from_path(&entry_path)?;
 
-                        project_items.insert(item_ref, project_item);
-                    } else {
-                        log::debug!("Skipping non-project item during deserialization: {:?}", entry_path)
-                    }
+                    project_items.insert(item_ref, project_item);
+                } else {
+                    log::debug!("Skipping non-project item during deserialization: {:?}", entry_path)
                 }
             }
 
@@ -93,5 +91,35 @@ fn resolve_project_root_directory_path(project_directory_path: &Path) -> std::pa
         legacy_project_root_directory_path
     } else {
         preferred_project_root_directory_path
+    }
+}
+
+fn is_project_item_file_path(project_item_path: &Path) -> bool {
+    let expected_extension = Project::PROJECT_ITEM_EXTENSION.trim_start_matches('.');
+
+    project_item_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.eq_ignore_ascii_case(expected_extension))
+        .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_project_item_file_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn is_project_item_file_path_accepts_json_extension() {
+        let project_item_path = PathBuf::from("C:/Projects/TestProject/project_items/Addresses/health.json");
+
+        assert!(is_project_item_file_path(&project_item_path));
+    }
+
+    #[test]
+    fn is_project_item_file_path_rejects_non_json_extension() {
+        let project_item_path = PathBuf::from("C:/Projects/TestProject/project_items/Addresses/notes.txt");
+
+        assert!(!is_project_item_file_path(&project_item_path));
     }
 }
