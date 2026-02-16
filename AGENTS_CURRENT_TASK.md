@@ -10,9 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Preview values for project items are not being rendered
-- Only the address appears to be populated in the struct viewer when selecting a project item. Others should appear but do not, even though the .json on disk has data for the utf8 string.
-- Verify folder-create hierarchy stability after root/ancestor expansion updates (prior symptom: sibling rows appeared to disappear).
+- No remaining concrete `pr/project-explorer` regressions currently queued.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -82,3 +80,7 @@ Information discovered during iteration:
 - Root project directory name edits are ignored in `ProjectHierarchyView::apply_project_item_edits`, preventing persistence of the synthetic root display label.
 - New-folder creation now expands ancestor directories before refresh so newly created rows remain visible in hierarchy context.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr-engine project_items_add_request_executor` (3 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr project_hierarchy_view_data` (7 passed).
+- Fixed address preview defaulting to `??`: `ProjectItemTypeAddress::new_project_item` now initializes `freeze_data_value_interpreter` from the provided freeze value via symbol-registry anonymization.
+- Fixed project-item struct-viewer string field population: implemented `DataTypeStringUtf8::anonymize_value_bytes` for `String` format so UTF-8 properties (name/module/description/etc.) no longer render as empty values.
+- Added regressions: address preview assertion in `ProjectHierarchyViewData`, UTF-8 struct-viewer edit-value assertion in `StructViewerViewData`, UTF-8 anonymization tests in `squalr-engine-domain`, and ancestor expansion test covering folder-create hierarchy stability.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr-engine-domain data_type_string_utf8` (2 passed), `cargo test -p squalr-engine-api project_item_type_address` (3 passed), `cargo test -p squalr project_hierarchy_view_data` (9 passed), `cargo test -p squalr struct_viewer_view_data` (1 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).

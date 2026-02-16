@@ -993,6 +993,7 @@ impl ProjectHierarchyViewData {
 mod tests {
     use super::ProjectHierarchyViewData;
     use crate::views::project_explorer::project_hierarchy::view_data::project_hierarchy_tree_entry::ProjectHierarchyTreeEntry;
+    use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use squalr_engine_api::structures::projects::project_items::built_in_types::{
         project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory,
         project_item_type_pointer::ProjectItemTypePointer,
@@ -1145,5 +1146,30 @@ mod tests {
         let preview_value = ProjectHierarchyViewData::build_preview_value(&pointer_project_item);
 
         assert_eq!(preview_value, "0x1234 -> 0x5678");
+    }
+
+    #[test]
+    fn build_preview_value_for_address_uses_default_freeze_display_value() {
+        let address_project_item = ProjectItemTypeAddress::new_project_item("Health", 0x1234, "game.exe", "", DataTypeU8::get_value_from_primitive(0));
+
+        let preview_value = ProjectHierarchyViewData::build_preview_value(&address_project_item);
+
+        assert_eq!(preview_value, "0");
+    }
+
+    #[test]
+    fn expand_project_item_ancestor_directories_expands_full_parent_chain() {
+        let project_root_path = PathBuf::from("C:/Projects/TestProject/project_items");
+        let nested_directory_path = project_root_path
+            .join("Player")
+            .join("Stats")
+            .join("New Folder");
+        let mut expanded_directory_paths = std::collections::HashSet::new();
+
+        ProjectHierarchyViewData::expand_project_item_ancestor_directories(&mut expanded_directory_paths, &nested_directory_path);
+
+        assert!(expanded_directory_paths.contains(&project_root_path));
+        assert!(expanded_directory_paths.contains(&project_root_path.join("Player")));
+        assert!(expanded_directory_paths.contains(&project_root_path.join("Player").join("Stats")));
     }
 }
