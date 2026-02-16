@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use eframe::egui::{Align, Layout, Response, ScrollArea, TextureHandle, Ui, Widget, vec2};
-use epaint::Color32;
+use epaint::{Color32, CornerRadius, Stroke, StrokeKind};
 use squalr_engine_api::dependency_injection::dependency::Dependency;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
 use squalr_engine_api::structures::projects::project_items::built_in_types::{
@@ -52,6 +52,8 @@ impl Widget for ProjectHierarchyView {
         self.refresh_if_project_changed();
 
         let mut project_hierarchy_frame_action = ProjectHierarchyFrameAction::None;
+        let mut drag_started_project_item_path: Option<PathBuf> = None;
+        let mut hovered_drop_target_project_item_path: Option<PathBuf> = None;
         let mut should_cancel_take_over = false;
         let mut delete_confirmation_project_item_paths: Option<Vec<std::path::PathBuf>> = None;
         let response = user_interface
@@ -63,12 +65,19 @@ impl Widget for ProjectHierarchyView {
                 let take_over_state = project_hierarchy_view_data.take_over_state.clone();
                 let tree_entries = project_hierarchy_view_data.tree_entries.clone();
                 let selected_project_item_path = project_hierarchy_view_data.selected_project_item_path.clone();
+                let dragged_project_item_path = project_hierarchy_view_data.dragged_project_item_path.clone();
                 let pending_operation = project_hierarchy_view_data.pending_operation.clone();
 
                 user_interface.add(self.project_hierarchy_toolbar_view);
 
-                if pending_operation == ProjectHierarchyPendingOperation::Deleting {
-                    user_interface.label("Deleting project item(s)...");
+                match pending_operation {
+                    ProjectHierarchyPendingOperation::Deleting => {
+                        user_interface.label("Deleting project item(s)...");
+                    }
+                    ProjectHierarchyPendingOperation::Reordering => {
+                        user_interface.label("Reordering project item(s)...");
+                    }
+                    _ => {}
                 }
 
                 match take_over_state {
@@ -90,7 +99,7 @@ impl Widget for ProjectHierarchyView {
                                             .get_project_item_type_id(),
                                     );
 
-                                    user_interface.add(ProjectItemEntryView::new(
+                                    let row_response = user_interface.add(ProjectItemEntryView::new(
                                         self.app_context.clone(),
                                         &tree_entry.project_item_path,
                                         &tree_entry.display_name,
@@ -103,6 +112,26 @@ impl Widget for ProjectHierarchyView {
                                         tree_entry.is_expanded,
                                         &mut project_hierarchy_frame_action,
                                     ));
+
+                                    if row_response.drag_started() {
+                                        drag_started_project_item_path = Some(tree_entry.project_item_path.clone());
+                                    }
+
+                                    let active_dragged_project_item_path = drag_started_project_item_path
+                                        .as_ref()
+                                        .or(dragged_project_item_path.as_ref());
+
+                                    if let Some(active_dragged_project_item_path) = active_dragged_project_item_path {
+                                        if active_dragged_project_item_path != &tree_entry.project_item_path && row_response.hovered() {
+                                            hovered_drop_target_project_item_path = Some(tree_entry.project_item_path.clone());
+                                            user_interface.painter().rect_stroke(
+                                                row_response.rect,
+                                                CornerRadius::ZERO,
+                                                Stroke::new(1.0, self.app_context.theme.selected_border),
+                                                StrokeKind::Inside,
+                                            );
+                                        }
+                                    }
                                 }
                             });
                     }
@@ -160,6 +189,30 @@ impl Widget for ProjectHierarchyView {
 
         if let Some(project_item_paths) = delete_confirmation_project_item_paths {
             ProjectHierarchyViewData::delete_project_items(self.project_hierarchy_view_data.clone(), self.app_context.clone(), project_item_paths);
+        }
+
+        if let Some(drag_started_project_item_path) = drag_started_project_item_path.clone() {
+            ProjectHierarchyViewData::begin_reorder_drag(self.project_hierarchy_view_data.clone(), drag_started_project_item_path);
+        }
+
+        let persisted_dragged_project_item_path = self
+            .project_hierarchy_view_data
+            .read("Project hierarchy check active drag")
+            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.dragged_project_item_path.clone());
+        let active_dragged_project_item_path = drag_started_project_item_path.or(persisted_dragged_project_item_path);
+
+        if user_interface.input(|input_state| input_state.pointer.any_released()) {
+            if active_dragged_project_item_path.is_some() {
+                if let Some(drop_target_project_item_path) = hovered_drop_target_project_item_path {
+                    ProjectHierarchyViewData::commit_reorder_drop(
+                        self.project_hierarchy_view_data.clone(),
+                        self.app_context.clone(),
+                        drop_target_project_item_path,
+                    );
+                } else {
+                    ProjectHierarchyViewData::cancel_reorder_drag(self.project_hierarchy_view_data.clone());
+                }
+            }
         }
 
         match project_hierarchy_frame_action {

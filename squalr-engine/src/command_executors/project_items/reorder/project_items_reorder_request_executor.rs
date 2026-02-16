@@ -93,3 +93,39 @@ fn to_manifest_path(
         Err(_) => resolved_project_item_path,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::to_manifest_path;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn to_manifest_path_converts_absolute_path_inside_project_to_relative_path() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let project_item_path = Path::new("C:/Projects/TestProject/Addresses/health.json");
+
+        let manifest_path = to_manifest_path(project_directory_path, project_item_path);
+
+        assert_eq!(manifest_path, PathBuf::from("Addresses/health.json"));
+    }
+
+    #[test]
+    fn to_manifest_path_leaves_relative_path_relative_to_project_directory() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let project_item_path = Path::new("Addresses/health.json");
+
+        let manifest_path = to_manifest_path(project_directory_path, project_item_path);
+
+        assert_eq!(manifest_path, PathBuf::from("Addresses/health.json"));
+    }
+
+    #[test]
+    fn to_manifest_path_returns_absolute_path_when_outside_project_directory() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let project_item_path = Path::new("C:/Projects/OtherProject/Addresses/health.json");
+
+        let manifest_path = to_manifest_path(project_directory_path, project_item_path);
+
+        assert_eq!(manifest_path, PathBuf::from("C:/Projects/OtherProject/Addresses/health.json"));
+    }
+}

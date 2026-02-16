@@ -63,7 +63,8 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
         let tree_level_indent = 18.0;
         let text_left_padding = 4.0;
         let row_height = 28.0;
-        let (allocated_size_rectangle, response) = user_interface.allocate_exact_size(vec2(user_interface.available_size().x, row_height), Sense::click());
+        let (allocated_size_rectangle, response) =
+            user_interface.allocate_exact_size(vec2(user_interface.available_size().x, row_height), Sense::click_and_drag());
 
         if self.is_selected {
             user_interface

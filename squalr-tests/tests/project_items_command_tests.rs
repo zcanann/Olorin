@@ -13,6 +13,7 @@ use squalr_engine_api::commands::project_items::list::project_items_list_respons
 use squalr_engine_api::commands::project_items::move_item::project_items_move_response::ProjectItemsMoveResponse;
 use squalr_engine_api::commands::project_items::project_items_command::ProjectItemsCommand;
 use squalr_engine_api::commands::project_items::rename::project_items_rename_response::ProjectItemsRenameResponse;
+use squalr_engine_api::commands::project_items::reorder::project_items_reorder_request::ProjectItemsReorderRequest;
 use squalr_engine_api::commands::project_items::reorder::project_items_reorder_response::ProjectItemsReorderResponse;
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
@@ -510,6 +511,78 @@ fn unprivileged_command_parser_accepts_project_items_reorder_with_long_flags() {
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
+}
+
+#[test]
+fn project_items_reorder_request_dispatches_unprivileged_command_and_invokes_typed_callback() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectItemsReorderResponse {
+            success: true,
+            reordered_project_item_count: 2,
+        }
+        .to_engine_response(),
+    );
+    let dispatched_unprivileged_commands = bindings.get_dispatched_unprivileged_commands();
+
+    let execution_context = shared_execution_context();
+    let project_items_reorder_request = ProjectItemsReorderRequest {
+        project_item_paths: vec![
+            PathBuf::from("Addresses/scan_result_2.json"),
+            PathBuf::from("Addresses/scan_result_1.json"),
+        ],
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_items_reorder_request.send_unprivileged(&bindings, &execution_context, move |project_items_reorder_response| {
+        callback_invoked_clone.store(
+            project_items_reorder_response.success && project_items_reorder_response.reordered_project_item_count == 2,
+            Ordering::SeqCst,
+        );
+    });
+
+    assert!(callback_invoked.load(Ordering::SeqCst));
+
+    let dispatched_unprivileged_commands_guard = dispatched_unprivileged_commands
+        .lock()
+        .expect("command capture lock should be available");
+    assert_eq!(dispatched_unprivileged_commands_guard.len(), 1);
+
+    match &dispatched_unprivileged_commands_guard[0] {
+        UnprivilegedCommand::ProjectItems(ProjectItemsCommand::Reorder {
+            project_items_reorder_request: captured_project_items_reorder_request,
+        }) => {
+            assert_eq!(
+                captured_project_items_reorder_request.project_item_paths,
+                vec![
+                    PathBuf::from("Addresses/scan_result_2.json"),
+                    PathBuf::from("Addresses/scan_result_1.json"),
+                ]
+            );
+        }
+        dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
+    }
+}
+
+#[test]
+fn project_items_reorder_request_does_not_invoke_callback_when_response_variant_is_wrong() {
+    let bindings = MockEngineBindings::new(
+        MemoryWriteResponse { success: true }.to_engine_response(),
+        ProjectItemsListResponse::default().to_engine_response(),
+    );
+    let execution_context = shared_execution_context();
+    let project_items_reorder_request = ProjectItemsReorderRequest {
+        project_item_paths: vec![PathBuf::from("Addresses/scan_result_2.json")],
+    };
+    let callback_invoked = Arc::new(AtomicBool::new(false));
+    let callback_invoked_clone = callback_invoked.clone();
+
+    project_items_reorder_request.send_unprivileged(&bindings, &execution_context, move |_project_items_reorder_response| {
+        callback_invoked_clone.store(true, Ordering::SeqCst);
+    });
+
+    assert!(!callback_invoked.load(Ordering::SeqCst));
 }
 
 #[test]

@@ -17,11 +17,11 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Implement `ProjectHierarchyView` rendering of nested project items (directory tree) backed by `project-items list`, including row selection and expansion.
 - [x] Render project item icons by type and add preview-value column behavior for address/pointer-style items.
 - [x] Implement non-modal delete confirmation flow in the project hierarchy panel (take-over panel content, not popup modal) and wire to delete command.
-- [ ] Implement drag/drop reordering in project hierarchy and persist ordering metadata.
+- [x] Implement drag/drop reordering in project hierarchy and persist ordering metadata.
 - [x] Implement sort-order persistence updates in project metadata (manifest and/or per-folder metadata), including API setters and save/load consistency.
 - [x] Wire project hierarchy refresh to project/project-item change events and command callbacks so UI stays in sync after mutations.
 - [x] Implement scan-result to project shortcuts: double-click result to add single entry, plus ensure selected-range add works through the new unprivileged add path.
-- [ ] Add/extend tests for new project-items commands, add-to-project flow, and sort-order persistence behavior.
+- [x] Add/extend tests for new project-items commands, add-to-project flow, and sort-order persistence behavior.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -50,3 +50,5 @@ Information discovered during iteration:
 - Implemented element scanner result row double-click shortcut to add a single scan result to project via unprivileged `project-items add`.
 - Added unit coverage in `ElementScannerResultsViewData` for single-index scan-result-ref collection used by double-click add flow.
 - Strengthened project hierarchy sync checks to refresh when opened project item paths or manifest sort order drift from loaded hierarchy state (not just when opened project path changes).
+- Implemented project hierarchy drag/drop reorder flow (same-parent reordering) with `project-items reorder` dispatch, in-panel drag target highlighting, and pending-operation handling for reordering.
+- Added `project-items reorder` request dispatch tests in `squalr-tests` and unit tests for reorder manifest-path normalization in `squalr-engine`.
