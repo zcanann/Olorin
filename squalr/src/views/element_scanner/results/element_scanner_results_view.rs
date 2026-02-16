@@ -378,6 +378,7 @@ impl Widget for ElementScannerResultsView {
                     ElementScannerResultsViewData::set_scan_result_selection_start(
                         self.element_scanner_results_view_data.clone(),
                         self.struct_viewer_view_data.clone(),
+                        self.app_context.engine_unprivileged_state.clone(),
                         index,
                     );
                 }
@@ -385,6 +386,7 @@ impl Widget for ElementScannerResultsView {
                     ElementScannerResultsViewData::set_scan_result_selection_end(
                         self.element_scanner_results_view_data.clone(),
                         self.struct_viewer_view_data.clone(),
+                        self.app_context.engine_unprivileged_state.clone(),
                         index,
                     );
                 }

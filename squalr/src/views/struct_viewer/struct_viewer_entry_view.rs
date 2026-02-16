@@ -1,11 +1,22 @@
 use crate::{
     app_context::AppContext,
-    ui::{converters::data_type_to_icon_converter::DataTypeToIconConverter, draw::icon_draw::IconDraw, widgets::controls::state_layer::StateLayer},
+    ui::{
+        converters::data_type_to_icon_converter::DataTypeToIconConverter,
+        draw::icon_draw::IconDraw,
+        widgets::controls::{button::Button, data_value_box::data_value_box_view::DataValueBoxView, state_layer::StateLayer},
+    },
     views::struct_viewer::view_data::struct_viewer_frame_action::StructViewerFrameAction,
 };
 use eframe::egui::{Align2, Response, Sense, Ui, Widget, vec2};
 use epaint::{CornerRadius, Rect, Stroke, StrokeKind, pos2};
-use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
+use squalr_engine_api::{
+    registries::symbols::symbol_registry::SymbolRegistry,
+    structures::{
+        data_types::data_type_ref::DataTypeRef,
+        data_values::anonymous_value_string::AnonymousValueString,
+        structs::valued_struct_field::{ValuedStructField, ValuedStructFieldData},
+    },
+};
 use std::sync::Arc;
 
 pub struct StructViewerEntryView<'lifetime> {
@@ -13,6 +24,8 @@ pub struct StructViewerEntryView<'lifetime> {
     valued_struct_field: &'lifetime ValuedStructField,
     is_selected: bool,
     struct_viewer_frame_action: &'lifetime mut StructViewerFrameAction,
+    field_edit_value: Option<&'lifetime mut AnonymousValueString>,
+    validation_data_type_ref: Option<&'lifetime DataTypeRef>,
     name_splitter_x: f32,
     value_splitter_x: f32,
 }
@@ -23,14 +36,18 @@ impl<'lifetime> StructViewerEntryView<'lifetime> {
         valued_struct_field: &'lifetime ValuedStructField,
         is_selected: bool,
         struct_viewer_frame_action: &'lifetime mut StructViewerFrameAction,
+        field_edit_value: Option<&'lifetime mut AnonymousValueString>,
+        validation_data_type_ref: Option<&'lifetime DataTypeRef>,
         name_splitter_x: f32,
         value_splitter_x: f32,
     ) -> Self {
         Self {
-            app_context: app_context,
+            app_context,
             valued_struct_field,
             is_selected,
             struct_viewer_frame_action,
+            field_edit_value,
+            validation_data_type_ref,
             name_splitter_x,
             value_splitter_x,
         }
@@ -46,6 +63,8 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
         let icon_size = vec2(16.0, 16.0);
         let text_left_padding = 4.0;
         let row_height = 32.0;
+        let value_column_padding = 2.0;
+        let commit_button_width = 28.0;
 
         let desired_size = vec2(user_interface.available_width(), row_height);
         let (available_size_id, available_size_rect) = user_interface.allocate_space(desired_size);
@@ -95,6 +114,8 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
         let icon_position_x = row_min_x;
         let name_position_x = row_min_x + self.name_splitter_x;
         let value_position_x = self.value_splitter_x.min(row_max_x);
+        let value_box_position_x = value_position_x + value_column_padding;
+        let value_box_width = (row_max_x - value_box_position_x - commit_button_width - value_column_padding).max(0.0);
 
         // Draw icon.
         let icon_rect = Rect::from_min_max(
@@ -120,6 +141,56 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
             theme.font_library.font_noto_sans.font_normal.clone(),
             theme.foreground,
         );
+
+        if let (Some(field_edit_value), Some(validation_data_type_ref)) = (self.field_edit_value, self.validation_data_type_ref) {
+            user_interface.put(
+                Rect::from_min_size(
+                    pos2(value_box_position_x, available_size_rect.min.y),
+                    vec2(value_box_width, available_size_rect.height()),
+                ),
+                DataValueBoxView::new(
+                    self.app_context.clone(),
+                    field_edit_value,
+                    validation_data_type_ref,
+                    self.valued_struct_field.get_is_read_only(),
+                    true,
+                    "",
+                    "struct_viewer_value",
+                )
+                .width(value_box_width),
+            );
+
+            let commit_response = user_interface.put(
+                Rect::from_min_size(
+                    pos2(
+                        row_max_x - commit_button_width - value_column_padding,
+                        available_size_rect.min.y + value_column_padding,
+                    ),
+                    vec2(commit_button_width, available_size_rect.height() - value_column_padding * 2.0),
+                ),
+                Button::new_from_theme(theme)
+                    .disabled(self.valued_struct_field.get_is_read_only())
+                    .background_color(epaint::Color32::TRANSPARENT)
+                    .with_tooltip_text("Commit value."),
+            );
+
+            IconDraw::draw(user_interface, commit_response.rect, &theme.icon_library.icon_handle_common_check_mark);
+
+            if commit_response.clicked() {
+                let symbol_registry = SymbolRegistry::get_instance();
+                match symbol_registry.deanonymize_value_string(validation_data_type_ref, field_edit_value) {
+                    Ok(new_data_value) => {
+                        let mut edited_field = self.valued_struct_field.clone();
+
+                        edited_field.set_field_data(ValuedStructFieldData::Value(new_data_value));
+                        *self.struct_viewer_frame_action = StructViewerFrameAction::EditValue(edited_field);
+                    }
+                    Err(error) => {
+                        log::warn!("Failed to commit struct viewer value: {}", error);
+                    }
+                }
+            }
+        }
 
         response
     }

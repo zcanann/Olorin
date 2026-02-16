@@ -39,16 +39,16 @@ pub trait PrivilegedCommandRequest: Clone + Serialize + DeserializeOwned {
 
         if let Err(error) = engine_bindings.dispatch_privileged_command(
             command,
-            Box::new(move |engine_response| {
-                match <Self as PrivilegedCommandRequest>::ResponseType::from_engine_response(engine_response) {
+            Box::new(
+                move |engine_response| match <Self as PrivilegedCommandRequest>::ResponseType::from_engine_response(engine_response) {
                     Ok(response) => {
                         callback(response);
                     }
                     Err(unexpected_response) => {
                         log::error!("Received unexpected response variant: {:?}", unexpected_response);
                     }
-                }
-            }),
+                },
+            ),
         ) {
             log::error!("Error dispatching command: {}", error);
         }

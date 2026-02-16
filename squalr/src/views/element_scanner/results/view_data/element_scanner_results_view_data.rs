@@ -6,6 +6,7 @@ use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_reque
 use squalr_engine_api::conversions::storage_size_conversions::StorageSizeConversions;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
 use squalr_engine_api::dependency_injection::write_guard::WriteGuard;
+use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
 use squalr_engine_api::structures::data_values::container_type::ContainerType;
 use squalr_engine_api::structures::scan_results::scan_result_base::ScanResultBase;
@@ -361,8 +362,10 @@ impl ElementScannerResultsViewData {
     pub fn set_scan_result_selection_start(
         element_scanner_results_view_data: Dependency<Self>,
         struct_viewer_view_data: Dependency<StructViewerViewData>,
+        engine_unprivileged_state: Arc<EngineUnprivilegedState>,
         scan_result_collection_start_index: Option<i32>,
     ) {
+        let element_scanner_results_view_data_dependency = element_scanner_results_view_data.clone();
         let mut element_scanner_results_view_data = match element_scanner_results_view_data.write("Set scan result selection start") {
             Some(element_scanner_results_view_data) => element_scanner_results_view_data,
             None => return,
@@ -376,11 +379,31 @@ impl ElementScannerResultsViewData {
             valued_structs.push(scan_result.as_valued_struct())
         });
 
+        let element_scanner_results_view_data_clone = element_scanner_results_view_data_dependency.clone();
+        let engine_unprivileged_state_clone = engine_unprivileged_state.clone();
         StructViewerViewData::focus_valued_structs(
             struct_viewer_view_data,
             valued_structs,
-            Box::new(|modified_field| {
-                //
+            Arc::new(move |modified_field| {
+                let symbol_registry = SymbolRegistry::get_instance();
+                let Some(modified_data_value) = modified_field.get_data_value() else {
+                    return;
+                };
+                let data_type_ref = modified_data_value.get_data_type_ref();
+                let default_anonymous_value_string_format = symbol_registry.get_default_anonymous_value_string_format(data_type_ref);
+                let anonymous_value_string = symbol_registry
+                    .anonymize_value(modified_data_value, default_anonymous_value_string_format)
+                    .unwrap_or_else(|error| {
+                        log::warn!("Failed to anonymize struct edit value: {}", error);
+                        AnonymousValueString::new(String::new(), default_anonymous_value_string_format, ContainerType::None)
+                    });
+
+                Self::set_selected_scan_results_value(
+                    element_scanner_results_view_data_clone.clone(),
+                    engine_unprivileged_state_clone.clone(),
+                    modified_field.get_name(),
+                    anonymous_value_string,
+                );
             }),
         );
     }
@@ -388,8 +411,10 @@ impl ElementScannerResultsViewData {
     pub fn set_scan_result_selection_end(
         element_scanner_results_view_data: Dependency<Self>,
         struct_viewer_view_data: Dependency<StructViewerViewData>,
+        engine_unprivileged_state: Arc<EngineUnprivilegedState>,
         scan_result_collection_end_index: Option<i32>,
     ) {
+        let element_scanner_results_view_data_dependency = element_scanner_results_view_data.clone();
         let mut element_scanner_results_view_data = match element_scanner_results_view_data.write("Set scan result selection end") {
             Some(element_scanner_results_view_data) => element_scanner_results_view_data,
             None => return,
@@ -402,11 +427,31 @@ impl ElementScannerResultsViewData {
             valued_structs.push(scan_result.as_valued_struct())
         });
 
+        let element_scanner_results_view_data_clone = element_scanner_results_view_data_dependency.clone();
+        let engine_unprivileged_state_clone = engine_unprivileged_state.clone();
         StructViewerViewData::focus_valued_structs(
             struct_viewer_view_data,
             valued_structs,
-            Box::new(|modified_field| {
-                //
+            Arc::new(move |modified_field| {
+                let symbol_registry = SymbolRegistry::get_instance();
+                let Some(modified_data_value) = modified_field.get_data_value() else {
+                    return;
+                };
+                let data_type_ref = modified_data_value.get_data_type_ref();
+                let default_anonymous_value_string_format = symbol_registry.get_default_anonymous_value_string_format(data_type_ref);
+                let anonymous_value_string = symbol_registry
+                    .anonymize_value(modified_data_value, default_anonymous_value_string_format)
+                    .unwrap_or_else(|error| {
+                        log::warn!("Failed to anonymize struct edit value: {}", error);
+                        AnonymousValueString::new(String::new(), default_anonymous_value_string_format, ContainerType::None)
+                    });
+
+                Self::set_selected_scan_results_value(
+                    element_scanner_results_view_data_clone.clone(),
+                    engine_unprivileged_state_clone.clone(),
+                    modified_field.get_name(),
+                    anonymous_value_string,
+                );
             }),
         );
     }
