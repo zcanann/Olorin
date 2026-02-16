@@ -39,3 +39,5 @@ Information discovered during iteration:
 - Fixed bool display-string anonymization for `Display as` formats so binary/decimal/hex now render as `0/1` (without `0b`/`0x` prefixes) instead of always `true/false`, preventing false validation errors and avoiding redundant prefixes in the data value box.
 - Added focused bool-format anonymization unit tests in `squalr-engine-domain` covering Bool/Binary/Decimal/Hexadecimal output strings.
 - Fixed readonly `DataValueBoxView` format coloring so Binary/Hexadecimal previews use `binary_blue_preview` and `hexadecimal_green_preview` instead of writable colors.
+- Re-enabled struct-viewer editing for `ScanResult::is_frozen` by marking the field writable in `ScanResult::as_valued_struct`, restoring parity with checkbox-based freeze toggles.
+- Updated `ScanResult::as_valued_struct` unit coverage to require both `value` and `is_frozen` as writable fields.

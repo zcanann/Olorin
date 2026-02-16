@@ -54,7 +54,7 @@ impl ScanResult {
             None => DataTypeStringUtf8::get_value_from_primitive('?' as u8).to_named_valued_struct_field(Self::PROPERTY_NAME_VALUE.to_string(), true),
         };
         let field_is_frozen =
-            DataTypeBool8::get_value_from_primitive(self.is_frozen).to_named_valued_struct_field(Self::PROPERTY_NAME_IS_FROZEN.to_string(), true);
+            DataTypeBool8::get_value_from_primitive(self.is_frozen).to_named_valued_struct_field(Self::PROPERTY_NAME_IS_FROZEN.to_string(), false);
         let field_address =
             DataTypeU64::get_value_from_primitive(self.valued_result.get_address()).to_named_valued_struct_field(Self::PROPERTY_NAME_ADDRESS.to_string(), true);
         let field_module = DataTypeStringUtf8::get_value_from_primitive_array(self.module.as_bytes().to_vec())
@@ -209,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn as_valued_struct_only_allows_writing_value_field() {
+    fn as_valued_struct_allows_writing_value_and_is_frozen_fields() {
         let scan_result = create_scan_result();
         let valued_struct = scan_result.as_valued_struct();
 
@@ -230,7 +230,7 @@ mod tests {
             .expect("Expected module_offset field.");
 
         assert!(!value_field.get_is_read_only());
-        assert!(is_frozen_field.get_is_read_only());
+        assert!(!is_frozen_field.get_is_read_only());
         assert!(address_field.get_is_read_only());
         assert!(module_field.get_is_read_only());
         assert!(module_offset_field.get_is_read_only());
