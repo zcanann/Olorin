@@ -22,6 +22,7 @@ use std::sync::Arc;
 pub struct StructViewerEntryView<'lifetime> {
     app_context: Arc<AppContext>,
     valued_struct_field: &'lifetime ValuedStructField,
+    row_index: usize,
     is_selected: bool,
     struct_viewer_frame_action: &'lifetime mut StructViewerFrameAction,
     field_edit_value: Option<&'lifetime mut AnonymousValueString>,
@@ -34,6 +35,7 @@ impl<'lifetime> StructViewerEntryView<'lifetime> {
     pub fn new(
         app_context: Arc<AppContext>,
         valued_struct_field: &'lifetime ValuedStructField,
+        row_index: usize,
         is_selected: bool,
         struct_viewer_frame_action: &'lifetime mut StructViewerFrameAction,
         field_edit_value: Option<&'lifetime mut AnonymousValueString>,
@@ -44,6 +46,7 @@ impl<'lifetime> StructViewerEntryView<'lifetime> {
         Self {
             app_context,
             valued_struct_field,
+            row_index,
             is_selected,
             struct_viewer_frame_action,
             field_edit_value,
@@ -143,6 +146,7 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
         );
 
         if let (Some(field_edit_value), Some(validation_data_type_ref)) = (self.field_edit_value, self.validation_data_type_ref) {
+            let data_value_box_id = format!("struct_viewer_value_{}_{}", self.row_index, self.valued_struct_field.get_name());
             user_interface.put(
                 Rect::from_min_size(
                     pos2(value_box_position_x, available_size_rect.min.y),
@@ -155,7 +159,7 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                     self.valued_struct_field.get_is_read_only(),
                     true,
                     "",
-                    "struct_viewer_value",
+                    &data_value_box_id,
                 )
                 .width(value_box_width),
             );

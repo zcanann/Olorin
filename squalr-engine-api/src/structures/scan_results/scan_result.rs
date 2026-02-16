@@ -54,7 +54,7 @@ impl ScanResult {
             None => DataTypeStringUtf8::get_value_from_primitive('?' as u8).to_named_valued_struct_field(Self::PROPERTY_NAME_VALUE.to_string(), true),
         };
         let field_is_frozen =
-            DataTypeBool8::get_value_from_primitive(self.is_frozen).to_named_valued_struct_field(Self::PROPERTY_NAME_IS_FROZEN.to_string(), false);
+            DataTypeBool8::get_value_from_primitive(self.is_frozen).to_named_valued_struct_field(Self::PROPERTY_NAME_IS_FROZEN.to_string(), true);
         let field_address =
             DataTypeU64::get_value_from_primitive(self.valued_result.get_address()).to_named_valued_struct_field(Self::PROPERTY_NAME_ADDRESS.to_string(), true);
         let field_module = DataTypeStringUtf8::get_value_from_primitive_array(self.module.as_bytes().to_vec())
@@ -182,5 +182,57 @@ impl fmt::Debug for ScanResult {
                 self.module, self.module_offset
             )
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScanResult;
+    use crate::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
+    use crate::structures::data_types::data_type_ref::DataTypeRef;
+    use crate::structures::scan_results::scan_result_ref::ScanResultRef;
+    use crate::structures::scan_results::scan_result_valued::ScanResultValued;
+
+    fn create_scan_result() -> ScanResult {
+        let scan_result_valued = ScanResultValued::new(
+            0x1000,
+            DataTypeRef::new("u8"),
+            String::new(),
+            Some(DataTypeU8::get_value_from_primitive(42)),
+            Vec::new(),
+            None,
+            Vec::new(),
+            ScanResultRef::new(1),
+        );
+
+        ScanResult::new(scan_result_valued, String::from("module"), 0x20, None, Vec::new(), true)
+    }
+
+    #[test]
+    fn as_valued_struct_only_allows_writing_value_field() {
+        let scan_result = create_scan_result();
+        let valued_struct = scan_result.as_valued_struct();
+
+        let value_field = valued_struct
+            .get_field(ScanResult::PROPERTY_NAME_VALUE)
+            .expect("Expected value field.");
+        let is_frozen_field = valued_struct
+            .get_field(ScanResult::PROPERTY_NAME_IS_FROZEN)
+            .expect("Expected is_frozen field.");
+        let address_field = valued_struct
+            .get_field(ScanResult::PROPERTY_NAME_ADDRESS)
+            .expect("Expected address field.");
+        let module_field = valued_struct
+            .get_field(ScanResult::PROPERTY_NAME_MODULE)
+            .expect("Expected module field.");
+        let module_offset_field = valued_struct
+            .get_field(ScanResult::PROPERTY_NAME_MODULE_OFFSET)
+            .expect("Expected module_offset field.");
+
+        assert!(!value_field.get_is_read_only());
+        assert!(is_frozen_field.get_is_read_only());
+        assert!(address_field.get_is_read_only());
+        assert!(module_field.get_is_read_only());
+        assert!(module_offset_field.get_is_read_only());
     }
 }

@@ -83,7 +83,7 @@ impl Widget for StructViewerView {
                         if let Some(struct_under_view) = struct_viewer_view_data.struct_under_view.as_ref() {
                             let struct_fields = struct_under_view.get_fields().to_vec();
 
-                            for field in struct_fields {
+                            for (field_row_index, field) in struct_fields.into_iter().enumerate() {
                                 let is_selected = struct_viewer_view_data
                                     .selected_field_name
                                     .as_deref()
@@ -99,6 +99,7 @@ impl Widget for StructViewerView {
                                 inner_ui.add(StructViewerEntryView::new(
                                     self.app_context.clone(),
                                     &field,
+                                    field_row_index,
                                     is_selected,
                                     &mut frame_action,
                                     field_edit_value,

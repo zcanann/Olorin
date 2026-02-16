@@ -27,6 +27,10 @@ Information discovered during iteration:
 - Fixed property-edit scope: struct viewer edits now send `ScanResultsSetPropertyRequest` only for selected scan results, not all visible rows.
 - Added `ElementScannerResultsViewData` tests validating single-select, multi-select, and no-selection targeting behavior.
 - Re-ran targeted regression tests and `cargo check -p squalr`; all passed, with existing unrelated warnings.
+- Fixed struct viewer data box ID collisions by generating per-row IDs and namespacing popup area IDs with the widget ID.
+- Enforced `DataValueBoxView` read-only behavior by disabling text edits and dropdown interaction when read-only.
+- Updated scan-result struct projection so `is_frozen` is read-only in struct viewer; only `value` remains writable.
+- Added `ScanResult::as_valued_struct` unit test ensuring only `value` is writable.
 
 ## Agent Scratchpad and Notes
 Append below and compact regularly to relevant recent notes, keep under ~20 lines.
@@ -38,3 +42,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - Audited struct viewer and scan-result selection wiring; fixed multi-select field intersection bug, implemented struct viewer value editing/commit UI, wired commit callbacks to scan result property writes, added domain tests for intersection behavior, and validated with `cargo fmt`, targeted tests, and `cargo check -p squalr`.
 - Fixed selected-scope regression in struct-viewer property commits (was writing all visible rows), added unit tests for selected-range ref collection, and validated via `cargo fmt`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
 - Revalidated with `cargo test -p squalr-engine-domain combine_exclusive`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`; manual GUI smoke test remains pending because this session is non-interactive.
+- Fixed struct viewer `DataValueBoxView` ID conflicts and read-only enforcement, marked `is_frozen` read-only in scan-result struct projection, added a focused unit test in `squalr-engine-api`, and validated with `cargo test -p squalr-engine-api as_valued_struct_only_allows_writing_value_field`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.

@@ -125,7 +125,7 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         let button_response = user_interface.interact(
             dropdown_background_rectangle,
             user_interface.make_persistent_id(format!("{}_button", self.id)),
-            Sense::click(),
+            if self.is_read_only { Sense::hover() } else { Sense::click() },
         );
 
         // Arrow position.
@@ -184,6 +184,7 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
                 .font(font_id.clone())
                 .text_color(text_color)
                 .hint_text(self.preview_text)
+                .interactive(!self.is_read_only)
                 .frame(false),
         );
 
@@ -214,8 +215,12 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         let popup_id = Id::new(("data_value_box_popup", self.id, user_interface.id().value()));
         let mut open = user_interface.memory(|memory| memory.data.get_temp::<bool>(popup_id).unwrap_or(false));
 
-        if button_response.clicked() {
+        if !self.is_read_only && button_response.clicked() {
             open = !open;
+        }
+
+        if self.is_read_only {
+            open = false;
         }
 
         if user_interface.input(|input_state| input_state.key_pressed(Key::Escape)) {
@@ -230,7 +235,7 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
 
         // Draw popup content.
         let popup_pos = pos2(allocated_size_rectangle.min.x, allocated_size_rectangle.max.y + 2.0);
-        let popup_id_area = Id::new(("data_value_box_popup_area", user_interface.id().value()));
+        let popup_id_area = Id::new(("data_value_box_popup_area", self.id, user_interface.id().value()));
         let mut popup_rectangle: Option<Rect> = None;
         let mut should_close = false;
 
