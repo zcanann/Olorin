@@ -56,6 +56,66 @@ impl ProjectHierarchyView {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::ProjectHierarchyView;
+    use squalr_engine_api::structures::data_types::built_in_types::{string::utf8::data_type_string_utf8::DataTypeStringUtf8, u64::data_type_u64::DataTypeU64};
+    use squalr_engine_api::structures::projects::project_items::built_in_types::{
+        project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory,
+    };
+    use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
+    use squalr_engine_api::structures::structs::valued_struct_field::{ValuedStructField, ValuedStructFieldData};
+    use std::path::PathBuf;
+
+    #[test]
+    fn build_memory_write_request_for_address_item_address_edit_returns_request() {
+        let mut project_item = ProjectItemTypeAddress::new_project_item("player_health", 0x1234, "game.exe", "", DataTypeU64::get_value_from_primitive(0));
+        let expected_module_name = ProjectItemTypeAddress::get_field_module(&mut project_item);
+        let edited_field = ValuedStructField::new(
+            ProjectItemTypeAddress::PROPERTY_ADDRESS.to_string(),
+            ValuedStructFieldData::Value(DataTypeU64::get_value_from_primitive(0xABCD)),
+            false,
+        );
+
+        let memory_write_request = ProjectHierarchyView::build_memory_write_request_for_project_item_edit(&mut project_item, &edited_field);
+
+        assert!(memory_write_request.is_some());
+        let memory_write_request = memory_write_request.unwrap_or_else(|| panic!("Expected memory write request for address edit."));
+        assert_eq!(memory_write_request.address, 0x1234);
+        assert_eq!(memory_write_request.module_name, expected_module_name);
+        assert_eq!(memory_write_request.value, 0xABCDu64.to_le_bytes().to_vec());
+    }
+
+    #[test]
+    fn build_memory_write_request_for_address_item_non_address_edit_returns_none() {
+        let mut project_item = ProjectItemTypeAddress::new_project_item("player_health", 0x1234, "game.exe", "", DataTypeU64::get_value_from_primitive(0));
+        let edited_field = ValuedStructField::new(
+            ProjectItemTypeAddress::PROPERTY_MODULE.to_string(),
+            ValuedStructFieldData::Value(DataTypeStringUtf8::get_value_from_primitive_string("new_module.exe")),
+            false,
+        );
+
+        let memory_write_request = ProjectHierarchyView::build_memory_write_request_for_project_item_edit(&mut project_item, &edited_field);
+
+        assert!(memory_write_request.is_none());
+    }
+
+    #[test]
+    fn build_memory_write_request_for_non_address_item_address_edit_returns_none() {
+        let project_item_ref = ProjectItemRef::new(PathBuf::from("project/folder"));
+        let mut project_item = ProjectItemTypeDirectory::new_project_item(&project_item_ref);
+        let edited_field = ValuedStructField::new(
+            ProjectItemTypeAddress::PROPERTY_ADDRESS.to_string(),
+            ValuedStructFieldData::Value(DataTypeU64::get_value_from_primitive(0xABCD)),
+            false,
+        );
+
+        let memory_write_request = ProjectHierarchyView::build_memory_write_request_for_project_item_edit(&mut project_item, &edited_field);
+
+        assert!(memory_write_request.is_none());
+    }
+}
+
 impl Widget for ProjectHierarchyView {
     fn ui(
         self,

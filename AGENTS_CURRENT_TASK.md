@@ -10,7 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Audit and verify behavior of project-item memory write triggers for non-address-field edits.
+- Await next concrete `pr/project-explorer` requirement.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -57,3 +57,6 @@ Information discovered during iteration:
 - Address project-item struct edit of the `address` field now dispatches privileged `memory write` with edited bytes to the edited address.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-engine project_items_add_request_executor` (3 passed).
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr --no-run` (build successful).
+- Audited project-item edit memory-write trigger path in `ProjectHierarchyView::build_memory_write_request_for_project_item_edit`: memory writes are gated to `address` project-item type and only when editing field `address`.
+- Added unit coverage in `squalr/src/views/project_explorer/project_hierarchy/project_hierarchy_view.rs` for memory-write request gating: positive case for address-field edits on address items and negative cases for non-address field edits and non-address item types.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr build_memory_write_request_for_ -- --nocapture` (3 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
