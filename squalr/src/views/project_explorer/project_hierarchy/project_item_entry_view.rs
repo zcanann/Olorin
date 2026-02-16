@@ -111,7 +111,15 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
         }
 
         if response.clicked() && !checkbox_response.clicked() {
-            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SelectProjectItem(self.project_item_path.clone());
+            let input_modifiers = user_interface.input(|input_state| input_state.modifiers);
+            let additive_selection = input_modifiers.command || input_modifiers.ctrl;
+            let range_selection = input_modifiers.shift;
+
+            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SelectProjectItem {
+                project_item_path: self.project_item_path.clone(),
+                additive_selection,
+                range_selection,
+            };
         }
 
         if self.is_directory && self.has_children && response.double_clicked() {

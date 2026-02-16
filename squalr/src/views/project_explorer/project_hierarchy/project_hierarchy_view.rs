@@ -129,7 +129,7 @@ impl Widget for ProjectHierarchyView {
         let mut hovered_drop_target_project_item_path: Option<PathBuf> = None;
         let mut should_cancel_take_over = false;
         let mut delete_confirmation_project_item_paths: Option<Vec<std::path::PathBuf>> = None;
-        let mut keyboard_activation_toggle_target: Option<(PathBuf, bool)> = None;
+        let mut keyboard_activation_toggle_target: Option<(Vec<PathBuf>, bool)> = None;
         let response = user_interface
             .allocate_ui_with_layout(user_interface.available_size(), Layout::top_down(Align::Min), |user_interface| {
                 let project_hierarchy_view_data = match self.project_hierarchy_view_data.read("Project hierarchy view") {
@@ -138,7 +138,7 @@ impl Widget for ProjectHierarchyView {
                 };
                 let take_over_state = project_hierarchy_view_data.take_over_state.clone();
                 let tree_entries = project_hierarchy_view_data.tree_entries.clone();
-                let selected_project_item_path = project_hierarchy_view_data.selected_project_item_path.clone();
+                let selected_project_item_paths = project_hierarchy_view_data.selected_project_item_paths.clone();
                 let dragged_project_item_path = project_hierarchy_view_data.dragged_project_item_path.clone();
                 let pending_operation = project_hierarchy_view_data.pending_operation.clone();
 
@@ -161,10 +161,7 @@ impl Widget for ProjectHierarchyView {
                             .auto_shrink([false, false])
                             .show(user_interface, |user_interface| {
                                 for tree_entry in &tree_entries {
-                                    let is_selected = selected_project_item_path
-                                        .as_ref()
-                                        .map(|selected_project_item_path| selected_project_item_path == &tree_entry.project_item_path)
-                                        .unwrap_or(false);
+                                    let is_selected = selected_project_item_paths.contains(&tree_entry.project_item_path);
                                     let icon = Self::resolve_tree_entry_icon(
                                         self.app_context.clone(),
                                         tree_entry
@@ -200,8 +197,22 @@ impl Widget for ProjectHierarchyView {
                                         }
 
                                         if user_interface.button("Delete").clicked() {
+                                            let selected_project_item_paths_in_order = self
+                                                .project_hierarchy_view_data
+                                                .read("Project hierarchy selected project items for context menu delete")
+                                                .map(|project_hierarchy_view_data| {
+                                                    project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order()
+                                                })
+                                                .unwrap_or_default();
+                                            let project_item_paths_for_delete = if selected_project_item_paths_in_order.contains(&tree_entry_project_item_path)
+                                                && selected_project_item_paths_in_order.len() > 1
+                                            {
+                                                selected_project_item_paths_in_order
+                                            } else {
+                                                vec![tree_entry_project_item_path.clone()]
+                                            };
                                             project_hierarchy_frame_action =
-                                                ProjectHierarchyFrameAction::RequestDeleteConfirmation(vec![tree_entry_project_item_path.clone()]);
+                                                ProjectHierarchyFrameAction::RequestDeleteConfirmation(project_item_paths_for_delete);
                                             user_interface.close();
                                         }
                                     });
@@ -277,14 +288,22 @@ impl Widget for ProjectHierarchyView {
                 .project_hierarchy_view_data
                 .read("Project hierarchy keyboard activation toggle")
                 .and_then(|project_hierarchy_view_data| {
-                    let selected_project_item_path = project_hierarchy_view_data.selected_project_item_path.clone()?;
-                    let selected_project_item = project_hierarchy_view_data
+                    let selected_project_item_paths = project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order();
+                    if selected_project_item_paths.is_empty() {
+                        return None;
+                    }
+
+                    let selected_project_items = project_hierarchy_view_data
                         .project_items
                         .iter()
-                        .find(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &selected_project_item_path)
-                        .map(|(_, project_item)| project_item)?;
+                        .filter(|(project_item_ref, _)| selected_project_item_paths.contains(project_item_ref.get_project_item_path()))
+                        .map(|(_, project_item)| project_item)
+                        .collect::<Vec<&ProjectItem>>();
+                    let should_activate = selected_project_items
+                        .iter()
+                        .any(|project_item| !project_item.get_is_activated());
 
-                    Some((selected_project_item_path, !selected_project_item.get_is_activated()))
+                    Some((selected_project_item_paths, should_activate))
                 });
         }
 
@@ -296,11 +315,11 @@ impl Widget for ProjectHierarchyView {
             ProjectHierarchyViewData::delete_project_items(self.project_hierarchy_view_data.clone(), self.app_context.clone(), project_item_paths);
         }
 
-        if let Some((project_item_path, is_activated)) = keyboard_activation_toggle_target {
+        if let Some((project_item_paths, is_activated)) = keyboard_activation_toggle_target {
             ProjectHierarchyViewData::set_project_item_activation(
                 self.project_hierarchy_view_data.clone(),
                 self.app_context.clone(),
-                project_item_path,
+                project_item_paths,
                 is_activated,
             );
         }
@@ -331,18 +350,36 @@ impl Widget for ProjectHierarchyView {
 
         match project_hierarchy_frame_action {
             ProjectHierarchyFrameAction::None => {}
-            ProjectHierarchyFrameAction::SelectProjectItem(project_item_path) => {
-                ProjectHierarchyViewData::select_project_item(self.project_hierarchy_view_data.clone(), project_item_path);
-                self.focus_selected_project_item_in_struct_viewer();
+            ProjectHierarchyFrameAction::SelectProjectItem {
+                project_item_path,
+                additive_selection,
+                range_selection,
+            } => {
+                ProjectHierarchyViewData::select_project_item(self.project_hierarchy_view_data.clone(), project_item_path, additive_selection, range_selection);
+                self.focus_selected_project_items_in_struct_viewer();
             }
             ProjectHierarchyFrameAction::ToggleDirectoryExpansion(project_item_path) => {
                 ProjectHierarchyViewData::toggle_directory_expansion(self.project_hierarchy_view_data.clone(), project_item_path);
             }
             ProjectHierarchyFrameAction::SetProjectItemActivation(project_item_path, is_activated) => {
+                let project_item_paths = self
+                    .project_hierarchy_view_data
+                    .read("Project hierarchy checkbox activation selection")
+                    .map(|project_hierarchy_view_data| {
+                        if project_hierarchy_view_data
+                            .selected_project_item_paths
+                            .contains(&project_item_path)
+                        {
+                            project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order()
+                        } else {
+                            vec![project_item_path.clone()]
+                        }
+                    })
+                    .unwrap_or_else(|| vec![project_item_path.clone()]);
                 ProjectHierarchyViewData::set_project_item_activation(
                     self.project_hierarchy_view_data.clone(),
                     self.app_context.clone(),
-                    project_item_path,
+                    project_item_paths,
                     is_activated,
                 );
             }
@@ -359,50 +396,62 @@ impl Widget for ProjectHierarchyView {
 }
 
 impl ProjectHierarchyView {
-    fn focus_selected_project_item_in_struct_viewer(&self) {
-        let selected_project_item_path = self
+    fn focus_selected_project_items_in_struct_viewer(&self) {
+        let selected_project_item_paths = self
             .project_hierarchy_view_data
-            .read("Project hierarchy selected project item for struct viewer focus")
-            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.selected_project_item_path.clone());
-        let selected_project_item = self
+            .read("Project hierarchy selected project items for struct viewer focus")
+            .map(|project_hierarchy_view_data| project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order())
+            .unwrap_or_default();
+        let selected_project_items = self
             .project_hierarchy_view_data
             .read("Project hierarchy selected project item data for struct viewer focus")
-            .and_then(|project_hierarchy_view_data| {
-                let selected_project_item_path = project_hierarchy_view_data
-                    .selected_project_item_path
-                    .as_ref()?;
-
+            .map(|project_hierarchy_view_data| {
                 project_hierarchy_view_data
                     .project_items
                     .iter()
-                    .find(|(project_item_ref, _)| project_item_ref.get_project_item_path() == selected_project_item_path)
+                    .filter(|(project_item_ref, _)| selected_project_item_paths.contains(project_item_ref.get_project_item_path()))
                     .map(|(_, project_item)| project_item.clone())
-            });
+                    .collect::<Vec<ProjectItem>>()
+            })
+            .unwrap_or_default();
 
-        let Some(selected_project_item_path) = selected_project_item_path else {
+        if selected_project_item_paths.is_empty() || selected_project_items.is_empty() {
             StructViewerViewData::clear_focus(self.struct_viewer_view_data.clone());
             return;
-        };
-        let Some(selected_project_item) = selected_project_item else {
-            StructViewerViewData::clear_focus(self.struct_viewer_view_data.clone());
-            return;
-        };
+        }
+
         let app_context = self.app_context.clone();
+        let selected_project_item_paths_for_edit = selected_project_item_paths.clone();
         let callback = Arc::new(move |edited_field: ValuedStructField| {
-            Self::apply_project_item_edit(app_context.clone(), selected_project_item_path.clone(), edited_field);
+            Self::apply_project_item_edits(app_context.clone(), selected_project_item_paths_for_edit.clone(), edited_field);
         });
 
-        StructViewerViewData::focus_valued_struct(self.struct_viewer_view_data.clone(), selected_project_item.get_properties().clone(), callback);
+        if selected_project_items.len() == 1 {
+            if let Some(selected_project_item) = selected_project_items.into_iter().next() {
+                StructViewerViewData::focus_valued_struct(self.struct_viewer_view_data.clone(), selected_project_item.get_properties().clone(), callback);
+            }
+        } else {
+            let selected_project_item_properties = selected_project_items
+                .into_iter()
+                .map(|selected_project_item| selected_project_item.get_properties().clone())
+                .collect::<Vec<_>>();
+            StructViewerViewData::focus_valued_structs(self.struct_viewer_view_data.clone(), selected_project_item_properties, callback);
+        }
     }
 
-    fn apply_project_item_edit(
+    fn apply_project_item_edits(
         app_context: Arc<AppContext>,
-        project_item_path: PathBuf,
+        project_item_paths: Vec<PathBuf>,
         edited_field: ValuedStructField,
     ) {
+        if project_item_paths.is_empty() {
+            return;
+        }
+
         let project_manager = app_context.engine_unprivileged_state.get_project_manager();
         let opened_project_lock = project_manager.get_opened_project();
-        let memory_write_request;
+        let mut memory_write_requests = Vec::new();
+        let mut updated_project_item_count = 0usize;
 
         let mut opened_project_guard = match opened_project_lock.write() {
             Ok(opened_project_guard) => opened_project_guard,
@@ -418,13 +467,13 @@ impl ProjectHierarchyView {
                 return;
             }
         };
-        let project_item_ref = ProjectItemRef::new(project_item_path.clone());
-        {
+        for project_item_path in &project_item_paths {
+            let project_item_ref = ProjectItemRef::new(project_item_path.clone());
             let project_item = match opened_project.get_project_item_mut(&project_item_ref) {
                 Some(project_item) => project_item,
                 None => {
                     log::warn!("Cannot apply struct viewer edit, project item was not found: {:?}", project_item_path);
-                    return;
+                    continue;
                 }
             };
 
@@ -432,7 +481,16 @@ impl ProjectHierarchyView {
                 .get_properties_mut()
                 .set_field_data(edited_field.get_name(), edited_field.get_field_data().clone(), edited_field.get_is_read_only());
             project_item.set_has_unsaved_changes(true);
-            memory_write_request = Self::build_memory_write_request_for_project_item_edit(project_item, &edited_field);
+
+            if let Some(memory_write_request) = Self::build_memory_write_request_for_project_item_edit(project_item, &edited_field) {
+                memory_write_requests.push(memory_write_request);
+            }
+
+            updated_project_item_count += 1;
+        }
+
+        if updated_project_item_count == 0 {
+            return;
         }
 
         opened_project
@@ -450,7 +508,7 @@ impl ProjectHierarchyView {
         });
         project_manager.notify_project_items_changed();
 
-        if let Some(memory_write_request) = memory_write_request {
+        for memory_write_request in memory_write_requests {
             memory_write_request.send(&app_context.engine_unprivileged_state, |memory_write_response| {
                 if !memory_write_response.success {
                     log::warn!("Project item address edit memory write command failed.");

@@ -10,8 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- TODO is not the default name for address items. Just call it New Address.
-- Multi-select support is necessary for project items.
+- No remaining concrete TODOs currently tracked for `pr/project-explorer`.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -66,3 +65,8 @@ Information discovered during iteration:
 - `New Folder` is available on every project-item row; directory targets create nested folders, non-directory targets create sibling folders under the selected item's parent.
 - Added spacebar keyboard toggle support for selected hierarchy item activation state.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed), and `cargo test -p squalr --no-run` (build successful).
+- Implemented project hierarchy multi-select with Ctrl/Cmd toggle and Shift range selection, including bulk Delete (toolbar/context/keyboard), bulk Space activation toggles, checkbox toggles over entire selection, and struct viewer focus/edit over all selected items.
+- Project item struct edits now apply to all selected project items in one save cycle, with per-item optional memory-write dispatch preserved for address `address` field edits.
+- Address project item creation now normalizes blank or placeholder (`TODO`) names to `New Address`.
+- Project item string field getters now deserialize raw UTF-8 bytes directly for name/module/description/icon/symbolic-struct fields instead of relying on placeholder display-string paths.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (5 passed), `cargo test -p squalr-engine-api project_item_type_address` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).

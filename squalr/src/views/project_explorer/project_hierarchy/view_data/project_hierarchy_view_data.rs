@@ -38,6 +38,8 @@ pub struct ProjectHierarchyViewData {
     pub project_items: Vec<(ProjectItemRef, ProjectItem)>,
     pub tree_entries: Vec<ProjectHierarchyTreeEntry>,
     pub selected_project_item_path: Option<PathBuf>,
+    pub selected_project_item_paths: HashSet<PathBuf>,
+    pub selection_anchor_project_item_path: Option<PathBuf>,
     pub expanded_directory_paths: HashSet<PathBuf>,
     pub context_menu_project_item_path: Option<PathBuf>,
     pub dragged_project_item_path: Option<PathBuf>,
@@ -53,6 +55,8 @@ impl ProjectHierarchyViewData {
             project_items: Vec::new(),
             tree_entries: Vec::new(),
             selected_project_item_path: None,
+            selected_project_item_paths: HashSet::new(),
+            selection_anchor_project_item_path: None,
             expanded_directory_paths: HashSet::new(),
             context_menu_project_item_path: None,
             dragged_project_item_path: None,
@@ -100,16 +104,7 @@ impl ProjectHierarchyViewData {
                 &project_hierarchy_view_data.expanded_directory_paths,
             );
 
-            if let Some(selected_project_item_path) = &project_hierarchy_view_data.selected_project_item_path {
-                let is_valid_selection = project_hierarchy_view_data
-                    .tree_entries
-                    .iter()
-                    .any(|tree_entry| &tree_entry.project_item_path == selected_project_item_path);
-
-                if !is_valid_selection {
-                    project_hierarchy_view_data.selected_project_item_path = None;
-                }
-            }
+            project_hierarchy_view_data.retain_valid_selection();
 
             if let Some(dragged_project_item_path) = &project_hierarchy_view_data.dragged_project_item_path {
                 let is_valid_dragged_project_item = project_hierarchy_view_data
@@ -129,13 +124,76 @@ impl ProjectHierarchyViewData {
     pub fn select_project_item(
         project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
         project_item_path: PathBuf,
+        additive_selection: bool,
+        range_selection: bool,
     ) {
         let mut project_hierarchy_view_data = match project_hierarchy_view_data.write("Project hierarchy select project item") {
             Some(project_hierarchy_view_data) => project_hierarchy_view_data,
             None => return,
         };
+        project_hierarchy_view_data.apply_selection(project_item_path, additive_selection, range_selection);
+    }
 
-        project_hierarchy_view_data.selected_project_item_path = Some(project_item_path);
+    fn apply_selection(
+        &mut self,
+        project_item_path: PathBuf,
+        additive_selection: bool,
+        range_selection: bool,
+    ) {
+        let selected_project_item_paths_in_order = self.collect_selected_project_item_paths_in_tree_order();
+
+        if range_selection {
+            let selection_anchor_project_item_path = self
+                .selection_anchor_project_item_path
+                .clone()
+                .or_else(|| self.selected_project_item_path.clone())
+                .unwrap_or_else(|| project_item_path.clone());
+            let selected_project_item_paths_in_range = self.collect_project_item_paths_in_range(&selection_anchor_project_item_path, &project_item_path);
+
+            if additive_selection {
+                for selected_project_item_path in selected_project_item_paths_in_range {
+                    self.selected_project_item_paths
+                        .insert(selected_project_item_path);
+                }
+            } else {
+                self.selected_project_item_paths = selected_project_item_paths_in_range.into_iter().collect();
+            }
+
+            self.selected_project_item_path = Some(project_item_path.clone());
+            self.selection_anchor_project_item_path = Some(selection_anchor_project_item_path);
+            self.retain_valid_selection();
+            return;
+        }
+
+        if additive_selection {
+            if self.selected_project_item_paths.contains(&project_item_path) {
+                self.selected_project_item_paths.remove(&project_item_path);
+
+                if self.selected_project_item_path.as_ref() == Some(&project_item_path) {
+                    self.selected_project_item_path = selected_project_item_paths_in_order
+                        .into_iter()
+                        .find(|selected_project_item_path| {
+                            self.selected_project_item_paths
+                                .contains(selected_project_item_path)
+                        });
+                }
+            } else {
+                self.selected_project_item_paths
+                    .insert(project_item_path.clone());
+                self.selected_project_item_path = Some(project_item_path.clone());
+            }
+
+            self.selection_anchor_project_item_path = Some(project_item_path);
+            self.retain_valid_selection();
+            return;
+        }
+
+        self.selected_project_item_paths.clear();
+        self.selected_project_item_paths
+            .insert(project_item_path.clone());
+        self.selected_project_item_path = Some(project_item_path.clone());
+        self.selection_anchor_project_item_path = Some(project_item_path);
+        self.retain_valid_selection();
     }
 
     pub fn get_selected_directory_path(project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>) -> Option<PathBuf> {
@@ -189,12 +247,13 @@ impl ProjectHierarchyViewData {
     }
 
     pub fn request_delete_confirmation_for_selected_project_item(project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>) {
-        let selected_project_item_path = project_hierarchy_view_data
+        let selected_project_item_paths = project_hierarchy_view_data
             .read("Project hierarchy selected project item for delete request")
-            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.selected_project_item_path.clone());
+            .map(|project_hierarchy_view_data| project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order())
+            .unwrap_or_default();
 
-        if let Some(selected_project_item_path) = selected_project_item_path {
-            Self::request_delete_confirmation(project_hierarchy_view_data, vec![selected_project_item_path]);
+        if !selected_project_item_paths.is_empty() {
+            Self::request_delete_confirmation(project_hierarchy_view_data, selected_project_item_paths);
         }
     }
 
@@ -404,6 +463,11 @@ impl ProjectHierarchyViewData {
 
             if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy select created directory") {
                 project_hierarchy_view_data.selected_project_item_path = Some(project_items_create_response.created_project_item_path.clone());
+                project_hierarchy_view_data.selected_project_item_paths.clear();
+                project_hierarchy_view_data
+                    .selected_project_item_paths
+                    .insert(project_items_create_response.created_project_item_path.clone());
+                project_hierarchy_view_data.selection_anchor_project_item_path = Some(project_items_create_response.created_project_item_path.clone());
             }
 
             Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
@@ -413,11 +477,18 @@ impl ProjectHierarchyViewData {
     pub fn set_project_item_activation(
         project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
         app_context: Arc<AppContext>,
-        project_item_path: PathBuf,
+        project_item_paths: Vec<PathBuf>,
         is_activated: bool,
     ) {
+        if project_item_paths.is_empty() {
+            return;
+        }
+
         let project_items_activate_request = ProjectItemsActivateRequest {
-            project_item_paths: vec![project_item_path.to_string_lossy().into_owned()],
+            project_item_paths: project_item_paths
+                .into_iter()
+                .map(|project_item_path| project_item_path.to_string_lossy().into_owned())
+                .collect(),
             is_activated,
         };
         let app_context_clone = app_context.clone();
@@ -812,11 +883,87 @@ impl ProjectHierarchyViewData {
             directory_suffix_index += 1;
         }
     }
+
+    fn retain_valid_selection(&mut self) {
+        let valid_project_item_paths: HashSet<PathBuf> = self
+            .tree_entries
+            .iter()
+            .map(|tree_entry| tree_entry.project_item_path.clone())
+            .collect();
+        self.selected_project_item_paths
+            .retain(|selected_project_item_path| valid_project_item_paths.contains(selected_project_item_path));
+
+        if let Some(selected_project_item_path) = &self.selected_project_item_path {
+            if !self
+                .selected_project_item_paths
+                .contains(selected_project_item_path)
+            {
+                self.selected_project_item_path = None;
+            }
+        }
+
+        if self.selected_project_item_path.is_none() {
+            self.selected_project_item_path = self
+                .collect_selected_project_item_paths_in_tree_order()
+                .into_iter()
+                .next();
+        }
+
+        if let Some(selection_anchor_project_item_path) = &self.selection_anchor_project_item_path {
+            if !valid_project_item_paths.contains(selection_anchor_project_item_path) {
+                self.selection_anchor_project_item_path = None;
+            }
+        }
+
+        if self.selected_project_item_paths.is_empty() {
+            self.selected_project_item_path = None;
+            self.selection_anchor_project_item_path = None;
+        }
+    }
+
+    pub fn collect_selected_project_item_paths_in_tree_order(&self) -> Vec<PathBuf> {
+        self.tree_entries
+            .iter()
+            .map(|tree_entry| tree_entry.project_item_path.clone())
+            .filter(|project_item_path| self.selected_project_item_paths.contains(project_item_path))
+            .collect()
+    }
+
+    fn collect_project_item_paths_in_range(
+        &self,
+        selection_start_project_item_path: &Path,
+        selection_end_project_item_path: &Path,
+    ) -> Vec<PathBuf> {
+        let selection_start_index = self
+            .tree_entries
+            .iter()
+            .position(|tree_entry| tree_entry.project_item_path == selection_start_project_item_path);
+        let selection_end_index = self
+            .tree_entries
+            .iter()
+            .position(|tree_entry| tree_entry.project_item_path == selection_end_project_item_path);
+
+        let (selection_start_index, selection_end_index) = match (selection_start_index, selection_end_index) {
+            (Some(selection_start_index), Some(selection_end_index)) => (selection_start_index, selection_end_index),
+            _ => return vec![selection_end_project_item_path.to_path_buf()],
+        };
+        let (range_start_index, range_end_index) = if selection_start_index <= selection_end_index {
+            (selection_start_index, selection_end_index)
+        } else {
+            (selection_end_index, selection_start_index)
+        };
+
+        self.tree_entries[range_start_index..=range_end_index]
+            .iter()
+            .map(|tree_entry| tree_entry.project_item_path.clone())
+            .collect()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::ProjectHierarchyViewData;
+    use crate::views::project_explorer::project_hierarchy::view_data::project_hierarchy_tree_entry::ProjectHierarchyTreeEntry;
     use squalr_engine_api::structures::projects::project_items::built_in_types::{
         project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory,
     };
@@ -828,6 +975,30 @@ mod tests {
         let project_item = ProjectItemTypeDirectory::new_project_item(&project_item_ref);
 
         (project_item_ref, project_item)
+    }
+
+    fn create_directory_tree_entry(
+        project_item_path: &Path,
+        depth: usize,
+    ) -> ProjectHierarchyTreeEntry {
+        let (project_item_ref, project_item) = create_directory_project_item(project_item_path);
+
+        ProjectHierarchyTreeEntry {
+            project_item_ref,
+            project_item,
+            project_item_path: project_item_path.to_path_buf(),
+            display_name: project_item_path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default()
+                .to_string(),
+            preview_value: String::new(),
+            is_activated: false,
+            depth,
+            is_directory: true,
+            has_children: false,
+            is_expanded: false,
+        }
     }
 
     #[test]
@@ -876,5 +1047,55 @@ mod tests {
         let next_directory_name = ProjectHierarchyViewData::build_unique_directory_name(&project_items, &parent_directory_path);
 
         assert_eq!(next_directory_name, "New Folder 3");
+    }
+
+    #[test]
+    fn apply_selection_with_additive_selection_toggles_entries() {
+        let root_path = PathBuf::from("C:/Projects/TestProject/project");
+        let first_child_path = root_path.join("First");
+        let second_child_path = root_path.join("Second");
+        let mut project_hierarchy_view_data = ProjectHierarchyViewData::new();
+        project_hierarchy_view_data.tree_entries = vec![
+            create_directory_tree_entry(&root_path, 0),
+            create_directory_tree_entry(&first_child_path, 1),
+            create_directory_tree_entry(&second_child_path, 1),
+        ];
+
+        project_hierarchy_view_data.apply_selection(first_child_path.clone(), false, false);
+        project_hierarchy_view_data.apply_selection(second_child_path.clone(), true, false);
+        let selected_project_item_paths = project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order();
+        assert_eq!(selected_project_item_paths, vec![first_child_path.clone(), second_child_path.clone()]);
+
+        project_hierarchy_view_data.apply_selection(first_child_path.clone(), true, false);
+        let selected_project_item_paths = project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order();
+        assert_eq!(selected_project_item_paths, vec![second_child_path.clone()]);
+    }
+
+    #[test]
+    fn apply_selection_with_range_selection_selects_contiguous_entries() {
+        let root_path = PathBuf::from("C:/Projects/TestProject/project");
+        let child_one_path = root_path.join("One");
+        let child_two_path = root_path.join("Two");
+        let child_three_path = root_path.join("Three");
+        let mut project_hierarchy_view_data = ProjectHierarchyViewData::new();
+        project_hierarchy_view_data.tree_entries = vec![
+            create_directory_tree_entry(&root_path, 0),
+            create_directory_tree_entry(&child_one_path, 1),
+            create_directory_tree_entry(&child_two_path, 1),
+            create_directory_tree_entry(&child_three_path, 1),
+        ];
+
+        project_hierarchy_view_data.apply_selection(child_one_path.clone(), false, false);
+        project_hierarchy_view_data.apply_selection(child_three_path.clone(), false, true);
+        let selected_project_item_paths = project_hierarchy_view_data.collect_selected_project_item_paths_in_tree_order();
+
+        assert_eq!(
+            selected_project_item_paths,
+            vec![
+                child_one_path.clone(),
+                child_two_path.clone(),
+                child_three_path.clone()
+            ]
+        );
     }
 }

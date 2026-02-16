@@ -58,7 +58,9 @@ impl Widget for ProjectHierarchyToolbarView {
                 .read("Project hierarchy toolbar state")
                 .map(|project_hierarchy_view_data| {
                     (
-                        project_hierarchy_view_data.selected_project_item_path.is_some(),
+                        !project_hierarchy_view_data
+                            .selected_project_item_paths
+                            .is_empty(),
                         project_hierarchy_view_data.pending_operation != ProjectHierarchyPendingOperation::None,
                         project_hierarchy_view_data.take_over_state != ProjectHierarchyTakeOverState::None,
                     )
