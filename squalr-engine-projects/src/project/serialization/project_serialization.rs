@@ -79,19 +79,7 @@ impl SerializableProjectFile for Project {
 }
 
 fn resolve_project_root_directory_path(project_directory_path: &Path) -> std::path::PathBuf {
-    let preferred_project_root_directory_path = project_directory_path.join(Project::PROJECT_DIR);
-
-    if preferred_project_root_directory_path.exists() {
-        return preferred_project_root_directory_path;
-    }
-
-    let legacy_project_root_directory_path = project_directory_path.join(Project::LEGACY_PROJECT_DIR);
-
-    if legacy_project_root_directory_path.exists() {
-        legacy_project_root_directory_path
-    } else {
-        preferred_project_root_directory_path
-    }
+    project_directory_path.join(Project::PROJECT_DIR)
 }
 
 fn is_project_item_file_path(project_item_path: &Path) -> bool {

@@ -793,18 +793,12 @@ impl ProjectHierarchyViewData {
         let project_info = opened_project_info?;
         let project_directory_path = project_info.get_project_directory()?;
         let hidden_project_root_path = project_directory_path.join(Project::PROJECT_DIR);
-        let legacy_hidden_project_root_path = project_directory_path.join(Project::LEGACY_PROJECT_DIR);
         let contains_hidden_project_root = project_items
             .iter()
             .any(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &hidden_project_root_path);
-        let contains_legacy_hidden_project_root = project_items
-            .iter()
-            .any(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &legacy_hidden_project_root_path);
 
         if contains_hidden_project_root {
             Some(hidden_project_root_path)
-        } else if contains_legacy_hidden_project_root {
-            Some(legacy_hidden_project_root_path)
         } else {
             Some(project_directory_path)
         }

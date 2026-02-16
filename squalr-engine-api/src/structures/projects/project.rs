@@ -26,7 +26,6 @@ pub struct Project {
 impl Project {
     pub const PROJECT_FILE: &'static str = "project.json";
     pub const PROJECT_DIR: &'static str = "project_items";
-    pub const LEGACY_PROJECT_DIR: &'static str = "project";
     pub const PROJECT_ITEM_EXTENSION: &'static str = ".json";
 
     pub fn new(
