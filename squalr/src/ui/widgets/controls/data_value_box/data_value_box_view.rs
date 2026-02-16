@@ -19,6 +19,8 @@ pub struct DataValueBoxView<'lifetime> {
     is_value_owned: bool,
     preview_text: &'lifetime str,
     id: &'lifetime str,
+    allow_read_only_interpretation: bool,
+    use_preview_foreground: bool,
     width: f32,
     height: f32,
     icon_padding: f32,
@@ -48,6 +50,8 @@ impl<'lifetime> DataValueBoxView<'lifetime> {
             is_value_owned,
             preview_text,
             id,
+            allow_read_only_interpretation: false,
+            use_preview_foreground: false,
             width: 212.0,
             height: 28.0,
 
@@ -76,6 +80,22 @@ impl<'lifetime> DataValueBoxView<'lifetime> {
         self
     }
 
+    pub fn allow_read_only_interpretation(
+        mut self,
+        allow_read_only_interpretation: bool,
+    ) -> Self {
+        self.allow_read_only_interpretation = allow_read_only_interpretation;
+        self
+    }
+
+    pub fn use_preview_foreground(
+        mut self,
+        use_preview_foreground: bool,
+    ) -> Self {
+        self.use_preview_foreground = use_preview_foreground;
+        self
+    }
+
     pub fn height(
         mut self,
         height: f32,
@@ -94,16 +114,20 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         let down_arrow = &theme.icon_library.icon_handle_navigation_down_arrow_small;
         let symbol_registry = SymbolRegistry::get_instance();
         let is_valid = symbol_registry.validate_value_string(&self.validation_data_type, &self.anonymous_value_string);
+        let neutral_foreground_color = match self.use_preview_foreground {
+            true => theme.foreground_preview,
+            false => theme.foreground,
+        };
         let text_color = match is_valid {
             true => match self.anonymous_value_string.get_anonymous_value_string_format() {
-                AnonymousValueStringFormat::Bool => theme.foreground,
-                AnonymousValueStringFormat::String => theme.foreground,
+                AnonymousValueStringFormat::Bool => neutral_foreground_color,
+                AnonymousValueStringFormat::String => neutral_foreground_color,
                 AnonymousValueStringFormat::Binary => theme.binary_blue,
-                AnonymousValueStringFormat::Decimal => theme.foreground,
+                AnonymousValueStringFormat::Decimal => neutral_foreground_color,
                 AnonymousValueStringFormat::Hexadecimal => theme.hexadecimal_green,
                 AnonymousValueStringFormat::Address => theme.hexadecimal_green,
-                AnonymousValueStringFormat::DataTypeRef => theme.foreground,
-                AnonymousValueStringFormat::Enumeration => theme.foreground,
+                AnonymousValueStringFormat::DataTypeRef => neutral_foreground_color,
+                AnonymousValueStringFormat::Enumeration => neutral_foreground_color,
             },
             false => theme.error_red,
         };
@@ -125,7 +149,11 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         let button_response = user_interface.interact(
             dropdown_background_rectangle,
             user_interface.make_persistent_id(format!("{}_button", self.id)),
-            if self.is_read_only { Sense::hover() } else { Sense::click() },
+            if self.is_read_only && !self.allow_read_only_interpretation {
+                Sense::hover()
+            } else {
+                Sense::click()
+            },
         );
 
         // Arrow position.
@@ -215,11 +243,11 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         let popup_id = Id::new(("data_value_box_popup", self.id, user_interface.id().value()));
         let mut open = user_interface.memory(|memory| memory.data.get_temp::<bool>(popup_id).unwrap_or(false));
 
-        if !self.is_read_only && button_response.clicked() {
+        if button_response.clicked() && (!self.is_read_only || self.allow_read_only_interpretation) {
             open = !open;
         }
 
-        if self.is_read_only {
+        if self.is_read_only && !self.allow_read_only_interpretation {
             open = false;
         }
 

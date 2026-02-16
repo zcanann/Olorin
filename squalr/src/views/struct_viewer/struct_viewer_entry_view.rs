@@ -68,6 +68,7 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
         let row_height = 32.0;
         let value_column_padding = 2.0;
         let commit_button_width = 28.0;
+        let show_commit_button = !self.valued_struct_field.get_is_read_only();
 
         let desired_size = vec2(user_interface.available_width(), row_height);
         let (available_size_id, available_size_rect) = user_interface.allocate_space(desired_size);
@@ -118,7 +119,12 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
         let name_position_x = row_min_x + self.name_splitter_x;
         let value_position_x = self.value_splitter_x.min(row_max_x);
         let value_box_position_x = value_position_x + value_column_padding;
-        let value_box_width = (row_max_x - value_box_position_x - commit_button_width - value_column_padding).max(0.0);
+        let commit_button_space = if show_commit_button {
+            commit_button_width + value_column_padding
+        } else {
+            0.0
+        };
+        let value_box_width = (row_max_x - value_box_position_x - commit_button_space).max(0.0);
 
         // Draw icon.
         let icon_rect = Rect::from_min_max(
@@ -161,36 +167,39 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                     "",
                     &data_value_box_id,
                 )
+                .allow_read_only_interpretation(true)
+                .use_preview_foreground(true)
                 .width(value_box_width),
             );
 
-            let commit_response = user_interface.put(
-                Rect::from_min_size(
-                    pos2(
-                        row_max_x - commit_button_width - value_column_padding,
-                        available_size_rect.min.y + value_column_padding,
+            if show_commit_button {
+                let commit_response = user_interface.put(
+                    Rect::from_min_size(
+                        pos2(
+                            row_max_x - commit_button_width - value_column_padding,
+                            available_size_rect.min.y + value_column_padding,
+                        ),
+                        vec2(commit_button_width, available_size_rect.height() - value_column_padding * 2.0),
                     ),
-                    vec2(commit_button_width, available_size_rect.height() - value_column_padding * 2.0),
-                ),
-                Button::new_from_theme(theme)
-                    .disabled(self.valued_struct_field.get_is_read_only())
-                    .background_color(epaint::Color32::TRANSPARENT)
-                    .with_tooltip_text("Commit value."),
-            );
+                    Button::new_from_theme(theme)
+                        .background_color(epaint::Color32::TRANSPARENT)
+                        .with_tooltip_text("Commit value."),
+                );
 
-            IconDraw::draw(user_interface, commit_response.rect, &theme.icon_library.icon_handle_common_check_mark);
+                IconDraw::draw(user_interface, commit_response.rect, &theme.icon_library.icon_handle_common_check_mark);
 
-            if commit_response.clicked() {
-                let symbol_registry = SymbolRegistry::get_instance();
-                match symbol_registry.deanonymize_value_string(validation_data_type_ref, field_edit_value) {
-                    Ok(new_data_value) => {
-                        let mut edited_field = self.valued_struct_field.clone();
+                if commit_response.clicked() {
+                    let symbol_registry = SymbolRegistry::get_instance();
+                    match symbol_registry.deanonymize_value_string(validation_data_type_ref, field_edit_value) {
+                        Ok(new_data_value) => {
+                            let mut edited_field = self.valued_struct_field.clone();
 
-                        edited_field.set_field_data(ValuedStructFieldData::Value(new_data_value));
-                        *self.struct_viewer_frame_action = StructViewerFrameAction::EditValue(edited_field);
-                    }
-                    Err(error) => {
-                        log::warn!("Failed to commit struct viewer value: {}", error);
+                            edited_field.set_field_data(ValuedStructFieldData::Value(new_data_value));
+                            *self.struct_viewer_frame_action = StructViewerFrameAction::EditValue(edited_field);
+                        }
+                        Err(error) => {
+                            log::warn!("Failed to commit struct viewer value: {}", error);
+                        }
                     }
                 }
             }
