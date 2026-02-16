@@ -5,4 +5,5 @@ pub enum ProjectHierarchyFrameAction {
     None,
     SelectProjectItem(PathBuf),
     ToggleDirectoryExpansion(PathBuf),
+    SetProjectItemActivation(PathBuf, bool),
 }

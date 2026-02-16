@@ -3,7 +3,7 @@ use crate::{
     ui::{draw::icon_draw::IconDraw, widgets::controls::state_layer::StateLayer},
     views::project_explorer::project_hierarchy::view_data::project_hierarchy_frame_action::ProjectHierarchyFrameAction,
 };
-use eframe::egui::{Align2, Rect, Response, Sense, TextureHandle, Ui, Widget, pos2, vec2};
+use eframe::egui::{Align2, Checkbox, Rect, Response, Sense, TextureHandle, Ui, Widget, pos2, vec2};
 use epaint::{CornerRadius, Stroke, StrokeKind};
 use std::{path::PathBuf, sync::Arc};
 
@@ -12,6 +12,7 @@ pub struct ProjectItemEntryView<'lifetime> {
     project_item_path: &'lifetime PathBuf,
     display_name: &'lifetime str,
     preview_value: &'lifetime str,
+    is_activated: bool,
     depth: usize,
     icon: Option<TextureHandle>,
     is_selected: bool,
@@ -27,6 +28,7 @@ impl<'lifetime> ProjectItemEntryView<'lifetime> {
         project_item_path: &'lifetime PathBuf,
         display_name: &'lifetime str,
         preview_value: &'lifetime str,
+        is_activated: bool,
         depth: usize,
         icon: Option<TextureHandle>,
         is_selected: bool,
@@ -40,6 +42,7 @@ impl<'lifetime> ProjectItemEntryView<'lifetime> {
             project_item_path,
             display_name,
             preview_value,
+            is_activated,
             depth,
             icon,
             is_selected,
@@ -62,6 +65,8 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
         let row_left_padding = 8.0;
         let tree_level_indent = 18.0;
         let text_left_padding = 4.0;
+        let checkbox_size = vec2(18.0, 18.0);
+        let right_preview_padding = 8.0;
         let row_height = 28.0;
         let (allocated_size_rectangle, response) =
             user_interface.allocate_exact_size(vec2(user_interface.available_size().x, row_height), Sense::click_and_drag());
@@ -95,7 +100,17 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
         }
         .ui(user_interface);
 
-        if response.clicked() {
+        let checkbox_pos_x =
+            allocated_size_rectangle.min.x + row_left_padding + self.depth as f32 * tree_level_indent + expand_arrow_size.x + text_left_padding;
+        let checkbox_rect = Rect::from_min_size(pos2(checkbox_pos_x, allocated_size_rectangle.center().y - checkbox_size.y * 0.5), checkbox_size);
+        let mut is_activated = self.is_activated;
+        let checkbox_response = user_interface.put(checkbox_rect, Checkbox::without_text(&mut is_activated));
+
+        if checkbox_response.changed() {
+            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SetProjectItemActivation(self.project_item_path.clone(), is_activated);
+        }
+
+        if response.clicked() && !checkbox_response.clicked() {
             *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SelectProjectItem(self.project_item_path.clone());
         }
 
@@ -119,11 +134,11 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
             IconDraw::draw_sized(user_interface, arrow_center, expand_arrow_size, expand_icon);
         }
 
-        let icon_pos_x = allocated_size_rectangle.min.x + row_left_padding + indentation + expand_arrow_size.x + text_left_padding;
+        let icon_pos_x = checkbox_rect.max.x + text_left_padding;
         let icon_pos_y = allocated_size_rectangle.center().y - icon_size.y * 0.5;
         let icon_rect = Rect::from_min_size(pos2(icon_pos_x, icon_pos_y), icon_size);
-        let text_pos = pos2(icon_rect.max.x + text_left_padding, allocated_size_rectangle.center().y - 7.0);
-        let preview_pos = pos2(icon_rect.max.x + text_left_padding, allocated_size_rectangle.center().y + 7.0);
+        let text_pos = pos2(icon_rect.max.x + text_left_padding, allocated_size_rectangle.center().y);
+        let preview_pos = pos2(allocated_size_rectangle.max.x - right_preview_padding, allocated_size_rectangle.center().y);
 
         if let Some(icon) = &self.icon {
             IconDraw::draw_sized(user_interface, icon_rect.center(), icon_size, icon);
@@ -138,7 +153,7 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
         );
         user_interface.painter().text(
             preview_pos,
-            Align2::LEFT_CENTER,
+            Align2::RIGHT_CENTER,
             self.preview_value,
             theme.font_library.font_noto_sans.font_small.clone(),
             theme.foreground_preview,

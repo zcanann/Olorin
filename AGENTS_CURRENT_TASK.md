@@ -10,15 +10,11 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Project items should not vertically stack the name over preview data. This is not the intended preview data.
-- Preview data for address items should be in foreground_preview font and display the most recent currently read value, otherwise a ??. This should be positioned to the right of the name text. Very similar to scan results, although there is no "current value" to fall back on.
 - Double-click add to project should always prioritize adding to the selected directory item
 - There should be a root level folder (which is not displayed a folder) with all project items. This is to avoid conflicts with project.json
 - If no directory is selected, adding new items to the project should default to this root folder.
-- The name text should not come from the file name. It should come from a name property.
 - Struct viewer should work for project items (ie name).
 - Struct viewer should allow editing addresses to trigger a write to memory.
-- Project explorer should have a checkbox by all entries to allow activating them. For folders, this would mean activating all children recursively.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -53,3 +49,7 @@ Information discovered during iteration:
 - Session checkpoint (2026-02-16, follow-up): Re-ran `cargo test -p squalr-tests --test project_items_command_tests` (18 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); workspace remains clean and task is still awaiting next concrete `pr/project-explorer` requirement.
 - Fixed UI deadlock on scan-result double-click add-to-project: `ProjectManager::notify_project_items_changed` now uses non-blocking `try_read()` on the opened-project lock instead of blocking `read()`, preventing self-deadlock when called while project mutation executors hold the write lock.
 - Added regression test coverage in `squalr-engine-api` to verify `notify_project_items_changed` does not block while an opened-project write lock is held.
+- Project hierarchy entries now render as single-line rows: name at left and preview at right, with address preview sourced from `freeze_data_value_interpreter` or `??` fallback.
+- Project hierarchy display name now comes from the project item `name` property (`ProjectItem::get_field_name`) with filename fallback for empty values.
+- Added activation checkboxes to all hierarchy rows and wired them to `project-items activate`; implemented recursive path-based activation in the unprivileged activate executor (folder toggles include descendants).
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr-engine project_items_activate_request_executor` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (18 passed), `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed), and `cargo test -p squalr --no-run` (build successful).

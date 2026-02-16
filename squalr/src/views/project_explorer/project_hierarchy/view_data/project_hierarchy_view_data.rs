@@ -3,6 +3,7 @@ use crate::views::project_explorer::project_hierarchy::view_data::{
     project_hierarchy_pending_operation::ProjectHierarchyPendingOperation, project_hierarchy_take_over_state::ProjectHierarchyTakeOverState,
     project_hierarchy_tree_entry::ProjectHierarchyTreeEntry,
 };
+use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
 use squalr_engine_api::commands::project_items::delete::project_items_delete_request::ProjectItemsDeleteRequest;
 use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
 use squalr_engine_api::commands::project_items::reorder::project_items_reorder_request::ProjectItemsReorderRequest;
@@ -310,6 +311,24 @@ impl ProjectHierarchyViewData {
         });
     }
 
+    pub fn set_project_item_activation(
+        project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
+        app_context: Arc<AppContext>,
+        project_item_path: PathBuf,
+        is_activated: bool,
+    ) {
+        let project_items_activate_request = ProjectItemsActivateRequest {
+            project_item_paths: vec![project_item_path.to_string_lossy().into_owned()],
+            is_activated,
+        };
+        let app_context_clone = app_context.clone();
+        let project_hierarchy_view_data_clone = project_hierarchy_view_data.clone();
+
+        project_items_activate_request.send(&app_context.engine_unprivileged_state, move |_project_items_activate_response| {
+            Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
+        });
+    }
+
     fn build_tree_entries(
         opened_project_info: Option<&ProjectInfo>,
         project_items: &[(ProjectItemRef, ProjectItem)],
@@ -402,8 +421,13 @@ impl ProjectHierarchyViewData {
             let display_name = child_path
                 .file_name()
                 .and_then(|value| value.to_str())
-                .unwrap_or_default()
-                .to_string();
+                .unwrap_or_default();
+            let display_name_from_property = project_item.get_field_name();
+            let display_name = if display_name_from_property.is_empty() {
+                display_name.to_string()
+            } else {
+                display_name_from_property
+            };
             let preview_value = Self::build_preview_value(project_item);
 
             visible_tree_entries.push(ProjectHierarchyTreeEntry {
@@ -412,6 +436,7 @@ impl ProjectHierarchyViewData {
                 project_item_path: child_path.clone(),
                 display_name,
                 preview_value,
+                is_activated: project_item.get_is_activated(),
                 depth,
                 is_directory,
                 has_children,
@@ -543,14 +568,9 @@ impl ProjectHierarchyViewData {
         let project_item_type_id = project_item.get_item_type().get_project_item_type_id();
 
         if project_item_type_id == ProjectItemTypeAddress::PROJECT_ITEM_TYPE_ID {
-            let module_name = Self::read_string_field(project_item, ProjectItemTypeAddress::PROPERTY_MODULE);
-            let address = Self::read_u64_field(project_item, ProjectItemTypeAddress::PROPERTY_ADDRESS);
+            let preview_value = Self::read_string_field(project_item, ProjectItemTypeAddress::PROPERTY_FREEZE_DISPLAY_VALUE);
 
-            if module_name.is_empty() {
-                format!("0x{:X}", address)
-            } else {
-                format!("{}+0x{:X}", module_name, address)
-            }
+            if preview_value.is_empty() { "??".to_string() } else { preview_value }
         } else if project_item_type_id == ProjectItemTypePointer::PROJECT_ITEM_TYPE_ID {
             "Pointer".to_string()
         } else {
@@ -572,30 +592,5 @@ impl ProjectHierarchyViewData {
         };
 
         String::from_utf8(data_value.get_value_bytes().clone()).unwrap_or_default()
-    }
-
-    fn read_u64_field(
-        project_item: &ProjectItem,
-        field_name: &str,
-    ) -> u64 {
-        let data_value = match project_item
-            .get_properties()
-            .get_field(field_name)
-            .and_then(|field| field.get_data_value())
-        {
-            Some(data_value) => data_value,
-            None => return 0,
-        };
-        let value_bytes = data_value.get_value_bytes();
-
-        if value_bytes.len() < std::mem::size_of::<u64>() {
-            return 0;
-        }
-
-        let mut address_bytes = [0_u8; std::mem::size_of::<u64>()];
-
-        address_bytes.copy_from_slice(&value_bytes[..std::mem::size_of::<u64>()]);
-
-        u64::from_le_bytes(address_bytes)
     }
 }

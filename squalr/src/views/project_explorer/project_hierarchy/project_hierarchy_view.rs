@@ -104,6 +104,7 @@ impl Widget for ProjectHierarchyView {
                                         &tree_entry.project_item_path,
                                         &tree_entry.display_name,
                                         &tree_entry.preview_value,
+                                        tree_entry.is_activated,
                                         tree_entry.depth,
                                         icon,
                                         is_selected,
@@ -222,6 +223,14 @@ impl Widget for ProjectHierarchyView {
             }
             ProjectHierarchyFrameAction::ToggleDirectoryExpansion(project_item_path) => {
                 ProjectHierarchyViewData::toggle_directory_expansion(self.project_hierarchy_view_data.clone(), project_item_path);
+            }
+            ProjectHierarchyFrameAction::SetProjectItemActivation(project_item_path, is_activated) => {
+                ProjectHierarchyViewData::set_project_item_activation(
+                    self.project_hierarchy_view_data.clone(),
+                    self.app_context.clone(),
+                    project_item_path,
+                    is_activated,
+                );
             }
         }
 
