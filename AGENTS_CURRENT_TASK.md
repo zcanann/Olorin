@@ -42,3 +42,4 @@ Information discovered during iteration:
 - Implemented project hierarchy drag/drop reorder flow (same-parent reordering) with `project-items reorder` dispatch, in-panel drag target highlighting, and pending-operation handling for reordering.
 - Added `project-items reorder` request dispatch tests in `squalr-tests` and unit tests for reorder manifest-path normalization in `squalr-engine`.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr-tests --test project_items_command_tests` (18 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
+- Session checkpoint (2026-02-16, follow-up): Re-ran `cargo test -p squalr-tests --test project_items_command_tests` (18 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); workspace remains clean and task is still awaiting next concrete `pr/project-explorer` requirement.
