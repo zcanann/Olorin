@@ -10,7 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Run a manual GUI smoke test for mixed-value multi-select edits (`value`, `is_frozen`) to confirm expected UX end-to-end (requires interactive desktop session).
+- 
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -36,18 +36,5 @@ Information discovered during iteration:
 - Fixed struct viewer value-box text coloring so writable fields use `foreground` while read-only fields continue using `foreground_preview`.
 - Fixed readonly struct-viewer value-box dropdown labeling and behavior to use `Display as ...` and swap to the matching precomputed display string per selected format (instead of only changing format metadata).
 - Struct viewer now caches per-field display strings for all supported formats using the original typed `DataValue` bytes, avoiding reinterpret/cast paths for readonly display switching.
-
-## Agent Scratchpad and Notes
-Append below and compact regularly to relevant recent notes, keep under ~20 lines.
-
-- Remaining validation is primarily GUI behavior/UX verification, since automated checks only compile/test backend logic.
-
-### Concise Session Log
-Append logs for each session here. Compact redundancy occasionally.
-- Audited struct viewer and scan-result selection wiring; fixed multi-select field intersection bug, implemented struct viewer value editing/commit UI, wired commit callbacks to scan result property writes, added domain tests for intersection behavior, and validated with `cargo fmt`, targeted tests, and `cargo check -p squalr`.
-- Fixed selected-scope regression in struct-viewer property commits (was writing all visible rows), added unit tests for selected-range ref collection, and validated via `cargo fmt`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
-- Revalidated with `cargo test -p squalr-engine-domain combine_exclusive`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`; manual GUI smoke test remains pending because this session is non-interactive.
-- Fixed struct viewer `DataValueBoxView` ID conflicts and read-only enforcement, marked `is_frozen` read-only in scan-result struct projection, added a focused unit test in `squalr-engine-api`, and validated with `cargo test -p squalr-engine-api as_valued_struct_only_allows_writing_value_field`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
-- Adjusted struct viewer readonly UX to remove commit checkbox, keep display-type interaction, and use `foreground_preview` for neutral display text; validated with `cargo fmt`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
-- Corrected struct viewer `DataValueBoxView` neutral text color selection so only readonly rows use `foreground_preview`; writable rows now use `foreground`, validated with `cargo fmt` and `cargo check -p squalr`.
-- Fixed readonly struct-viewer value box options from `Interpret as ...` to `Display as ...` and wired format selection to load the corresponding precomputed display value; validated with `cargo fmt`, `cargo check -p squalr`, and `cargo test -p squalr collect_scan_result_refs_for_selected_range`.
+- Fixed bool display-string anonymization for `Display as` formats so binary/decimal/hex now render as `0b0/0b1`, `0/1`, and `0x0/0x1` instead of always `true/false`, preventing false validation errors in value boxes.
+- Added focused bool-format anonymization unit tests in `squalr-engine-domain` covering Bool/Binary/Decimal/Hexadecimal output strings.
