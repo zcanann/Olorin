@@ -10,18 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- [x] Move project-item mutation flows to unprivileged command routing (implemented `project-items add` and moved scan-result add flow off privileged route).
-- [x] Replace privileged `scan-results add-to-project` path with an unprivileged project-items add command, then remove the stubbed privileged executor path.
-- [x] Expand `project-items` command surface beyond `list`/`activate` to support create, delete, rename, move, and reorder operations needed by project explorer UX.
-- [x] Implement `ProjectHierarchyViewData` state model (loaded root item tree, selection, expanded directories, context/takeover state, pending operations).
-- [x] Implement `ProjectHierarchyView` rendering of nested project items (directory tree) backed by `project-items list`, including row selection and expansion.
-- [x] Render project item icons by type and add preview-value column behavior for address/pointer-style items.
-- [x] Implement non-modal delete confirmation flow in the project hierarchy panel (take-over panel content, not popup modal) and wire to delete command.
-- [x] Implement drag/drop reordering in project hierarchy and persist ordering metadata.
-- [x] Implement sort-order persistence updates in project metadata (manifest and/or per-folder metadata), including API setters and save/load consistency.
-- [x] Wire project hierarchy refresh to project/project-item change events and command callbacks so UI stays in sync after mutations.
-- [x] Implement scan-result to project shortcuts: double-click result to add single entry, plus ensure selected-range add works through the new unprivileged add path.
-- [x] Add/extend tests for new project-items commands, add-to-project flow, and sort-order persistence behavior.
+- [ ] Await next concrete `pr/project-explorer` requirement; current scoped implementation and tests are complete.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -52,3 +41,4 @@ Information discovered during iteration:
 - Strengthened project hierarchy sync checks to refresh when opened project item paths or manifest sort order drift from loaded hierarchy state (not just when opened project path changes).
 - Implemented project hierarchy drag/drop reorder flow (same-parent reordering) with `project-items reorder` dispatch, in-panel drag target highlighting, and pending-operation handling for reordering.
 - Added `project-items reorder` request dispatch tests in `squalr-tests` and unit tests for reorder manifest-path normalization in `squalr-engine`.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr-tests --test project_items_command_tests` (18 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
