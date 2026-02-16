@@ -384,27 +384,7 @@ impl ElementScannerResultsViewData {
         StructViewerViewData::focus_valued_structs(
             struct_viewer_view_data,
             valued_structs,
-            Arc::new(move |modified_field| {
-                let symbol_registry = SymbolRegistry::get_instance();
-                let Some(modified_data_value) = modified_field.get_data_value() else {
-                    return;
-                };
-                let data_type_ref = modified_data_value.get_data_type_ref();
-                let default_anonymous_value_string_format = symbol_registry.get_default_anonymous_value_string_format(data_type_ref);
-                let anonymous_value_string = symbol_registry
-                    .anonymize_value(modified_data_value, default_anonymous_value_string_format)
-                    .unwrap_or_else(|error| {
-                        log::warn!("Failed to anonymize struct edit value: {}", error);
-                        AnonymousValueString::new(String::new(), default_anonymous_value_string_format, ContainerType::None)
-                    });
-
-                Self::set_selected_scan_results_value(
-                    element_scanner_results_view_data_clone.clone(),
-                    engine_unprivileged_state_clone.clone(),
-                    modified_field.get_name(),
-                    anonymous_value_string,
-                );
-            }),
+            Self::create_struct_field_modified_callback(element_scanner_results_view_data_clone, engine_unprivileged_state_clone),
         );
     }
 
@@ -432,28 +412,47 @@ impl ElementScannerResultsViewData {
         StructViewerViewData::focus_valued_structs(
             struct_viewer_view_data,
             valued_structs,
-            Arc::new(move |modified_field| {
-                let symbol_registry = SymbolRegistry::get_instance();
-                let Some(modified_data_value) = modified_field.get_data_value() else {
-                    return;
-                };
-                let data_type_ref = modified_data_value.get_data_type_ref();
-                let default_anonymous_value_string_format = symbol_registry.get_default_anonymous_value_string_format(data_type_ref);
-                let anonymous_value_string = symbol_registry
-                    .anonymize_value(modified_data_value, default_anonymous_value_string_format)
-                    .unwrap_or_else(|error| {
-                        log::warn!("Failed to anonymize struct edit value: {}", error);
-                        AnonymousValueString::new(String::new(), default_anonymous_value_string_format, ContainerType::None)
-                    });
-
-                Self::set_selected_scan_results_value(
-                    element_scanner_results_view_data_clone.clone(),
-                    engine_unprivileged_state_clone.clone(),
-                    modified_field.get_name(),
-                    anonymous_value_string,
-                );
-            }),
+            Self::create_struct_field_modified_callback(element_scanner_results_view_data_clone, engine_unprivileged_state_clone),
         );
+    }
+
+    fn create_struct_field_modified_callback(
+        element_scanner_results_view_data: Dependency<Self>,
+        engine_unprivileged_state: Arc<EngineUnprivilegedState>,
+    ) -> Arc<dyn Fn(squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField) + Send + Sync> {
+        Arc::new(move |modified_field| {
+            let Some(modified_data_value) = modified_field.get_data_value() else {
+                return;
+            };
+
+            if modified_field.get_name() == ScanResult::PROPERTY_NAME_IS_FROZEN {
+                let is_frozen = modified_data_value
+                    .get_value_bytes()
+                    .iter()
+                    .any(|frozen_value_byte| *frozen_value_byte != 0);
+
+                Self::toggle_selected_scan_results_frozen(element_scanner_results_view_data.clone(), engine_unprivileged_state.clone(), is_frozen);
+
+                return;
+            }
+
+            let symbol_registry = SymbolRegistry::get_instance();
+            let data_type_ref = modified_data_value.get_data_type_ref();
+            let default_anonymous_value_string_format = symbol_registry.get_default_anonymous_value_string_format(data_type_ref);
+            let anonymous_value_string = symbol_registry
+                .anonymize_value(modified_data_value, default_anonymous_value_string_format)
+                .unwrap_or_else(|error| {
+                    log::warn!("Failed to anonymize struct edit value: {}", error);
+                    AnonymousValueString::new(String::new(), default_anonymous_value_string_format, ContainerType::None)
+                });
+
+            Self::set_selected_scan_results_value(
+                element_scanner_results_view_data.clone(),
+                engine_unprivileged_state.clone(),
+                modified_field.get_name(),
+                anonymous_value_string,
+            );
+        })
     }
 
     pub fn add_scan_results_to_project(
