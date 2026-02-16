@@ -1,9 +1,12 @@
 use crate::{
     app_context::AppContext,
-    ui::{draw::icon_draw::IconDraw, widgets::controls::state_layer::StateLayer},
+    ui::{
+        draw::icon_draw::IconDraw,
+        widgets::controls::{checkbox::Checkbox, state_layer::StateLayer},
+    },
     views::project_explorer::project_hierarchy::view_data::project_hierarchy_frame_action::ProjectHierarchyFrameAction,
 };
-use eframe::egui::{Align2, Checkbox, Rect, Response, Sense, TextureHandle, Ui, Widget, pos2, vec2};
+use eframe::egui::{Align2, Rect, Response, Sense, TextureHandle, Ui, Widget, pos2, vec2};
 use epaint::{CornerRadius, Stroke, StrokeKind};
 use std::{path::PathBuf, sync::Arc};
 
@@ -103,33 +106,24 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
         let checkbox_pos_x =
             allocated_size_rectangle.min.x + row_left_padding + self.depth as f32 * tree_level_indent + expand_arrow_size.x + text_left_padding;
         let checkbox_rect = Rect::from_min_size(pos2(checkbox_pos_x, allocated_size_rectangle.center().y - checkbox_size.y * 0.5), checkbox_size);
-        let mut is_activated = self.is_activated;
-        let checkbox_response = user_interface.put(checkbox_rect, Checkbox::without_text(&mut is_activated));
+        let is_activated = self.is_activated;
+        let checkbox_response = user_interface.place(checkbox_rect, Checkbox::new_from_theme(theme).with_check_state_bool(is_activated));
 
-        if checkbox_response.changed() {
-            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SetProjectItemActivation(self.project_item_path.clone(), is_activated);
-        }
-
-        if response.clicked() && !checkbox_response.clicked() {
-            let input_modifiers = user_interface.input(|input_state| input_state.modifiers);
-            let additive_selection = input_modifiers.command || input_modifiers.ctrl;
-            let range_selection = input_modifiers.shift;
-
-            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SelectProjectItem {
-                project_item_path: self.project_item_path.clone(),
-                additive_selection,
-                range_selection,
-            };
-        }
-
-        if self.is_directory && self.has_children && response.double_clicked() {
-            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::ToggleDirectoryExpansion(self.project_item_path.clone());
+        if checkbox_response.clicked() {
+            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SetProjectItemActivation(self.project_item_path.clone(), !is_activated);
         }
 
         let indentation = self.depth as f32 * tree_level_indent;
         let arrow_center = pos2(
             allocated_size_rectangle.min.x + row_left_padding + indentation + expand_arrow_size.x * 0.5,
             allocated_size_rectangle.center().y,
+        );
+        let arrow_hit_box_size = vec2(14.0, 14.0);
+        let arrow_hit_box_rect = Rect::from_center_size(arrow_center, arrow_hit_box_size);
+        let arrow_click_response = user_interface.interact(
+            arrow_hit_box_rect,
+            user_interface.make_persistent_id(("project_hierarchy_arrow", self.project_item_path)),
+            Sense::click(),
         );
 
         if self.is_directory && self.has_children {
@@ -140,6 +134,21 @@ impl<'lifetime> Widget for ProjectItemEntryView<'lifetime> {
             };
 
             IconDraw::draw_sized(user_interface, arrow_center, expand_arrow_size, expand_icon);
+            if arrow_click_response.clicked() {
+                *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::ToggleDirectoryExpansion(self.project_item_path.clone());
+            }
+        }
+
+        if response.clicked() && !checkbox_response.clicked() && !arrow_click_response.clicked() {
+            let input_modifiers = user_interface.input(|input_state| input_state.modifiers);
+            let additive_selection = input_modifiers.command || input_modifiers.ctrl;
+            let range_selection = input_modifiers.shift;
+
+            *self.project_hierarchy_frame_action = ProjectHierarchyFrameAction::SelectProjectItem {
+                project_item_path: self.project_item_path.clone(),
+                additive_selection,
+                range_selection,
+            };
         }
 
         let icon_pos_x = checkbox_rect.max.x + text_left_padding;

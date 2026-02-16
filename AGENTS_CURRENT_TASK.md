@@ -10,7 +10,9 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- No remaining concrete `pr/project-explorer` regressions currently queued.
+- Adding a new folder can cause catastrophic UI bugs where the siblings appear to disappear from the hierarchy despite existing on disk. Very basic case of 2 existing entries, add a folder as a sibling, and the existing entries get nuked.
+    - Folders do not get nuked, only address items.
+- Committing name changes does nothing for project items? It should be updating the project item.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -93,3 +95,7 @@ Information discovered during iteration:
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` for new concrete regressions (none found; pointer/address activation JIRA markers remain deferred and unchanged), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` TODO/JIRA/stub markers (no new concrete regressions to queue), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); repository remains clean.
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` markers in hierarchy/project-items paths (no new concrete regressions; only existing deferred JIRA items), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); repository remains clean.
+- Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` TODO/JIRA/stub markers in project hierarchy and project-items paths (no new concrete regressions; deferred items unchanged), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
+- Project hierarchy rows now use Squalr `Checkbox` control (not `egui::Checkbox`) to match scanner/settings visuals.
+- Folder expansion now toggles on single click of the arrow hitbox; arrow clicks no longer also trigger row selection.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (9 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
