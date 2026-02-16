@@ -118,9 +118,9 @@ impl PrimitiveDataTypeBool {
                 }
                 AnonymousValueStringFormat::Binary => {
                     if is_true {
-                        "0b1"
+                        "1"
                     } else {
-                        "0b0"
+                        "0"
                     }
                 }
                 AnonymousValueStringFormat::Decimal => {
@@ -132,9 +132,9 @@ impl PrimitiveDataTypeBool {
                 }
                 AnonymousValueStringFormat::Hexadecimal | AnonymousValueStringFormat::Address => {
                     if is_true {
-                        "0x1"
+                        "1"
                     } else {
-                        "0x0"
+                        "0"
                     }
                 }
                 _ => {
@@ -175,18 +175,18 @@ mod tests {
     }
 
     #[test]
-    fn anonymize_binary_format_uses_prefixed_bits() {
+    fn anonymize_binary_format_uses_unprefixed_bits() {
         let value_bytes = [0x00_u8, 0x01_u8];
         let value_string = PrimitiveDataTypeBool::anonymize::<u8>(&value_bytes, false, AnonymousValueStringFormat::Binary, 1).unwrap();
 
-        assert_eq!(value_string.get_anonymous_value_string(), "0b0, 0b1");
+        assert_eq!(value_string.get_anonymous_value_string(), "0, 1");
     }
 
     #[test]
-    fn anonymize_hexadecimal_format_uses_prefixed_digits() {
+    fn anonymize_hexadecimal_format_uses_unprefixed_digits() {
         let value_bytes = [0x00_u8, 0x01_u8];
         let value_string = PrimitiveDataTypeBool::anonymize::<u8>(&value_bytes, false, AnonymousValueStringFormat::Hexadecimal, 1).unwrap();
 
-        assert_eq!(value_string.get_anonymous_value_string(), "0x0, 0x1");
+        assert_eq!(value_string.get_anonymous_value_string(), "0, 1");
     }
 }

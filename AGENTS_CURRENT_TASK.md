@@ -36,5 +36,6 @@ Information discovered during iteration:
 - Fixed struct viewer value-box text coloring so writable fields use `foreground` while read-only fields continue using `foreground_preview`.
 - Fixed readonly struct-viewer value-box dropdown labeling and behavior to use `Display as ...` and swap to the matching precomputed display string per selected format (instead of only changing format metadata).
 - Struct viewer now caches per-field display strings for all supported formats using the original typed `DataValue` bytes, avoiding reinterpret/cast paths for readonly display switching.
-- Fixed bool display-string anonymization for `Display as` formats so binary/decimal/hex now render as `0b0/0b1`, `0/1`, and `0x0/0x1` instead of always `true/false`, preventing false validation errors in value boxes.
+- Fixed bool display-string anonymization for `Display as` formats so binary/decimal/hex now render as `0/1` (without `0b`/`0x` prefixes) instead of always `true/false`, preventing false validation errors and avoiding redundant prefixes in the data value box.
 - Added focused bool-format anonymization unit tests in `squalr-engine-domain` covering Bool/Binary/Decimal/Hexadecimal output strings.
+- Fixed readonly `DataValueBoxView` format coloring so Binary/Hexadecimal previews use `binary_blue_preview` and `hexadecimal_green_preview` instead of writable colors.

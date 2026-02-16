@@ -118,9 +118,9 @@ impl PrimitiveDataTypeBool {
                 }
                 AnonymousValueStringFormat::Binary => {
                     if is_true {
-                        "0b1"
+                        "1"
                     } else {
-                        "0b0"
+                        "0"
                     }
                 }
                 AnonymousValueStringFormat::Decimal => {
@@ -132,9 +132,9 @@ impl PrimitiveDataTypeBool {
                 }
                 AnonymousValueStringFormat::Hexadecimal | AnonymousValueStringFormat::Address => {
                     if is_true {
-                        "0x1"
+                        "1"
                     } else {
-                        "0x0"
+                        "0"
                     }
                 }
                 _ => {

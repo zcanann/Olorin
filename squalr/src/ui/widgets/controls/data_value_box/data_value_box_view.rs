@@ -128,14 +128,22 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
             true => theme.foreground_preview,
             false => theme.foreground,
         };
+        let binary_color = match self.use_preview_foreground {
+            true => theme.binary_blue_preview,
+            false => theme.binary_blue,
+        };
+        let hexadecimal_color = match self.use_preview_foreground {
+            true => theme.hexadecimal_green_preview,
+            false => theme.hexadecimal_green,
+        };
         let text_color = match is_valid {
             true => match self.anonymous_value_string.get_anonymous_value_string_format() {
                 AnonymousValueStringFormat::Bool => neutral_foreground_color,
                 AnonymousValueStringFormat::String => neutral_foreground_color,
-                AnonymousValueStringFormat::Binary => theme.binary_blue,
+                AnonymousValueStringFormat::Binary => binary_color,
                 AnonymousValueStringFormat::Decimal => neutral_foreground_color,
-                AnonymousValueStringFormat::Hexadecimal => theme.hexadecimal_green,
-                AnonymousValueStringFormat::Address => theme.hexadecimal_green,
+                AnonymousValueStringFormat::Hexadecimal => hexadecimal_color,
+                AnonymousValueStringFormat::Address => hexadecimal_color,
                 AnonymousValueStringFormat::DataTypeRef => neutral_foreground_color,
                 AnonymousValueStringFormat::Enumeration => neutral_foreground_color,
             },
