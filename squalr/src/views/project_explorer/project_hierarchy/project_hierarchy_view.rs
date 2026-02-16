@@ -286,8 +286,11 @@ impl Widget for ProjectHierarchyView {
                                         .or(dragged_project_item_paths.clone());
 
                                     if let Some(active_dragged_project_item_paths) = active_dragged_project_item_paths {
-                                        if !active_dragged_project_item_paths.contains(&tree_entry.project_item_path) && row_response.hovered() {
+                                        if !active_dragged_project_item_paths.contains(&tree_entry.project_item_path) && row_response.contains_pointer() {
                                             hovered_drop_target_project_item_path = Some(tree_entry.project_item_path.clone());
+                                            user_interface
+                                                .painter()
+                                                .rect_filled(row_response.rect, CornerRadius::ZERO, self.app_context.theme.hover_tint);
                                             user_interface.painter().rect_stroke(
                                                 row_response.rect,
                                                 CornerRadius::ZERO,
@@ -402,7 +405,7 @@ impl Widget for ProjectHierarchyView {
 
         if active_dragged_project_item_paths.is_some() {
             user_interface.output_mut(|platform_output| {
-                platform_output.cursor_icon = CursorIcon::Grabbing;
+                platform_output.cursor_icon = CursorIcon::Move;
             });
         }
 

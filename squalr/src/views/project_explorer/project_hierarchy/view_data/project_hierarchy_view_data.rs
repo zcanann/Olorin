@@ -1192,12 +1192,12 @@ mod tests {
     }
 
     #[test]
-    fn build_preview_value_for_address_uses_default_freeze_display_value() {
+    fn build_preview_value_for_address_without_display_value_returns_unknown() {
         let address_project_item = ProjectItemTypeAddress::new_project_item("Health", 0x1234, "game.exe", "", DataTypeU8::get_value_from_primitive(0));
 
         let preview_value = ProjectHierarchyViewData::build_preview_value(&address_project_item);
 
-        assert_eq!(preview_value, "0");
+        assert_eq!(preview_value, "??");
     }
 
     #[test]

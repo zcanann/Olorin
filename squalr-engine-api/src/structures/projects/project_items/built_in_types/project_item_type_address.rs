@@ -1,6 +1,5 @@
 use crate::engine::engine_api_priviliged_bindings::EngineApiPrivilegedBindings;
 use crate::registries::registry_context::RegistryContext;
-use crate::registries::symbols::symbol_registry::SymbolRegistry;
 use crate::structures::processes::opened_process_info::OpenedProcessInfo;
 use crate::structures::projects::project_items::project_item_ref::ProjectItemRef;
 use crate::structures::structs::symbolic_struct_ref::SymbolicStructRef;
@@ -110,13 +109,8 @@ impl ProjectItemTypeAddress {
         project_item.set_field_description(description);
         Self::set_field_module(&mut project_item, module);
         Self::set_field_address(&mut project_item, address);
-        let symbol_registry = SymbolRegistry::get_instance();
-        let default_string_format = symbol_registry.get_default_anonymous_value_string_format(freeze_value.get_data_type_ref());
-        let freeze_display_value = symbol_registry
-            .anonymize_value(&freeze_value, default_string_format)
-            .map(|anonymous_value_string| anonymous_value_string.get_anonymous_value_string().to_string())
-            .unwrap_or_default();
-        Self::set_field_freeze_data_value_interpreter(&mut project_item, &freeze_display_value);
+        // Default to unknown until project-item refresh logic reads live memory.
+        Self::set_field_freeze_data_value_interpreter(&mut project_item, "");
         Self::set_field_symbolic_struct_definition_reference(&mut project_item, freeze_value.get_data_type_id());
 
         project_item
@@ -248,10 +242,10 @@ mod tests {
     }
 
     #[test]
-    fn new_project_item_sets_freeze_display_value_from_freeze_value() {
+    fn new_project_item_defaults_freeze_display_value_to_unknown() {
         let mut project_item = ProjectItemTypeAddress::new_project_item("Health", 0x1234, "module", "", DataTypeU8::get_value_from_primitive(7));
 
-        assert_eq!(ProjectItemTypeAddress::get_field_freeze_data_value_interpreter(&mut project_item), "7");
+        assert_eq!(ProjectItemTypeAddress::get_field_freeze_data_value_interpreter(&mut project_item), "");
     }
 
     #[test]

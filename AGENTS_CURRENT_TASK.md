@@ -10,7 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- No concrete `pr/project-explorer` regressions currently queued.
+- (No concrete `pr/project-explorer` regressions currently queued.)
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -118,3 +118,7 @@ Information discovered during iteration:
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` TODO/JIRA/stub markers (no new concrete regressions to queue; deferred items unchanged), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); repository remains clean.
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` markers across hierarchy/project-item paths (no new concrete regressions to queue; deferred items unchanged), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); repository remains clean.
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` markers in hierarchy/project-items/scan-results paths (no new concrete regressions; only existing deferred `project save` JIRA), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); repository remains clean.
+- Address project-item creation now defaults `freeze_data_value_interpreter` to empty, restoring `??` preview fallback until live value refresh logic populates the field.
+- Scan-results row rendering now displays only recently-read values (with `??` fallback), removing stale scanned-value fallback in the current-value column.
+- Project hierarchy drag cursor now appears only during active drag (`Move`), and drop-target highlighting now uses pointer containment + fill/stroke overlay for clearer active target indication.
+- Session checkpoint (2026-02-16): Ran `cargo fmt`, `cargo test -p squalr-engine-api project_item_type_address` (4 passed), `cargo test -p squalr project_hierarchy_view_data` (11 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
