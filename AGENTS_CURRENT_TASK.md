@@ -10,7 +10,11 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- No concrete `pr/project-explorer` regressions are currently queued.
+- Dragging a project item should change the cursor. Egui should support this.
+- The drag target should also be highlighted.
+- Multi-item drag should be supported as well.
+- Skipping project items changed notification because opened project lock is busy. can get spammy. Either drop this entirely, make it verbose and hidden, or do nothing. It happens enough that it is meaningless as a warning.
+- Renaming a folder through the struct viewer wipes it from the project list UI.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -104,3 +108,6 @@ Information discovered during iteration:
 - Session checkpoint (2026-02-16, follow-up): Re-audited `pr/project-explorer` TODO/JIRA/stub markers (no new concrete regressions to queue; only existing deferred `project save` JIRA note), then ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); repository remains clean.
 - Fixed `ProjectItemTypeAddress::get_field_address` 4-byte decode path: now deserializes stored bytes instead of always returning `0`, preserving legacy/32-bit address values in project explorer edits and previews.
 - Added regression test `get_field_address_reads_u32_bytes` in `squalr-engine-api` and ran `cargo test -p squalr-engine-api project_item_type_address` (4 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
+- project-items add file naming now derives from scan-result semantics (module+offset or address) instead of fixed scan_result_{index} names, with sanitizer + numeric suffixing (_1, _2, ...) to prevent collisions and allow adding the same scan result multiple times.
+- Session checkpoint (2026-02-16): Ran cargo test -p squalr-engine project_items_add_request_executor (6 passed) and cargo test -p squalr-tests --test project_items_command_tests (19 passed).
+

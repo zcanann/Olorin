@@ -197,18 +197,10 @@ fn add_scan_results_to_project(
                 continue;
             }
         };
-        let scan_result_global_index = scan_result
-            .get_base_result()
-            .get_scan_result_ref()
-            .get_scan_result_global_index();
-        let project_item_file_name = format!("scan_result_{}.json", scan_result_global_index);
-        let project_item_relative_path = directory_relative_path.join(project_item_file_name);
-        let project_item_absolute_path = project_directory_path.join(&project_item_relative_path);
+        let project_item_file_stem = build_project_item_file_stem(scan_result);
+        let project_item_absolute_path =
+            generate_unique_project_item_file_path(project_directory_path, &directory_relative_path, project_items, &project_item_file_stem);
         let project_item_ref = ProjectItemRef::new(project_item_absolute_path.clone());
-
-        if project_items.contains_key(&project_item_ref) {
-            continue;
-        }
 
         let project_item_name = build_project_item_name(scan_result);
         let project_item = ProjectItemTypeAddress::new_project_item(
@@ -224,6 +216,32 @@ fn add_scan_results_to_project(
     }
 
     added_file_paths
+}
+
+fn generate_unique_project_item_file_path(
+    project_directory_path: &Path,
+    directory_relative_path: &Path,
+    project_items: &std::collections::HashMap<ProjectItemRef, squalr_engine_api::structures::projects::project_items::project_item::ProjectItem>,
+    project_item_file_stem: &str,
+) -> PathBuf {
+    let mut duplicate_sequence_number: u64 = 0;
+
+    loop {
+        let project_item_file_name = if duplicate_sequence_number == 0 {
+            format!("{}.json", project_item_file_stem)
+        } else {
+            format!("{}_{}.json", project_item_file_stem, duplicate_sequence_number)
+        };
+        let project_item_relative_path = directory_relative_path.join(project_item_file_name);
+        let project_item_absolute_path = project_directory_path.join(project_item_relative_path);
+        let project_item_ref = ProjectItemRef::new(project_item_absolute_path.clone());
+
+        if !project_items.contains_key(&project_item_ref) {
+            return project_item_absolute_path;
+        }
+
+        duplicate_sequence_number = duplicate_sequence_number.saturating_add(1);
+    }
 }
 
 fn resolve_selected_directory_path(
@@ -300,14 +318,58 @@ fn build_project_item_name(scan_result: &ScanResult) -> String {
     }
 }
 
+fn build_project_item_file_stem(scan_result: &ScanResult) -> String {
+    if scan_result.is_module() {
+        let sanitized_module_name = sanitize_file_name_component(scan_result.get_module());
+
+        format!("{}_0x{:X}", sanitized_module_name, scan_result.get_module_offset())
+    } else {
+        format!("address_0x{:X}", scan_result.get_address())
+    }
+}
+
+fn sanitize_file_name_component(file_name_component: &str) -> String {
+    let mut sanitized_component = String::with_capacity(file_name_component.len());
+    let mut previous_character_was_underscore = false;
+
+    for name_character in file_name_component.chars() {
+        let mapped_character = if name_character.is_ascii_alphanumeric() { name_character } else { '_' };
+
+        if mapped_character == '_' {
+            if previous_character_was_underscore {
+                continue;
+            }
+
+            previous_character_was_underscore = true;
+        } else {
+            previous_character_was_underscore = false;
+        }
+
+        sanitized_component.push(mapped_character);
+    }
+
+    let trimmed_component = sanitized_component.trim_matches('_');
+
+    if trimmed_component.is_empty() {
+        String::from("module")
+    } else {
+        trimmed_component.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::resolve_selected_directory_path;
+    use super::{build_project_item_file_stem, generate_unique_project_item_file_path, resolve_selected_directory_path};
+    use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
+    use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
     use squalr_engine_api::structures::projects::project::Project;
     use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_address::ProjectItemTypeAddress;
     use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
     use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
     use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
+    use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
+    use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
+    use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
 
@@ -375,5 +437,59 @@ mod tests {
             resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &target_directory_path);
 
         assert_eq!(resolved_directory_path, project_directory_path.join(target_directory_relative_path));
+    }
+
+    fn create_scan_result(
+        module_name: &str,
+        module_offset: u64,
+        address: u64,
+        scan_result_global_index: u64,
+    ) -> ScanResult {
+        let scan_result_valued = ScanResultValued::new(
+            address,
+            DataTypeRef::new("u8"),
+            String::new(),
+            Some(DataTypeU8::get_value_from_primitive(0x7F)),
+            Vec::new(),
+            None,
+            Vec::new(),
+            ScanResultRef::new(scan_result_global_index),
+        );
+
+        ScanResult::new(scan_result_valued, module_name.to_string(), module_offset, None, Vec::new(), false)
+    }
+
+    #[test]
+    fn build_project_item_file_stem_uses_module_and_sanitizes_special_characters() {
+        let scan_result = create_scan_result("game.exe (x64)", 0x20, 0x1000, 1);
+
+        let file_stem = build_project_item_file_stem(&scan_result);
+
+        assert_eq!(file_stem, String::from("game_exe_x64_0x20"));
+    }
+
+    #[test]
+    fn build_project_item_file_stem_uses_address_for_non_module_scan_result() {
+        let scan_result = create_scan_result("", 0, 0x401020, 2);
+
+        let file_stem = build_project_item_file_stem(&scan_result);
+
+        assert_eq!(file_stem, String::from("address_0x401020"));
+    }
+
+    #[test]
+    fn generate_unique_project_item_file_path_adds_numeric_suffix_when_name_collides() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let directory_relative_path = Path::new("project_items/Addresses");
+        let existing_item_path = project_directory_path.join("project_items/Addresses/address_0x401000.json");
+        let existing_item_ref = ProjectItemRef::new(existing_item_path);
+        let existing_item = ProjectItemTypeAddress::new_project_item("Existing", 0x401000, "", "", DataTypeU8::get_value_from_primitive(0));
+        let mut project_items = HashMap::new();
+
+        project_items.insert(existing_item_ref, existing_item);
+
+        let generated_path = generate_unique_project_item_file_path(project_directory_path, directory_relative_path, &project_items, "address_0x401000");
+
+        assert_eq!(generated_path, project_directory_path.join("project_items/Addresses/address_0x401000_1.json"));
     }
 }
