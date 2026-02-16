@@ -301,7 +301,7 @@ impl Widget for ElementScannerResultsView {
                                 rows_max_y = Some(row_response.rect.max.y);
 
                                 if row_response.double_clicked() {
-                                    // JIRA: Double click logic.
+                                    element_sanner_result_frame_action = ElementScannerResultFrameAction::AddScanResult(index as i32);
                                 }
                             }
                         });
@@ -414,6 +414,13 @@ impl Widget for ElementScannerResultsView {
                     ElementScannerResultsViewData::add_scan_results_to_project(
                         self.element_scanner_results_view_data.clone(),
                         self.app_context.engine_unprivileged_state.clone(),
+                    );
+                }
+                ElementScannerResultFrameAction::AddScanResult(index) => {
+                    ElementScannerResultsViewData::add_scan_result_to_project_by_index(
+                        self.element_scanner_results_view_data.clone(),
+                        self.app_context.engine_unprivileged_state.clone(),
+                        index,
                     );
                 }
                 ElementScannerResultFrameAction::DeleteSelection => {

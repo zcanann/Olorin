@@ -17,6 +17,8 @@ use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
 use squalr_engine_api::structures::projects::project_items::built_in_types::{
     project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory, project_item_type_pointer::ProjectItemTypePointer,
 };
+use std::collections::HashSet;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -193,7 +195,7 @@ impl ProjectHierarchyView {
     }
 
     fn refresh_if_project_changed(&self) {
-        let opened_project_directory_path = match self
+        let (opened_project_directory_path, opened_project_item_paths, opened_project_sort_order) = match self
             .app_context
             .engine_unprivileged_state
             .get_project_manager()
@@ -202,23 +204,65 @@ impl ProjectHierarchyView {
         {
             Ok(opened_project_guard) => opened_project_guard
                 .as_ref()
-                .and_then(|opened_project| opened_project.get_project_info().get_project_directory()),
+                .map(|opened_project| {
+                    let opened_project_directory_path = opened_project.get_project_info().get_project_directory();
+                    let opened_project_item_paths = opened_project
+                        .get_project_items()
+                        .keys()
+                        .map(|project_item_ref| project_item_ref.get_project_item_path().clone())
+                        .collect::<HashSet<PathBuf>>();
+                    let opened_project_sort_order = opened_project
+                        .get_project_info()
+                        .get_project_manifest()
+                        .get_project_item_sort_order()
+                        .iter()
+                        .cloned()
+                        .collect::<Vec<PathBuf>>();
+
+                    (opened_project_directory_path, opened_project_item_paths, opened_project_sort_order)
+                })
+                .unwrap_or((None, HashSet::new(), Vec::new())),
             Err(error) => {
                 log::error!("Failed to acquire opened project lock for hierarchy refresh check: {}", error);
-                None
+                (None, HashSet::new(), Vec::new())
             }
         };
-        let loaded_project_directory_path = self
+
+        let (loaded_project_directory_path, loaded_project_item_paths, loaded_project_sort_order) = self
             .project_hierarchy_view_data
             .read("Project hierarchy refresh check")
-            .and_then(|project_hierarchy_view_data| {
-                project_hierarchy_view_data
+            .map(|project_hierarchy_view_data| {
+                let loaded_project_directory_path = project_hierarchy_view_data
                     .opened_project_info
                     .as_ref()
-                    .and_then(|project_info| project_info.get_project_directory())
-            });
+                    .and_then(|project_info| project_info.get_project_directory());
+                let loaded_project_item_paths = project_hierarchy_view_data
+                    .project_items
+                    .iter()
+                    .map(|(project_item_ref, _)| project_item_ref.get_project_item_path().clone())
+                    .collect::<HashSet<PathBuf>>();
+                let loaded_project_sort_order = project_hierarchy_view_data
+                    .opened_project_info
+                    .as_ref()
+                    .map(|project_info| {
+                        project_info
+                            .get_project_manifest()
+                            .get_project_item_sort_order()
+                            .iter()
+                            .cloned()
+                            .collect::<Vec<PathBuf>>()
+                    })
+                    .unwrap_or_default();
 
-        if opened_project_directory_path != loaded_project_directory_path {
+                (loaded_project_directory_path, loaded_project_item_paths, loaded_project_sort_order)
+            })
+            .unwrap_or((None, HashSet::new(), Vec::new()));
+
+        let project_directory_changed = opened_project_directory_path != loaded_project_directory_path;
+        let project_items_changed = opened_project_item_paths != loaded_project_item_paths;
+        let sort_order_changed = opened_project_sort_order != loaded_project_sort_order;
+
+        if project_directory_changed || project_items_changed || sort_order_changed {
             ProjectHierarchyViewData::refresh_project_items(self.project_hierarchy_view_data.clone(), self.app_context.clone());
         }
     }
