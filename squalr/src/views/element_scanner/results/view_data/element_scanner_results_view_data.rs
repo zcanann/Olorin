@@ -169,11 +169,11 @@ impl ElementScannerResultsViewData {
             Some(element_scanner_results_view_data) => element_scanner_results_view_data,
             None => return,
         };
-        let scan_result_refs = element_scanner_results_view_data
-            .current_scan_results
-            .iter()
-            .map(|scan_result| scan_result.get_base_result().get_scan_result_ref().clone())
-            .collect();
+        let scan_result_refs = Self::collect_scan_result_refs_for_selected_range(&element_scanner_results_view_data);
+
+        if scan_result_refs.is_empty() {
+            return;
+        }
 
         let scan_results_set_property_request = ScanResultsSetPropertyRequest {
             scan_result_refs,
@@ -186,7 +186,7 @@ impl ElementScannerResultsViewData {
         // Drop to commit the write before send(), which may execute the callback synchronously.
         drop(element_scanner_results_view_data);
 
-        scan_results_set_property_request.send(&engine_unprivileged_state, move |scan_results_set_property_response| {
+        scan_results_set_property_request.send(&engine_unprivileged_state, move |_scan_results_set_property_response| {
             let mut element_scanner_results_view_data = match element_scanner_results_view_data_clone.write("Set selected scan results response") {
                 Some(element_scanner_results_view_data) => element_scanner_results_view_data,
                 None => return,
@@ -642,15 +642,19 @@ impl ElementScannerResultsViewData {
             None => return Vec::new(),
         };
 
-        let Some(range) = Self::get_selected_results_range(&element_scanner_results_view_data) else {
+        Self::collect_scan_result_refs_for_selected_range(&element_scanner_results_view_data)
+    }
+
+    fn collect_scan_result_refs_for_selected_range(element_scanner_results_view_data: &ElementScannerResultsViewData) -> Vec<ScanResultRef> {
+        let Some(selected_result_range) = Self::get_selected_results_range(element_scanner_results_view_data) else {
             return Vec::new();
         };
 
-        range
-            .filter_map(|index| {
+        selected_result_range
+            .filter_map(|selected_result_index| {
                 element_scanner_results_view_data
                     .current_scan_results
-                    .get(index)
+                    .get(selected_result_index)
             })
             .map(|scan_result| scan_result.get_base_result().get_scan_result_ref().clone())
             .collect()
@@ -701,5 +705,78 @@ impl ElementScannerResultsViewData {
                     .get_scan_result_global_index()
                     == global_index
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ElementScannerResultsViewData;
+    use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
+    use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
+    use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
+    use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
+
+    fn create_scan_result(scan_result_global_index: u64) -> ScanResult {
+        let scan_result_valued = ScanResultValued::new(
+            0x1000 + scan_result_global_index,
+            DataTypeRef::new("u8"),
+            String::new(),
+            None,
+            Vec::new(),
+            None,
+            Vec::new(),
+            ScanResultRef::new(scan_result_global_index),
+        );
+
+        ScanResult::new(scan_result_valued, String::new(), 0, None, Vec::new(), false)
+    }
+
+    fn create_view_data_with_scan_results(scan_result_global_indices: &[u64]) -> ElementScannerResultsViewData {
+        let mut element_scanner_results_view_data = ElementScannerResultsViewData::new();
+        element_scanner_results_view_data.current_scan_results = scan_result_global_indices
+            .iter()
+            .map(|scan_result_global_index| create_scan_result(*scan_result_global_index))
+            .collect();
+
+        element_scanner_results_view_data
+    }
+
+    #[test]
+    fn collect_scan_result_refs_for_selected_range_uses_multi_select_bounds() {
+        let mut element_scanner_results_view_data = create_view_data_with_scan_results(&[10, 11, 12, 13]);
+        element_scanner_results_view_data.selection_index_start = Some(1);
+        element_scanner_results_view_data.selection_index_end = Some(2);
+
+        let selected_scan_result_refs = ElementScannerResultsViewData::collect_scan_result_refs_for_selected_range(&element_scanner_results_view_data);
+        let selected_scan_result_global_indices = selected_scan_result_refs
+            .iter()
+            .map(|scan_result_ref| scan_result_ref.get_scan_result_global_index())
+            .collect::<Vec<_>>();
+
+        assert_eq!(selected_scan_result_global_indices, vec![11, 12]);
+    }
+
+    #[test]
+    fn collect_scan_result_refs_for_selected_range_uses_single_select_when_end_missing() {
+        let mut element_scanner_results_view_data = create_view_data_with_scan_results(&[10, 11, 12, 13]);
+        element_scanner_results_view_data.selection_index_start = Some(2);
+        element_scanner_results_view_data.selection_index_end = None;
+
+        let selected_scan_result_refs = ElementScannerResultsViewData::collect_scan_result_refs_for_selected_range(&element_scanner_results_view_data);
+        let selected_scan_result_global_indices = selected_scan_result_refs
+            .iter()
+            .map(|scan_result_ref| scan_result_ref.get_scan_result_global_index())
+            .collect::<Vec<_>>();
+
+        assert_eq!(selected_scan_result_global_indices, vec![12]);
+    }
+
+    #[test]
+    fn collect_scan_result_refs_for_selected_range_returns_empty_without_selection() {
+        let element_scanner_results_view_data = create_view_data_with_scan_results(&[10, 11, 12, 13]);
+
+        let selected_scan_result_refs = ElementScannerResultsViewData::collect_scan_result_refs_for_selected_range(&element_scanner_results_view_data);
+
+        assert!(selected_scan_result_refs.is_empty());
     }
 }
