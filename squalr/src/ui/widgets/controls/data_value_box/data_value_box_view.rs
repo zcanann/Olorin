@@ -224,9 +224,10 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         } else {
             theme.font_library.font_noto_sans.font_normal.clone()
         };
+        let text_edit_id = Id::new(format!("{}_text_edit", self.id));
         let text_edit_response = text_edit_user_interface.add(
             TextEdit::singleline(&mut text_value)
-                .id_source(format!("{}_text_edit", self.id))
+                .id(text_edit_id)
                 .vertical_align(eframe::egui::Align::Center)
                 .font(font_id.clone())
                 .text_color(text_color)

@@ -20,6 +20,8 @@ Information found in initial audit:
 - Struct viewer had no value editor rendering path and no commit callback wiring despite an existing frame action enum.
 
 Information discovered during iteration:
+- Enter-to-commit in scan results and struct viewer value editors failed because `DataValueBoxView` used `TextEdit::id_source`, which scopes IDs to local UI context and broke caller-side `memory.has_focus(...)` checks.
+- Fixed by assigning an explicit stable `TextEdit` id (`<data_value_box_id>_text_edit`) inside `DataValueBoxView`, and by wiring Enter commit in the scan-results action bar to the same frame action used by the checkmark button.
 - Struct viewer edits for scan result `is_frozen` were routed through generic set-property handling, which skipped the scan-results view model's client-side freeze update path.
 - Fixed by routing struct viewer `is_frozen` edits through `toggle_selected_scan_results_frozen`, preserving immediate checkbox/UI sync and existing freeze failure reversion behavior.
 - Struct viewer value commits now trigger on Enter when the row's `DataValueBox` text editor has focus, using a stable text edit id and the same commit path as the checkmark button.

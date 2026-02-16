@@ -11,7 +11,7 @@ use crate::{
         scanner::view_data::element_scanner_view_data::ElementScannerViewData,
     },
 };
-use eframe::egui::{Align, Layout, Response, Sense, Ui, UiBuilder, Widget};
+use eframe::egui::{Align, Id, Key, Layout, Response, Sense, Ui, UiBuilder, Widget};
 use epaint::{Color32, CornerRadius, Rect, Stroke, StrokeKind, pos2, vec2};
 use squalr_engine_api::dependency_injection::dependency::Dependency;
 use std::sync::Arc;
@@ -173,6 +173,9 @@ impl<'lifetime> Widget for ElementScannerResultsActionBarView<'lifetime> {
                 )
                 .width(data_value_box_width),
             );
+            let data_value_box_text_edit_id = Id::new("data_value_box_edit_value_text_edit");
+            let commit_on_enter_pressed = user_interface.input(|input_state| input_state.key_pressed(Key::Enter))
+                && user_interface.memory(|memory| memory.has_focus(data_value_box_text_edit_id));
 
             let commit_value_response = user_interface.add_sized(
                 button_size,
@@ -183,7 +186,7 @@ impl<'lifetime> Widget for ElementScannerResultsActionBarView<'lifetime> {
 
             IconDraw::draw(user_interface, commit_value_response.rect, &theme.icon_library.icon_handle_common_check_mark);
 
-            if commit_value_response.clicked() {
+            if commit_value_response.clicked() || commit_on_enter_pressed {
                 *self.element_sanner_result_frame_action =
                     ElementScannerResultFrameAction::CommitValueToSelection(element_scanner_results_view_data.current_display_string.clone());
             }
