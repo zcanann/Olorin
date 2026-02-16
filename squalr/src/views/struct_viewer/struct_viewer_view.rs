@@ -90,8 +90,12 @@ impl Widget for StructViewerView {
                                 let validation_data_type_ref = field
                                     .get_data_value()
                                     .map(|data_value| data_value.get_data_type_ref());
-                                let field_edit_value = struct_viewer_view_data.field_edit_values.get_mut(field.get_name());
-                                let field_display_values = field_display_values_map.get(field.get_name()).map(Vec::as_slice);
+                                let field_edit_value = struct_viewer_view_data
+                                    .field_edit_values
+                                    .get_mut(field.get_name());
+                                let field_display_values = field_display_values_map
+                                    .get(field.get_name())
+                                    .map(Vec::as_slice);
 
                                 inner_ui.add(StructViewerEntryView::new(
                                     self.app_context.clone(),
