@@ -4,8 +4,10 @@ use crate::views::project_explorer::project_hierarchy::view_data::{
     project_hierarchy_tree_entry::ProjectHierarchyTreeEntry,
 };
 use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
+use squalr_engine_api::commands::project_items::create::project_items_create_request::ProjectItemsCreateRequest;
 use squalr_engine_api::commands::project_items::delete::project_items_delete_request::ProjectItemsDeleteRequest;
 use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
+use squalr_engine_api::commands::project_items::move_item::project_items_move_request::ProjectItemsMoveRequest;
 use squalr_engine_api::commands::project_items::reorder::project_items_reorder_request::ProjectItemsReorderRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
@@ -18,6 +20,16 @@ use squalr_engine_api::structures::projects::project_items::{project_item::Proje
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+enum ProjectHierarchyDropOperation {
+    Reorder {
+        project_item_paths: Vec<PathBuf>,
+    },
+    Move {
+        project_item_paths: Vec<PathBuf>,
+        target_directory_path: PathBuf,
+    },
+}
 
 #[derive(Clone)]
 pub struct ProjectHierarchyViewData {
@@ -241,7 +253,7 @@ impl ProjectHierarchyViewData {
         app_context: Arc<AppContext>,
         target_project_item_path: PathBuf,
     ) {
-        let reordered_project_item_paths = {
+        let drop_operation = {
             let mut project_hierarchy_view_data = match project_hierarchy_view_data.write("Project hierarchy commit reorder drop") {
                 Some(project_hierarchy_view_data) => project_hierarchy_view_data,
                 None => return,
@@ -256,18 +268,18 @@ impl ProjectHierarchyViewData {
                 return;
             }
 
-            let reordered_project_item_paths = Self::build_reordered_project_item_paths(
+            let drop_operation = Self::build_drop_operation(
                 project_hierarchy_view_data.opened_project_info.as_ref(),
                 &project_hierarchy_view_data.project_items,
                 &dragged_project_item_path,
                 &target_project_item_path,
             );
 
-            match reordered_project_item_paths {
-                Some(reordered_project_item_paths) => {
+            match drop_operation {
+                Some(drop_operation) => {
                     project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::Reordering;
                     project_hierarchy_view_data.dragged_project_item_path = None;
-                    reordered_project_item_paths
+                    drop_operation
                 }
                 None => {
                     project_hierarchy_view_data.dragged_project_item_path = None;
@@ -276,26 +288,53 @@ impl ProjectHierarchyViewData {
             }
         };
 
-        let project_items_reorder_request = ProjectItemsReorderRequest {
-            project_item_paths: reordered_project_item_paths,
-        };
         let app_context_clone = app_context.clone();
         let project_hierarchy_view_data_clone = project_hierarchy_view_data.clone();
 
-        project_items_reorder_request.send(&app_context.engine_unprivileged_state, move |project_items_reorder_response| {
-            if !project_items_reorder_response.success {
-                log::error!(
-                    "Failed to reorder project items. Reordered count: {}.",
-                    project_items_reorder_response.reordered_project_item_count
-                );
-            }
+        match drop_operation {
+            ProjectHierarchyDropOperation::Reorder { project_item_paths } => {
+                let project_items_reorder_request = ProjectItemsReorderRequest { project_item_paths };
 
-            if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy reorder project items response") {
-                project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::None;
-            }
+                project_items_reorder_request.send(&app_context.engine_unprivileged_state, move |project_items_reorder_response| {
+                    if !project_items_reorder_response.success {
+                        log::error!(
+                            "Failed to reorder project items. Reordered count: {}.",
+                            project_items_reorder_response.reordered_project_item_count
+                        );
+                    }
 
-            Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
-        });
+                    if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy reorder project items response") {
+                        project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::None;
+                    }
+
+                    Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
+                });
+            }
+            ProjectHierarchyDropOperation::Move {
+                project_item_paths,
+                target_directory_path,
+            } => {
+                let project_items_move_request = ProjectItemsMoveRequest {
+                    project_item_paths,
+                    target_directory_path,
+                };
+
+                project_items_move_request.send(&app_context.engine_unprivileged_state, move |project_items_move_response| {
+                    if !project_items_move_response.success {
+                        log::error!(
+                            "Failed to move project items. Moved count: {}.",
+                            project_items_move_response.moved_project_item_count
+                        );
+                    }
+
+                    if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy move project items response") {
+                        project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::None;
+                    }
+
+                    Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
+                });
+            }
+        }
     }
 
     pub fn delete_project_items(
@@ -334,6 +373,43 @@ impl ProjectHierarchyViewData {
         });
     }
 
+    pub fn create_directory(
+        project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
+        app_context: Arc<AppContext>,
+        target_project_item_path: PathBuf,
+    ) {
+        let (parent_directory_path, directory_name) = match project_hierarchy_view_data.write("Project hierarchy resolve create directory target") {
+            Some(project_hierarchy_view_data) => {
+                let parent_directory_path = Self::resolve_directory_create_parent_path(&project_hierarchy_view_data.project_items, &target_project_item_path);
+                let directory_name = Self::build_unique_directory_name(&project_hierarchy_view_data.project_items, &parent_directory_path);
+
+                (parent_directory_path, directory_name)
+            }
+            None => return,
+        };
+
+        let project_items_create_request = ProjectItemsCreateRequest {
+            parent_directory_path,
+            project_item_name: directory_name,
+            project_item_type: ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID.to_string(),
+        };
+        let app_context_clone = app_context.clone();
+        let project_hierarchy_view_data_clone = project_hierarchy_view_data.clone();
+
+        project_items_create_request.send(&app_context.engine_unprivileged_state, move |project_items_create_response| {
+            if !project_items_create_response.success {
+                log::error!("Failed to create project directory item.");
+                return;
+            }
+
+            if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy select created directory") {
+                project_hierarchy_view_data.selected_project_item_path = Some(project_items_create_response.created_project_item_path.clone());
+            }
+
+            Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
+        });
+    }
+
     pub fn set_project_item_activation(
         project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
         app_context: Arc<AppContext>,
@@ -364,32 +440,81 @@ impl ProjectHierarchyViewData {
             };
 
         let mut visible_tree_entries = Vec::new();
+        let root_is_expanded = expanded_directory_paths.contains(&project_root_directory_path);
 
-        Self::append_visible_entries(
-            &mut visible_tree_entries,
-            &project_root_directory_path,
-            &child_paths_by_parent_path,
-            &project_item_map,
-            0,
-            expanded_directory_paths,
-        );
+        if let Some((project_item_ref, project_item)) = project_item_map.get(&project_root_directory_path) {
+            let has_children = child_paths_by_parent_path
+                .get(&project_root_directory_path)
+                .map(|entries| !entries.is_empty())
+                .unwrap_or(false);
+            let display_name = project_item.get_field_name();
+            let display_name = if display_name.is_empty() {
+                project_root_directory_path
+                    .file_name()
+                    .and_then(|value| value.to_str())
+                    .unwrap_or_default()
+                    .to_string()
+            } else {
+                display_name
+            };
+
+            visible_tree_entries.push(ProjectHierarchyTreeEntry {
+                project_item_ref: project_item_ref.clone(),
+                project_item: project_item.clone(),
+                project_item_path: project_root_directory_path.clone(),
+                display_name,
+                preview_value: Self::build_preview_value(project_item),
+                is_activated: project_item.get_is_activated(),
+                depth: 0,
+                is_directory: true,
+                has_children,
+                is_expanded: root_is_expanded,
+            });
+        }
+
+        if root_is_expanded {
+            Self::append_visible_entries(
+                &mut visible_tree_entries,
+                &project_root_directory_path,
+                &child_paths_by_parent_path,
+                &project_item_map,
+                1,
+                expanded_directory_paths,
+            );
+        }
 
         visible_tree_entries
     }
 
-    fn build_reordered_project_item_paths(
+    fn build_drop_operation(
         opened_project_info: Option<&ProjectInfo>,
         project_items: &[(ProjectItemRef, ProjectItem)],
         dragged_project_item_path: &Path,
         target_project_item_path: &Path,
-    ) -> Option<Vec<PathBuf>> {
-        let (project_root_directory_path, _project_item_map, mut child_paths_by_parent_path) =
+    ) -> Option<ProjectHierarchyDropOperation> {
+        let (_project_root_directory_path, project_item_map, mut child_paths_by_parent_path) =
             Self::build_project_hierarchy_maps(opened_project_info, project_items)?;
+        let target_is_directory = Self::is_directory_path(target_project_item_path, &project_item_map);
         let dragged_parent_path = dragged_project_item_path.parent()?.to_path_buf();
-        let target_parent_path = target_project_item_path.parent()?.to_path_buf();
+        let target_directory_path = if target_is_directory {
+            target_project_item_path.to_path_buf()
+        } else {
+            target_project_item_path.parent()?.to_path_buf()
+        };
 
-        if dragged_project_item_path == target_project_item_path || dragged_parent_path != target_parent_path {
+        if dragged_project_item_path == target_project_item_path {
             return None;
+        }
+
+        if target_directory_path.starts_with(dragged_project_item_path) {
+            return None;
+        }
+
+        if dragged_parent_path != target_directory_path {
+            return Some(ProjectHierarchyDropOperation::Move {
+                project_item_paths: vec![dragged_project_item_path.to_path_buf()],
+                target_directory_path,
+            });
         }
 
         let sibling_paths = child_paths_by_parent_path.get_mut(&dragged_parent_path)?;
@@ -409,9 +534,11 @@ impl ProjectHierarchyViewData {
         sibling_paths.insert(adjusted_target_sibling_index, dragged_path);
 
         let mut reordered_project_item_paths = Vec::new();
-        Self::append_project_item_paths_in_order(&project_root_directory_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
+        Self::append_project_item_paths_in_order(&dragged_parent_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
 
-        Some(reordered_project_item_paths)
+        Some(ProjectHierarchyDropOperation::Reorder {
+            project_item_paths: reordered_project_item_paths,
+        })
     }
 
     fn append_visible_entries(
@@ -632,5 +759,122 @@ impl ProjectHierarchyViewData {
         };
 
         String::from_utf8(data_value.get_value_bytes().clone()).unwrap_or_default()
+    }
+
+    fn resolve_directory_create_parent_path(
+        project_items: &[(ProjectItemRef, ProjectItem)],
+        target_project_item_path: &Path,
+    ) -> PathBuf {
+        let is_target_directory = project_items
+            .iter()
+            .find(|(project_item_ref, _)| project_item_ref.get_project_item_path() == target_project_item_path)
+            .map(|(_, project_item)| Self::is_directory_project_item(project_item))
+            .unwrap_or(false);
+
+        if is_target_directory {
+            target_project_item_path.to_path_buf()
+        } else {
+            target_project_item_path
+                .parent()
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| target_project_item_path.to_path_buf())
+        }
+    }
+
+    fn build_unique_directory_name(
+        project_items: &[(ProjectItemRef, ProjectItem)],
+        parent_directory_path: &Path,
+    ) -> String {
+        const BASE_DIRECTORY_NAME: &str = "New Folder";
+        let existing_children: HashSet<String> = project_items
+            .iter()
+            .map(|(project_item_ref, _)| project_item_ref.get_project_item_path())
+            .filter(|project_item_path| project_item_path.parent() == Some(parent_directory_path))
+            .filter_map(|project_item_path| {
+                project_item_path
+                    .file_name()
+                    .and_then(|value| value.to_str())
+                    .map(str::to_string)
+            })
+            .collect();
+
+        if !existing_children.contains(BASE_DIRECTORY_NAME) {
+            return BASE_DIRECTORY_NAME.to_string();
+        }
+
+        let mut directory_suffix_index = 2usize;
+        loop {
+            let candidate_name = format!("{} {}", BASE_DIRECTORY_NAME, directory_suffix_index);
+            if !existing_children.contains(&candidate_name) {
+                return candidate_name;
+            }
+
+            directory_suffix_index += 1;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ProjectHierarchyViewData;
+    use squalr_engine_api::structures::projects::project_items::built_in_types::{
+        project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory,
+    };
+    use squalr_engine_api::structures::projects::project_items::{project_item::ProjectItem, project_item_ref::ProjectItemRef};
+    use std::path::{Path, PathBuf};
+
+    fn create_directory_project_item(project_item_path: &Path) -> (ProjectItemRef, ProjectItem) {
+        let project_item_ref = ProjectItemRef::new(project_item_path.to_path_buf());
+        let project_item = ProjectItemTypeDirectory::new_project_item(&project_item_ref);
+
+        (project_item_ref, project_item)
+    }
+
+    #[test]
+    fn resolve_directory_create_parent_path_for_directory_target_returns_target_path() {
+        let project_directory_path = PathBuf::from("C:/Projects/TestProject/project");
+        let target_directory_path = project_directory_path.join("Cheats");
+        let project_items = vec![create_directory_project_item(&target_directory_path)];
+
+        let resolved_parent_path = ProjectHierarchyViewData::resolve_directory_create_parent_path(&project_items, &target_directory_path);
+
+        assert_eq!(resolved_parent_path, target_directory_path);
+    }
+
+    #[test]
+    fn resolve_directory_create_parent_path_for_file_target_returns_parent_directory() {
+        let project_directory_path = PathBuf::from("C:/Projects/TestProject/project");
+        let target_directory_path = project_directory_path.join("Cheats");
+        let target_file_path = target_directory_path.join("health.json");
+        let project_items = vec![
+            create_directory_project_item(&target_directory_path),
+            (
+                ProjectItemRef::new(target_file_path.clone()),
+                ProjectItemTypeAddress::new_project_item(
+                    "Health",
+                    0x1234,
+                    "game.exe",
+                    "",
+                    squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8::get_value_from_primitive(0),
+                ),
+            ),
+        ];
+
+        let resolved_parent_path = ProjectHierarchyViewData::resolve_directory_create_parent_path(&project_items, &target_file_path);
+
+        assert_eq!(resolved_parent_path, target_directory_path);
+    }
+
+    #[test]
+    fn build_unique_directory_name_returns_incremented_suffix_when_name_conflicts() {
+        let parent_directory_path = PathBuf::from("C:/Projects/TestProject/project");
+        let project_items = vec![
+            create_directory_project_item(&parent_directory_path.join("New Folder")),
+            create_directory_project_item(&parent_directory_path.join("New Folder 2")),
+        ];
+
+        let next_directory_name = ProjectHierarchyViewData::build_unique_directory_name(&project_items, &parent_directory_path);
+
+        assert_eq!(next_directory_name, "New Folder 3");
     }
 }

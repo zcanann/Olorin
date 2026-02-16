@@ -6,4 +6,6 @@ pub enum ProjectHierarchyFrameAction {
     SelectProjectItem(PathBuf),
     ToggleDirectoryExpansion(PathBuf),
     SetProjectItemActivation(PathBuf, bool),
+    CreateDirectory(PathBuf),
+    RequestDeleteConfirmation(Vec<PathBuf>),
 }

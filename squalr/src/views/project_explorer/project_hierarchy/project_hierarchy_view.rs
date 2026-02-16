@@ -129,6 +129,7 @@ impl Widget for ProjectHierarchyView {
         let mut hovered_drop_target_project_item_path: Option<PathBuf> = None;
         let mut should_cancel_take_over = false;
         let mut delete_confirmation_project_item_paths: Option<Vec<std::path::PathBuf>> = None;
+        let mut keyboard_activation_toggle_target: Option<(PathBuf, bool)> = None;
         let response = user_interface
             .allocate_ui_with_layout(user_interface.available_size(), Layout::top_down(Align::Min), |user_interface| {
                 let project_hierarchy_view_data = match self.project_hierarchy_view_data.read("Project hierarchy view") {
@@ -190,6 +191,20 @@ impl Widget for ProjectHierarchyView {
                                     if row_response.drag_started() {
                                         drag_started_project_item_path = Some(tree_entry.project_item_path.clone());
                                     }
+
+                                    let tree_entry_project_item_path = tree_entry.project_item_path.clone();
+                                    row_response.context_menu(|user_interface| {
+                                        if user_interface.button("New Folder").clicked() {
+                                            project_hierarchy_frame_action = ProjectHierarchyFrameAction::CreateDirectory(tree_entry_project_item_path.clone());
+                                            user_interface.close();
+                                        }
+
+                                        if user_interface.button("Delete").clicked() {
+                                            project_hierarchy_frame_action =
+                                                ProjectHierarchyFrameAction::RequestDeleteConfirmation(vec![tree_entry_project_item_path.clone()]);
+                                            user_interface.close();
+                                        }
+                                    });
 
                                     let active_dragged_project_item_path = drag_started_project_item_path
                                         .as_ref()
@@ -257,12 +272,37 @@ impl Widget for ProjectHierarchyView {
             ProjectHierarchyViewData::request_delete_confirmation_for_selected_project_item(self.project_hierarchy_view_data.clone());
         }
 
+        if user_interface.input(|input_state| input_state.key_pressed(eframe::egui::Key::Space)) {
+            keyboard_activation_toggle_target = self
+                .project_hierarchy_view_data
+                .read("Project hierarchy keyboard activation toggle")
+                .and_then(|project_hierarchy_view_data| {
+                    let selected_project_item_path = project_hierarchy_view_data.selected_project_item_path.clone()?;
+                    let selected_project_item = project_hierarchy_view_data
+                        .project_items
+                        .iter()
+                        .find(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &selected_project_item_path)
+                        .map(|(_, project_item)| project_item)?;
+
+                    Some((selected_project_item_path, !selected_project_item.get_is_activated()))
+                });
+        }
+
         if should_cancel_take_over {
             ProjectHierarchyViewData::cancel_take_over(self.project_hierarchy_view_data.clone());
         }
 
         if let Some(project_item_paths) = delete_confirmation_project_item_paths {
             ProjectHierarchyViewData::delete_project_items(self.project_hierarchy_view_data.clone(), self.app_context.clone(), project_item_paths);
+        }
+
+        if let Some((project_item_path, is_activated)) = keyboard_activation_toggle_target {
+            ProjectHierarchyViewData::set_project_item_activation(
+                self.project_hierarchy_view_data.clone(),
+                self.app_context.clone(),
+                project_item_path,
+                is_activated,
+            );
         }
 
         if let Some(drag_started_project_item_path) = drag_started_project_item_path.clone() {
@@ -305,6 +345,12 @@ impl Widget for ProjectHierarchyView {
                     project_item_path,
                     is_activated,
                 );
+            }
+            ProjectHierarchyFrameAction::CreateDirectory(target_project_item_path) => {
+                ProjectHierarchyViewData::create_directory(self.project_hierarchy_view_data.clone(), self.app_context.clone(), target_project_item_path);
+            }
+            ProjectHierarchyFrameAction::RequestDeleteConfirmation(project_item_paths) => {
+                ProjectHierarchyViewData::request_delete_confirmation(self.project_hierarchy_view_data.clone(), project_item_paths);
             }
         }
 
