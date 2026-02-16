@@ -462,6 +462,10 @@ impl ProjectHierarchyViewData {
             }
 
             if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy select created directory") {
+                Self::expand_project_item_ancestor_directories(
+                    &mut project_hierarchy_view_data.expanded_directory_paths,
+                    &project_items_create_response.created_project_item_path,
+                );
                 project_hierarchy_view_data.selected_project_item_path = Some(project_items_create_response.created_project_item_path.clone());
                 project_hierarchy_view_data.selected_project_item_paths.clear();
                 project_hierarchy_view_data
@@ -518,16 +522,21 @@ impl ProjectHierarchyViewData {
                 .get(&project_root_directory_path)
                 .map(|entries| !entries.is_empty())
                 .unwrap_or(false);
-            let display_name = project_item.get_field_name();
-            let display_name = if display_name.is_empty() {
-                project_root_directory_path
-                    .file_name()
-                    .and_then(|value| value.to_str())
-                    .unwrap_or_default()
-                    .to_string()
-            } else {
-                display_name
-            };
+            let display_name = opened_project_info
+                .map(|project_info| project_info.get_name().to_string())
+                .filter(|project_name| !project_name.is_empty())
+                .unwrap_or_else(|| {
+                    let root_display_name = project_item.get_field_name();
+                    if root_display_name.is_empty() {
+                        project_root_directory_path
+                            .file_name()
+                            .and_then(|value| value.to_str())
+                            .unwrap_or_default()
+                            .to_string()
+                    } else {
+                        root_display_name
+                    }
+                });
 
             visible_tree_entries.push(ProjectHierarchyTreeEntry {
                 project_item_ref: project_item_ref.clone(),
@@ -761,14 +770,32 @@ impl ProjectHierarchyViewData {
         let project_info = opened_project_info?;
         let project_directory_path = project_info.get_project_directory()?;
         let hidden_project_root_path = project_directory_path.join(Project::PROJECT_DIR);
+        let legacy_hidden_project_root_path = project_directory_path.join(Project::LEGACY_PROJECT_DIR);
         let contains_hidden_project_root = project_items
             .iter()
             .any(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &hidden_project_root_path);
+        let contains_legacy_hidden_project_root = project_items
+            .iter()
+            .any(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &legacy_hidden_project_root_path);
 
         if contains_hidden_project_root {
             Some(hidden_project_root_path)
+        } else if contains_legacy_hidden_project_root {
+            Some(legacy_hidden_project_root_path)
         } else {
             Some(project_directory_path)
+        }
+    }
+
+    fn expand_project_item_ancestor_directories(
+        expanded_directory_paths: &mut HashSet<PathBuf>,
+        project_item_path: &Path,
+    ) {
+        let mut current_path = project_item_path.parent();
+
+        while let Some(directory_path) = current_path {
+            expanded_directory_paths.insert(directory_path.to_path_buf());
+            current_path = directory_path.parent();
         }
     }
 

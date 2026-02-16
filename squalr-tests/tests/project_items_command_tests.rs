@@ -18,6 +18,7 @@ use squalr_engine_api::commands::project_items::reorder::project_items_reorder_r
 use squalr_engine_api::commands::unprivileged_command::UnprivilegedCommand;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::commands::unprivileged_command_response::TypedUnprivilegedCommandResponse;
+use squalr_engine_api::structures::projects::project::Project;
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_tests::shared_execution_context;
 use std::path::PathBuf;
@@ -293,6 +294,7 @@ fn unprivileged_command_parser_accepts_project_items_add_with_long_flags() {
 
 #[test]
 fn unprivileged_command_parser_accepts_project_items_add_target_directory_path() {
+    let target_directory_path = format!("{}/Addresses", Project::PROJECT_DIR);
     let parse_result = std::panic::catch_unwind(|| {
         UnprivilegedCommand::from_iter_safe([
             "squalr-cli",
@@ -301,7 +303,7 @@ fn unprivileged_command_parser_accepts_project_items_add_target_directory_path()
             "--scan-result-refs",
             "12",
             "--target-directory-path",
-            "project/Addresses",
+            &target_directory_path,
         ])
     });
 
@@ -314,7 +316,7 @@ fn unprivileged_command_parser_accepts_project_items_add_target_directory_path()
         UnprivilegedCommand::ProjectItems(ProjectItemsCommand::Add { project_items_add_request }) => {
             assert_eq!(project_items_add_request.scan_result_refs.len(), 1);
             assert_eq!(project_items_add_request.scan_result_refs[0].get_scan_result_global_index(), 12);
-            assert_eq!(project_items_add_request.target_directory_path, Some(PathBuf::from("project/Addresses")));
+            assert_eq!(project_items_add_request.target_directory_path, Some(PathBuf::from(target_directory_path)));
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }

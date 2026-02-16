@@ -35,7 +35,8 @@ impl SerializableProjectFile for Project {
     fn load_from_path(project_directory_path: &Path) -> anyhow::Result<Self> {
         let project_info = ProjectInfo::load_from_path(&project_directory_path.join(Project::PROJECT_FILE))?;
         let mut project_items = HashMap::new();
-        let project_root_ref = ProjectItemRef::new(project_directory_path.join(Project::PROJECT_DIR));
+        let project_root_directory_path = resolve_project_root_directory_path(project_directory_path);
+        let project_root_ref = ProjectItemRef::new(project_root_directory_path.clone());
         let project_root = ProjectItemTypeDirectory::new_project_item(&project_root_ref);
 
         project_items.insert(project_root_ref.clone(), project_root);
@@ -69,8 +70,28 @@ impl SerializableProjectFile for Project {
             Ok(())
         }
 
-        load_recursive(&project_directory_path, &mut project_items)?;
+        if !project_root_directory_path.exists() {
+            std::fs::create_dir_all(&project_root_directory_path)?;
+        }
+
+        load_recursive(&project_root_directory_path, &mut project_items)?;
 
         Ok(Project::new(project_info, project_items, project_root_ref))
+    }
+}
+
+fn resolve_project_root_directory_path(project_directory_path: &Path) -> std::path::PathBuf {
+    let preferred_project_root_directory_path = project_directory_path.join(Project::PROJECT_DIR);
+
+    if preferred_project_root_directory_path.exists() {
+        return preferred_project_root_directory_path;
+    }
+
+    let legacy_project_root_directory_path = project_directory_path.join(Project::LEGACY_PROJECT_DIR);
+
+    if legacy_project_root_directory_path.exists() {
+        legacy_project_root_directory_path
+    } else {
+        preferred_project_root_directory_path
     }
 }

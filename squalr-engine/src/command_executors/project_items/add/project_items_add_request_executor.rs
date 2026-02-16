@@ -303,6 +303,7 @@ fn build_project_item_name(scan_result: &ScanResult) -> String {
 #[cfg(test)]
 mod tests {
     use super::resolve_selected_directory_path;
+    use squalr_engine_api::structures::projects::project::Project;
     use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_address::ProjectItemTypeAddress;
     use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
     use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
@@ -330,8 +331,8 @@ mod tests {
     #[test]
     fn resolve_selected_directory_path_defaults_to_hidden_project_root() {
         let project_directory_path = Path::new("C:/Projects/TestProject");
-        let project_root_directory_path = project_directory_path.join("project");
-        let project_items = create_directory_item_map(&["project"], project_directory_path);
+        let project_root_directory_path = project_directory_path.join(Project::PROJECT_DIR);
+        let project_items = create_directory_item_map(&[Project::PROJECT_DIR], project_directory_path);
 
         let resolved_directory_path = resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &None);
 
@@ -341,22 +342,24 @@ mod tests {
     #[test]
     fn resolve_selected_directory_path_uses_selected_directory_when_inside_hidden_root() {
         let project_directory_path = Path::new("C:/Projects/TestProject");
-        let project_root_directory_path = project_directory_path.join("project");
-        let project_items = create_directory_item_map(&["project", "project/Addresses"], project_directory_path);
-        let target_directory_path = Some(PathBuf::from("project/Addresses"));
+        let project_root_directory_path = project_directory_path.join(Project::PROJECT_DIR);
+        let target_directory_relative_path = format!("{}/Addresses", Project::PROJECT_DIR);
+        let project_items = create_directory_item_map(&[Project::PROJECT_DIR, &target_directory_relative_path], project_directory_path);
+        let target_directory_path = Some(PathBuf::from(target_directory_relative_path.clone()));
 
         let resolved_directory_path =
             resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &target_directory_path);
 
-        assert_eq!(resolved_directory_path, project_directory_path.join("project/Addresses"));
+        assert_eq!(resolved_directory_path, project_directory_path.join(target_directory_relative_path));
     }
 
     #[test]
     fn resolve_selected_directory_path_uses_parent_directory_for_selected_file() {
         let project_directory_path = Path::new("C:/Projects/TestProject");
-        let project_root_directory_path = project_directory_path.join("project");
-        let mut project_items = create_directory_item_map(&["project", "project/Addresses"], project_directory_path);
-        let selected_file_path = project_directory_path.join("project/Addresses/health.json");
+        let project_root_directory_path = project_directory_path.join(Project::PROJECT_DIR);
+        let target_directory_relative_path = format!("{}/Addresses", Project::PROJECT_DIR);
+        let mut project_items = create_directory_item_map(&[Project::PROJECT_DIR, &target_directory_relative_path], project_directory_path);
+        let selected_file_path = project_directory_path.join(format!("{}/health.json", target_directory_relative_path));
         let selected_file_ref = ProjectItemRef::new(selected_file_path.clone());
         let selected_file_item = ProjectItemTypeAddress::new_project_item(
             "Health",
@@ -371,6 +374,6 @@ mod tests {
         let resolved_directory_path =
             resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &target_directory_path);
 
-        assert_eq!(resolved_directory_path, project_directory_path.join("project/Addresses"));
+        assert_eq!(resolved_directory_path, project_directory_path.join(target_directory_relative_path));
     }
 }

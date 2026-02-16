@@ -467,7 +467,17 @@ impl ProjectHierarchyView {
                 return;
             }
         };
+        let root_project_item_path = opened_project
+            .get_project_root_ref()
+            .get_project_item_path()
+            .clone();
+
         for project_item_path in &project_item_paths {
+            if edited_field.get_name() == ProjectItem::PROPERTY_NAME && project_item_path == &root_project_item_path {
+                log::debug!("Ignoring root project directory name edit in project hierarchy.");
+                continue;
+            }
+
             let project_item_ref = ProjectItemRef::new(project_item_path.clone());
             let project_item = match opened_project.get_project_item_mut(&project_item_ref) {
                 Some(project_item) => project_item,

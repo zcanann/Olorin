@@ -10,7 +10,9 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- No remaining concrete TODOs currently tracked for `pr/project-explorer`.
+- Preview values for project items are not being rendered
+- Only the address appears to be populated in the struct viewer when selecting a project item. Others should appear but do not, even though the .json on disk has data for the utf8 string.
+- Verify folder-create hierarchy stability after root/ancestor expansion updates (prior symptom: sibling rows appeared to disappear).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -75,3 +77,8 @@ Information discovered during iteration:
 - Added unit tests for pointer preview rendering in `ProjectHierarchyViewData` and pointer default-name normalization in `ProjectItemTypePointer`.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr project_hierarchy_view_data` (7 passed), `cargo test -p squalr-engine-api project_item_type_pointer` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
 - Session checkpoint (2026-02-16): Re-ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); no new concrete `pr/project-explorer` TODOs identified.
+- Hidden project root directory constant is now `project_items/` (`Project::PROJECT_DIR`), with legacy read compatibility for `project/` (`Project::LEGACY_PROJECT_DIR`) in project deserialization and hierarchy root resolution.
+- Project hierarchy root row now displays the opened project name (`ProjectInfo::get_name()`) instead of the hidden on-disk root directory name.
+- Root project directory name edits are ignored in `ProjectHierarchyView::apply_project_item_edits`, preventing persistence of the synthetic root display label.
+- New-folder creation now expands ancestor directories before refresh so newly created rows remain visible in hierarchy context.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr-engine project_items_add_request_executor` (3 passed), `cargo test -p squalr-tests --test project_items_command_tests` (19 passed), and `cargo test -p squalr project_hierarchy_view_data` (7 passed).
