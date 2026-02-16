@@ -1,12 +1,17 @@
 use crate::{
     app_context::AppContext,
+    ui::widgets::controls::button::Button,
     views::project_explorer::project_hierarchy::{
         project_hierarchy_toolbar_view::ProjectHierarchyToolbarView,
         project_item_entry_view::ProjectItemEntryView,
-        view_data::{project_hierarchy_frame_action::ProjectHierarchyFrameAction, project_hierarchy_view_data::ProjectHierarchyViewData},
+        view_data::{
+            project_hierarchy_frame_action::ProjectHierarchyFrameAction, project_hierarchy_pending_operation::ProjectHierarchyPendingOperation,
+            project_hierarchy_take_over_state::ProjectHierarchyTakeOverState, project_hierarchy_view_data::ProjectHierarchyViewData,
+        },
     },
 };
-use eframe::egui::{Align, Layout, Response, ScrollArea, TextureHandle, Ui, Widget};
+use eframe::egui::{Align, Layout, Response, ScrollArea, TextureHandle, Ui, Widget, vec2};
+use epaint::Color32;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
 use squalr_engine_api::structures::projects::project_items::built_in_types::{
@@ -45,50 +50,115 @@ impl Widget for ProjectHierarchyView {
         self.refresh_if_project_changed();
 
         let mut project_hierarchy_frame_action = ProjectHierarchyFrameAction::None;
+        let mut should_cancel_take_over = false;
+        let mut delete_confirmation_project_item_paths: Option<Vec<std::path::PathBuf>> = None;
         let response = user_interface
             .allocate_ui_with_layout(user_interface.available_size(), Layout::top_down(Align::Min), |user_interface| {
                 let project_hierarchy_view_data = match self.project_hierarchy_view_data.read("Project hierarchy view") {
                     Some(project_hierarchy_view_data) => project_hierarchy_view_data,
                     None => return,
                 };
+                let take_over_state = project_hierarchy_view_data.take_over_state.clone();
+                let tree_entries = project_hierarchy_view_data.tree_entries.clone();
+                let selected_project_item_path = project_hierarchy_view_data.selected_project_item_path.clone();
+                let pending_operation = project_hierarchy_view_data.pending_operation.clone();
 
                 user_interface.add(self.project_hierarchy_toolbar_view);
 
-                ScrollArea::vertical()
-                    .id_salt("project_hierarchy")
-                    .auto_shrink([false, false])
-                    .show(user_interface, |user_interface| {
-                        for tree_entry in &project_hierarchy_view_data.tree_entries {
-                            let is_selected = project_hierarchy_view_data
-                                .selected_project_item_path
-                                .as_ref()
-                                .map(|selected_project_item_path| selected_project_item_path == &tree_entry.project_item_path)
-                                .unwrap_or(false);
-                            let icon = Self::resolve_tree_entry_icon(
-                                self.app_context.clone(),
-                                tree_entry
-                                    .project_item
-                                    .get_item_type()
-                                    .get_project_item_type_id(),
+                if pending_operation == ProjectHierarchyPendingOperation::Deleting {
+                    user_interface.label("Deleting project item(s)...");
+                }
+
+                match take_over_state {
+                    ProjectHierarchyTakeOverState::None => {
+                        ScrollArea::vertical()
+                            .id_salt("project_hierarchy")
+                            .auto_shrink([false, false])
+                            .show(user_interface, |user_interface| {
+                                for tree_entry in &tree_entries {
+                                    let is_selected = selected_project_item_path
+                                        .as_ref()
+                                        .map(|selected_project_item_path| selected_project_item_path == &tree_entry.project_item_path)
+                                        .unwrap_or(false);
+                                    let icon = Self::resolve_tree_entry_icon(
+                                        self.app_context.clone(),
+                                        tree_entry
+                                            .project_item
+                                            .get_item_type()
+                                            .get_project_item_type_id(),
+                                    );
+
+                                    user_interface.add(ProjectItemEntryView::new(
+                                        self.app_context.clone(),
+                                        &tree_entry.project_item_path,
+                                        &tree_entry.display_name,
+                                        &tree_entry.preview_value,
+                                        tree_entry.depth,
+                                        icon,
+                                        is_selected,
+                                        tree_entry.is_directory,
+                                        tree_entry.has_children,
+                                        tree_entry.is_expanded,
+                                        &mut project_hierarchy_frame_action,
+                                    ));
+                                }
+                            });
+                    }
+                    ProjectHierarchyTakeOverState::DeleteConfirmation { project_item_paths } => {
+                        user_interface.label("Confirm deletion of selected project item(s).");
+
+                        ScrollArea::vertical()
+                            .id_salt("project_hierarchy_delete_confirmation")
+                            .max_height(160.0)
+                            .auto_shrink([false, false])
+                            .show(user_interface, |user_interface| {
+                                for project_item_path in &project_item_paths {
+                                    let project_item_name = project_item_path
+                                        .file_name()
+                                        .and_then(|value| value.to_str())
+                                        .unwrap_or_default();
+                                    user_interface.label(project_item_name);
+                                }
+                            });
+
+                        user_interface.horizontal(|user_interface| {
+                            let button_size = vec2(120.0, 28.0);
+                            let button_cancel = user_interface.add_sized(
+                                button_size,
+                                Button::new_from_theme(&self.app_context.theme)
+                                    .with_tooltip_text("Cancel project item deletion.")
+                                    .background_color(Color32::TRANSPARENT),
                             );
 
-                            user_interface.add(ProjectItemEntryView::new(
-                                self.app_context.clone(),
-                                &tree_entry.project_item_path,
-                                &tree_entry.display_name,
-                                &tree_entry.preview_value,
-                                tree_entry.depth,
-                                icon,
-                                is_selected,
-                                tree_entry.is_directory,
-                                tree_entry.has_children,
-                                tree_entry.is_expanded,
-                                &mut project_hierarchy_frame_action,
-                            ));
-                        }
-                    });
+                            if button_cancel.clicked() {
+                                should_cancel_take_over = true;
+                            }
+
+                            let button_confirm_delete = user_interface.add_sized(
+                                button_size,
+                                Button::new_from_theme(&self.app_context.theme).with_tooltip_text("Permanently delete selected project item(s)."),
+                            );
+
+                            if button_confirm_delete.clicked() {
+                                delete_confirmation_project_item_paths = Some(project_item_paths);
+                            }
+                        });
+                    }
+                }
             })
             .response;
+
+        if user_interface.input(|input_state| input_state.key_pressed(eframe::egui::Key::Delete)) {
+            ProjectHierarchyViewData::request_delete_confirmation_for_selected_project_item(self.project_hierarchy_view_data.clone());
+        }
+
+        if should_cancel_take_over {
+            ProjectHierarchyViewData::cancel_take_over(self.project_hierarchy_view_data.clone());
+        }
+
+        if let Some(project_item_paths) = delete_confirmation_project_item_paths {
+            ProjectHierarchyViewData::delete_project_items(self.project_hierarchy_view_data.clone(), self.app_context.clone(), project_item_paths);
+        }
 
         match project_hierarchy_frame_action {
             ProjectHierarchyFrameAction::None => {}

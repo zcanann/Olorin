@@ -16,7 +16,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Implement `ProjectHierarchyViewData` state model (loaded root item tree, selection, expanded directories, context/takeover state, pending operations).
 - [x] Implement `ProjectHierarchyView` rendering of nested project items (directory tree) backed by `project-items list`, including row selection and expansion.
 - [x] Render project item icons by type and add preview-value column behavior for address/pointer-style items.
-- [ ] Implement non-modal delete confirmation flow in the project hierarchy panel (take-over panel content, not popup modal) and wire to delete command.
+- [x] Implement non-modal delete confirmation flow in the project hierarchy panel (take-over panel content, not popup modal) and wire to delete command.
 - [ ] Implement drag/drop reordering in project hierarchy and persist ordering metadata.
 - [x] Implement sort-order persistence updates in project metadata (manifest and/or per-folder metadata), including API setters and save/load consistency.
 - [ ] Wire project hierarchy refresh to project/project-item change events and command callbacks so UI stays in sync after mutations.
@@ -46,3 +46,4 @@ Information discovered during iteration:
 - Added parser/dispatch/response tests for the expanded project-items surface in `squalr-tests/tests/project_items_command_tests.rs`.
 - Restored `project-items list` executor to return opened project info, root item, and all project items from unprivileged project manager state.
 - Implemented project hierarchy GUI state + rendering using `project-items list`, including nested tree flattening, selection, directory expand/collapse, type-based icons, and address/pointer preview text.
+- Implemented project hierarchy non-modal delete take-over flow with `ProjectHierarchyTakeOverState::DeleteConfirmation`, toolbar delete action, keyboard `Delete` shortcut, and wired confirmation to unprivileged `project-items delete`.

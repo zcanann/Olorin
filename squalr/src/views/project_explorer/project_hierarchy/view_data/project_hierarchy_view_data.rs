@@ -3,6 +3,7 @@ use crate::views::project_explorer::project_hierarchy::view_data::{
     project_hierarchy_pending_operation::ProjectHierarchyPendingOperation, project_hierarchy_take_over_state::ProjectHierarchyTakeOverState,
     project_hierarchy_tree_entry::ProjectHierarchyTreeEntry,
 };
+use squalr_engine_api::commands::project_items::delete::project_items_delete_request::ProjectItemsDeleteRequest;
 use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
@@ -135,6 +136,77 @@ impl ProjectHierarchyViewData {
             &project_hierarchy_view_data.project_items,
             &project_hierarchy_view_data.expanded_directory_paths,
         );
+    }
+
+    pub fn request_delete_confirmation_for_selected_project_item(project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>) {
+        let selected_project_item_path = project_hierarchy_view_data
+            .read("Project hierarchy selected project item for delete request")
+            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.selected_project_item_path.clone());
+
+        if let Some(selected_project_item_path) = selected_project_item_path {
+            Self::request_delete_confirmation(project_hierarchy_view_data, vec![selected_project_item_path]);
+        }
+    }
+
+    pub fn request_delete_confirmation(
+        project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
+        project_item_paths: Vec<PathBuf>,
+    ) {
+        if project_item_paths.is_empty() {
+            return;
+        }
+
+        let mut project_hierarchy_view_data = match project_hierarchy_view_data.write("Project hierarchy request delete confirmation") {
+            Some(project_hierarchy_view_data) => project_hierarchy_view_data,
+            None => return,
+        };
+
+        project_hierarchy_view_data.take_over_state = ProjectHierarchyTakeOverState::DeleteConfirmation { project_item_paths };
+    }
+
+    pub fn cancel_take_over(project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>) {
+        let mut project_hierarchy_view_data = match project_hierarchy_view_data.write("Project hierarchy cancel take over") {
+            Some(project_hierarchy_view_data) => project_hierarchy_view_data,
+            None => return,
+        };
+
+        project_hierarchy_view_data.take_over_state = ProjectHierarchyTakeOverState::None;
+    }
+
+    pub fn delete_project_items(
+        project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
+        app_context: Arc<AppContext>,
+        project_item_paths: Vec<PathBuf>,
+    ) {
+        if project_item_paths.is_empty() {
+            Self::cancel_take_over(project_hierarchy_view_data);
+
+            return;
+        }
+
+        if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data.write("Project hierarchy begin delete project items") {
+            project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::Deleting;
+            project_hierarchy_view_data.take_over_state = ProjectHierarchyTakeOverState::None;
+        }
+
+        let project_items_delete_request = ProjectItemsDeleteRequest { project_item_paths };
+        let app_context_clone = app_context.clone();
+        let project_hierarchy_view_data_clone = project_hierarchy_view_data.clone();
+
+        project_items_delete_request.send(&app_context.engine_unprivileged_state, move |project_items_delete_response| {
+            if !project_items_delete_response.success {
+                log::error!(
+                    "Failed to delete one or more project items. Deleted count: {}.",
+                    project_items_delete_response.deleted_project_item_count
+                );
+            }
+
+            if let Some(mut project_hierarchy_view_data) = project_hierarchy_view_data_clone.write("Project hierarchy delete project items response") {
+                project_hierarchy_view_data.pending_operation = ProjectHierarchyPendingOperation::None;
+            }
+
+            Self::refresh_project_items(project_hierarchy_view_data_clone, app_context_clone);
+        });
     }
 
     fn build_tree_entries(
