@@ -26,6 +26,7 @@ pub struct StructViewerEntryView<'lifetime> {
     is_selected: bool,
     struct_viewer_frame_action: &'lifetime mut StructViewerFrameAction,
     field_edit_value: Option<&'lifetime mut AnonymousValueString>,
+    field_display_values: Option<&'lifetime [AnonymousValueString]>,
     validation_data_type_ref: Option<&'lifetime DataTypeRef>,
     name_splitter_x: f32,
     value_splitter_x: f32,
@@ -39,6 +40,7 @@ impl<'lifetime> StructViewerEntryView<'lifetime> {
         is_selected: bool,
         struct_viewer_frame_action: &'lifetime mut StructViewerFrameAction,
         field_edit_value: Option<&'lifetime mut AnonymousValueString>,
+        field_display_values: Option<&'lifetime [AnonymousValueString]>,
         validation_data_type_ref: Option<&'lifetime DataTypeRef>,
         name_splitter_x: f32,
         value_splitter_x: f32,
@@ -50,6 +52,7 @@ impl<'lifetime> StructViewerEntryView<'lifetime> {
             is_selected,
             struct_viewer_frame_action,
             field_edit_value,
+            field_display_values,
             validation_data_type_ref,
             name_splitter_x,
             value_splitter_x,
@@ -163,11 +166,12 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                     field_edit_value,
                     validation_data_type_ref,
                     self.valued_struct_field.get_is_read_only(),
-                    true,
+                    !self.valued_struct_field.get_is_read_only(),
                     "",
                     &data_value_box_id,
                 )
                 .allow_read_only_interpretation(true)
+                .display_values(self.field_display_values.unwrap_or(&[]))
                 .use_preview_foreground(self.valued_struct_field.get_is_read_only())
                 .width(value_box_width),
             );

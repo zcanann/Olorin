@@ -82,19 +82,16 @@ impl Widget for StructViewerView {
                     .show(&mut user_interface, |inner_ui| {
                         if let Some(struct_under_view) = struct_viewer_view_data.struct_under_view.as_ref() {
                             let struct_fields = struct_under_view.get_fields().to_vec();
+                            let selected_field_name = struct_viewer_view_data.selected_field_name.as_ref().clone();
+                            let field_display_values_map = struct_viewer_view_data.field_display_values.clone();
 
                             for (field_row_index, field) in struct_fields.into_iter().enumerate() {
-                                let is_selected = struct_viewer_view_data
-                                    .selected_field_name
-                                    .as_deref()
-                                    .unwrap_or_default()
-                                    == field.get_name();
+                                let is_selected = selected_field_name.as_deref().unwrap_or_default() == field.get_name();
                                 let validation_data_type_ref = field
                                     .get_data_value()
                                     .map(|data_value| data_value.get_data_type_ref());
-                                let field_edit_value = struct_viewer_view_data
-                                    .field_edit_values
-                                    .get_mut(field.get_name());
+                                let field_edit_value = struct_viewer_view_data.field_edit_values.get_mut(field.get_name());
+                                let field_display_values = field_display_values_map.get(field.get_name()).map(Vec::as_slice);
 
                                 inner_ui.add(StructViewerEntryView::new(
                                     self.app_context.clone(),
@@ -103,6 +100,7 @@ impl Widget for StructViewerView {
                                     is_selected,
                                     &mut frame_action,
                                     field_edit_value,
+                                    field_display_values,
                                     validation_data_type_ref,
                                     ICON_COLUMN_WIDTH + BAR_THICKNESS,
                                     value_splitter_x + BAR_THICKNESS,

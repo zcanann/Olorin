@@ -34,6 +34,8 @@ Information discovered during iteration:
 - Updated readonly struct-viewer rows to hide commit buttons while keeping interpretation/display-type selection available.
 - Added `DataValueBoxView` options to permit readonly interpretation popup interaction and preview-style neutral text coloring.
 - Fixed struct viewer value-box text coloring so writable fields use `foreground` while read-only fields continue using `foreground_preview`.
+- Fixed readonly struct-viewer value-box dropdown labeling and behavior to use `Display as ...` and swap to the matching precomputed display string per selected format (instead of only changing format metadata).
+- Struct viewer now caches per-field display strings for all supported formats using the original typed `DataValue` bytes, avoiding reinterpret/cast paths for readonly display switching.
 
 ## Agent Scratchpad and Notes
 Append below and compact regularly to relevant recent notes, keep under ~20 lines.
@@ -48,3 +50,4 @@ Append logs for each session here. Compact redundancy occasionally.
 - Fixed struct viewer `DataValueBoxView` ID conflicts and read-only enforcement, marked `is_frozen` read-only in scan-result struct projection, added a focused unit test in `squalr-engine-api`, and validated with `cargo test -p squalr-engine-api as_valued_struct_only_allows_writing_value_field`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
 - Adjusted struct viewer readonly UX to remove commit checkbox, keep display-type interaction, and use `foreground_preview` for neutral display text; validated with `cargo fmt`, `cargo test -p squalr collect_scan_result_refs_for_selected_range`, and `cargo check -p squalr`.
 - Corrected struct viewer `DataValueBoxView` neutral text color selection so only readonly rows use `foreground_preview`; writable rows now use `foreground`, validated with `cargo fmt` and `cargo check -p squalr`.
+- Fixed readonly struct-viewer value box options from `Interpret as ...` to `Display as ...` and wired format selection to load the corresponding precomputed display value; validated with `cargo fmt`, `cargo check -p squalr`, and `cargo test -p squalr collect_scan_result_refs_for_selected_range`.

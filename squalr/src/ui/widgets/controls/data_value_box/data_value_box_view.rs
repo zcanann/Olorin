@@ -15,6 +15,7 @@ pub struct DataValueBoxView<'lifetime> {
     app_context: Arc<AppContext>,
     anonymous_value_string: &'lifetime mut AnonymousValueString,
     validation_data_type: &'lifetime DataTypeRef,
+    display_values: Option<&'lifetime [AnonymousValueString]>,
     is_read_only: bool,
     is_value_owned: bool,
     preview_text: &'lifetime str,
@@ -46,6 +47,7 @@ impl<'lifetime> DataValueBoxView<'lifetime> {
             app_context,
             anonymous_value_string,
             validation_data_type,
+            display_values: None,
             is_read_only,
             is_value_owned,
             preview_text,
@@ -85,6 +87,14 @@ impl<'lifetime> DataValueBoxView<'lifetime> {
         allow_read_only_interpretation: bool,
     ) -> Self {
         self.allow_read_only_interpretation = allow_read_only_interpretation;
+        self
+    }
+
+    pub fn display_values(
+        mut self,
+        display_values: &'lifetime [AnonymousValueString],
+    ) -> Self {
+        self.display_values = Some(display_values);
         self
     }
 
@@ -285,11 +295,18 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
                             let anonymous_value_string_formats = symbol_registry.get_supported_anonymous_value_string_formats(&self.validation_data_type);
 
                             for anonymous_value_string_format in &anonymous_value_string_formats {
+                                let target_display_value = self.display_values.and_then(|display_values| {
+                                    display_values
+                                        .iter()
+                                        .find(|display_value| display_value.get_anonymous_value_string_format() == *anonymous_value_string_format)
+                                });
+
                                 if inner_user_interface
                                     .add(DataValueBoxConvertItemView::new(
                                         self.app_context.clone(),
                                         self.anonymous_value_string,
                                         anonymous_value_string_format,
+                                        target_display_value,
                                         false,
                                         self.is_value_owned,
                                         self.width.max(Self::MIN_POPUP_WIDTH),
@@ -309,6 +326,7 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
                                             self.app_context.clone(),
                                             self.anonymous_value_string,
                                             anonymous_value_string_format,
+                                            None,
                                             true,
                                             self.is_value_owned,
                                             self.width,
