@@ -73,6 +73,8 @@ impl ElementScannerResultsViewData {
         element_scanner_results_view_data: Dependency<Self>,
         engine_unprivileged_state: Arc<EngineUnprivilegedState>,
     ) {
+        Self::query_scan_results(element_scanner_results_view_data.clone(), engine_unprivileged_state.clone(), false);
+
         let engine_unprivileged_state_clone = engine_unprivileged_state.clone();
         let element_scanner_results_view_data_clone = element_scanner_results_view_data.clone();
 
@@ -234,7 +236,7 @@ impl ElementScannerResultsViewData {
         // Drop to commit the write before send(), which may execute the callback synchronously.
         drop(element_scanner_results_view_data);
 
-        scan_results_query_request.send(&engine_unprivileged_state, move |scan_results_query_response| {
+        let did_dispatch = scan_results_query_request.send(&engine_unprivileged_state, move |scan_results_query_response| {
             // let audio_player = &self.audio_player;
             let byte_size_in_metric = StorageSizeConversions::value_to_metric_size(scan_results_query_response.total_size_in_bytes as u128);
             let result_count = scan_results_query_response.result_count;
@@ -255,6 +257,12 @@ impl ElementScannerResultsViewData {
                 }
             }
         });
+
+        if !did_dispatch {
+            if let Some(mut element_scanner_results_view_data) = element_scanner_results_view_data_clone.write("Query scan results dispatch failure") {
+                element_scanner_results_view_data.is_querying_scan_results = false;
+            }
+        }
     }
 
     /// Fetches up-to-date values and module information for the current scan results, then updates the UI.
@@ -293,7 +301,7 @@ impl ElementScannerResultsViewData {
         // Drop to commit the write.
         drop(element_scanner_results_view_data);
 
-        scan_results_refresh_request.send(engine_unprivileged_state, move |scan_results_refresh_response| {
+        let did_dispatch = scan_results_refresh_request.send(engine_unprivileged_state, move |scan_results_refresh_response| {
             let mut element_scanner_results_view_data = match element_scanner_results_view_data_clone.write("Refresh scan results response") {
                 Some(element_scanner_results_view_data) => element_scanner_results_view_data,
                 None => return,
@@ -303,6 +311,12 @@ impl ElementScannerResultsViewData {
             element_scanner_results_view_data.is_refreshing_scan_results = false;
             element_scanner_results_view_data.current_scan_results = scan_results_refresh_response.scan_results;
         });
+
+        if !did_dispatch {
+            if let Some(mut element_scanner_results_view_data) = element_scanner_results_view_data_clone.write("Refresh scan results dispatch failure") {
+                element_scanner_results_view_data.is_refreshing_scan_results = false;
+            }
+        }
     }
 
     fn set_page_index(
