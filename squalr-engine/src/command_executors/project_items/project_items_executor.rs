@@ -13,6 +13,9 @@ impl UnprivilegedCommandExecutor for ProjectItemsCommand {
         engine_unprivileged_state: &Arc<dyn EngineExecutionContext>,
     ) -> <Self as UnprivilegedCommandExecutor>::ResponseType {
         match self {
+            ProjectItemsCommand::Add { project_items_add_request } => project_items_add_request
+                .execute(engine_unprivileged_state)
+                .to_engine_response(),
             ProjectItemsCommand::Activate {
                 project_items_activate_request,
             } => project_items_activate_request

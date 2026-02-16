@@ -1,6 +1,6 @@
 use crate::views::struct_viewer::view_data::struct_viewer_view_data::StructViewerViewData;
 use arc_swap::Guard;
-use squalr_engine_api::commands::scan_results::add_to_project::scan_results_add_to_project_request::ScanResultsAddToProjectRequest;
+use squalr_engine_api::commands::project_items::add::project_items_add_request::ProjectItemsAddRequest;
 use squalr_engine_api::commands::scan_results::delete::scan_results_delete_request::ScanResultsDeleteRequest;
 use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_request::ScanResultsFreezeRequest;
 use squalr_engine_api::conversions::storage_size_conversions::StorageSizeConversions;
@@ -13,11 +13,9 @@ use squalr_engine_api::structures::scan_results::scan_result_base::ScanResultBas
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::{
     commands::{
-        privileged_command_request::PrivilegedCommandRequest,
-        scan_results::{
-            query::scan_results_query_request::ScanResultsQueryRequest, refresh::scan_results_refresh_request::ScanResultsRefreshRequest,
-            set_property::scan_results_set_property_request::ScanResultsSetPropertyRequest,
-        },
+        privileged_command_request::PrivilegedCommandRequest, scan_results::query::scan_results_query_request::ScanResultsQueryRequest,
+        scan_results::refresh::scan_results_refresh_request::ScanResultsRefreshRequest,
+        scan_results::set_property::scan_results_set_property_request::ScanResultsSetPropertyRequest, unprivileged_command_request::UnprivilegedCommandRequest,
     },
     events::scan_results::updated::scan_results_updated_event::ScanResultsUpdatedEvent,
     structures::{data_values::anonymous_value_string::AnonymousValueString, scan_results::scan_result::ScanResult},
@@ -478,10 +476,9 @@ impl ElementScannerResultsViewData {
         let scan_result_refs = Self::collect_selected_scan_result_refs(element_scanner_results_view_data);
 
         if !scan_result_refs.is_empty() {
-            let engine_unprivileged_state = &engine_unprivileged_state;
-            let scan_results_add_to_project_request = ScanResultsAddToProjectRequest { scan_result_refs };
+            let project_items_add_request = ProjectItemsAddRequest { scan_result_refs };
 
-            scan_results_add_to_project_request.send(engine_unprivileged_state, |_response| {});
+            project_items_add_request.send(&engine_unprivileged_state, |_response| {});
         }
     }
 
