@@ -48,6 +48,10 @@ impl Project {
         &self.project_info.get_project_manifest()
     }
 
+    pub fn get_project_manifest_mut(&mut self) -> &mut ProjectManifest {
+        self.project_info.get_project_manifest_mut()
+    }
+
     pub fn get_project_info(&self) -> &ProjectInfo {
         &self.project_info
     }
