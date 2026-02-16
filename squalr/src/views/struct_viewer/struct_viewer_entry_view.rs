@@ -7,7 +7,7 @@ use crate::{
     },
     views::struct_viewer::view_data::struct_viewer_frame_action::StructViewerFrameAction,
 };
-use eframe::egui::{Align2, Id, Key, Response, Sense, Ui, Widget, vec2};
+use eframe::egui::{Align2, Response, Sense, Ui, Widget, vec2};
 use epaint::{CornerRadius, Rect, Stroke, StrokeKind, pos2};
 use squalr_engine_api::{
     registries::symbols::symbol_registry::SymbolRegistry,
@@ -177,7 +177,6 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
 
         if let (Some(field_edit_value), Some(validation_data_type_ref)) = (self.field_edit_value, self.validation_data_type_ref) {
             let data_value_box_id = format!("struct_viewer_value_{}_{}", self.row_index, self.valued_struct_field.get_name());
-            let data_value_box_text_edit_id = Id::new(format!("{}_text_edit", data_value_box_id));
             user_interface.put(
                 Rect::from_min_size(
                     pos2(value_box_position_x, available_size_rect.min.y),
@@ -198,8 +197,7 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                 .width(value_box_width),
             );
 
-            let commit_on_enter_pressed = user_interface.input(|input_state| input_state.key_pressed(Key::Enter))
-                && user_interface.memory(|memory| memory.has_focus(data_value_box_text_edit_id));
+            let commit_on_enter_pressed = DataValueBoxView::consume_commit_on_enter(user_interface, &data_value_box_id);
 
             if show_commit_button && commit_on_enter_pressed {
                 Self::commit_field_edit(

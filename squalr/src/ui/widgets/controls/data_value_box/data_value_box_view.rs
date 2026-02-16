@@ -33,6 +33,7 @@ pub struct DataValueBoxView<'lifetime> {
 
 impl<'lifetime> DataValueBoxView<'lifetime> {
     const MIN_POPUP_WIDTH: f32 = 212.0;
+    const COMMIT_ON_ENTER_ID_SALT: &'static str = "data_value_box_commit_on_enter";
 
     pub fn new(
         app_context: Arc<AppContext>,
@@ -112,6 +113,29 @@ impl<'lifetime> DataValueBoxView<'lifetime> {
     ) -> Self {
         self.height = height;
         self
+    }
+
+    fn commit_on_enter_id(id: &str) -> Id {
+        Id::new((Self::COMMIT_ON_ENTER_ID_SALT, id))
+    }
+
+    pub fn consume_commit_on_enter(
+        user_interface: &mut Ui,
+        id: &str,
+    ) -> bool {
+        let commit_on_enter_id = Self::commit_on_enter_id(id);
+        let did_commit_on_enter = user_interface.memory(|memory| {
+            memory
+                .data
+                .get_temp::<bool>(commit_on_enter_id)
+                .unwrap_or(false)
+        });
+
+        if did_commit_on_enter {
+            user_interface.memory_mut(|memory| memory.data.insert_temp(commit_on_enter_id, false));
+        }
+
+        did_commit_on_enter
     }
 }
 
@@ -257,6 +281,12 @@ impl<'lifetime> Widget for DataValueBoxView<'lifetime> {
         if text_edit_response.changed() {
             self.anonymous_value_string
                 .set_anonymous_value_string(text_value);
+        }
+
+        let commit_on_enter_pressed = text_edit_response.lost_focus() && user_interface.input(|input_state| input_state.key_pressed(Key::Enter));
+
+        if commit_on_enter_pressed {
+            user_interface.memory_mut(|memory| memory.data.insert_temp(Self::commit_on_enter_id(self.id), true));
         }
 
         // Popup logic.

@@ -47,7 +47,11 @@ impl ScanResult {
 
     pub fn as_valued_struct(&self) -> ValuedStruct {
         // The current value if available, otherwise fall back to a read only default string.
-        let field_value = match self.valued_result.get_current_value() {
+        let field_value = match self
+            .recently_read_value
+            .as_ref()
+            .or_else(|| self.valued_result.get_current_value().as_ref())
+        {
             Some(current_value) => current_value
                 .clone()
                 .to_named_valued_struct_field(Self::PROPERTY_NAME_VALUE.to_string(), false),
@@ -190,6 +194,7 @@ mod tests {
     use super::ScanResult;
     use crate::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use crate::structures::data_types::data_type_ref::DataTypeRef;
+    use crate::structures::data_values::data_value::DataValue;
     use crate::structures::scan_results::scan_result_ref::ScanResultRef;
     use crate::structures::scan_results::scan_result_valued::ScanResultValued;
 
@@ -234,5 +239,37 @@ mod tests {
         assert!(address_field.get_is_read_only());
         assert!(module_field.get_is_read_only());
         assert!(module_offset_field.get_is_read_only());
+    }
+
+    #[test]
+    fn as_valued_struct_prefers_recently_read_value_for_value_field() {
+        let scan_result_valued = ScanResultValued::new(
+            0x1000,
+            DataTypeRef::new("u8"),
+            String::new(),
+            Some(DataTypeU8::get_value_from_primitive(10)),
+            Vec::new(),
+            None,
+            Vec::new(),
+            ScanResultRef::new(1),
+        );
+        let scan_result = ScanResult::new(
+            scan_result_valued,
+            String::from("module"),
+            0x20,
+            Some(DataTypeU8::get_value_from_primitive(25)),
+            Vec::new(),
+            false,
+        );
+        let valued_struct = scan_result.as_valued_struct();
+        let value_field = valued_struct
+            .get_field(ScanResult::PROPERTY_NAME_VALUE)
+            .expect("Expected value field.");
+        let value_data_value = value_field
+            .get_data_value()
+            .expect("Expected value data value.");
+        let expected_value: DataValue = DataTypeU8::get_value_from_primitive(25);
+
+        assert_eq!(value_data_value.get_value_bytes(), expected_value.get_value_bytes());
     }
 }
