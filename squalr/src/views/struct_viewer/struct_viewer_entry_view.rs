@@ -7,7 +7,7 @@ use crate::{
     },
     views::struct_viewer::view_data::struct_viewer_frame_action::StructViewerFrameAction,
 };
-use eframe::egui::{Align2, Response, Sense, Ui, Widget, vec2};
+use eframe::egui::{Align2, Id, Key, Response, Sense, Ui, Widget, vec2};
 use epaint::{CornerRadius, Rect, Stroke, StrokeKind, pos2};
 use squalr_engine_api::{
     registries::symbols::symbol_registry::SymbolRegistry,
@@ -56,6 +56,27 @@ impl<'lifetime> StructViewerEntryView<'lifetime> {
             validation_data_type_ref,
             name_splitter_x,
             value_splitter_x,
+        }
+    }
+
+    fn commit_field_edit(
+        valued_struct_field: &ValuedStructField,
+        validation_data_type_ref: &DataTypeRef,
+        field_edit_value: &AnonymousValueString,
+        struct_viewer_frame_action: &mut StructViewerFrameAction,
+    ) {
+        let symbol_registry = SymbolRegistry::get_instance();
+
+        match symbol_registry.deanonymize_value_string(validation_data_type_ref, field_edit_value) {
+            Ok(new_data_value) => {
+                let mut edited_field = valued_struct_field.clone();
+
+                edited_field.set_field_data(ValuedStructFieldData::Value(new_data_value));
+                *struct_viewer_frame_action = StructViewerFrameAction::EditValue(edited_field);
+            }
+            Err(error) => {
+                log::warn!("Failed to commit struct viewer value: {}", error);
+            }
         }
     }
 }
@@ -156,6 +177,7 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
 
         if let (Some(field_edit_value), Some(validation_data_type_ref)) = (self.field_edit_value, self.validation_data_type_ref) {
             let data_value_box_id = format!("struct_viewer_value_{}_{}", self.row_index, self.valued_struct_field.get_name());
+            let data_value_box_text_edit_id = Id::new(format!("{}_text_edit", data_value_box_id));
             user_interface.put(
                 Rect::from_min_size(
                     pos2(value_box_position_x, available_size_rect.min.y),
@@ -176,6 +198,18 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                 .width(value_box_width),
             );
 
+            let commit_on_enter_pressed = user_interface.input(|input_state| input_state.key_pressed(Key::Enter))
+                && user_interface.memory(|memory| memory.has_focus(data_value_box_text_edit_id));
+
+            if show_commit_button && commit_on_enter_pressed {
+                Self::commit_field_edit(
+                    self.valued_struct_field,
+                    validation_data_type_ref,
+                    field_edit_value,
+                    self.struct_viewer_frame_action,
+                );
+            }
+
             if show_commit_button {
                 let commit_response = user_interface.put(
                     Rect::from_min_size(
@@ -193,18 +227,12 @@ impl<'lifetime> Widget for StructViewerEntryView<'lifetime> {
                 IconDraw::draw(user_interface, commit_response.rect, &theme.icon_library.icon_handle_common_check_mark);
 
                 if commit_response.clicked() {
-                    let symbol_registry = SymbolRegistry::get_instance();
-                    match symbol_registry.deanonymize_value_string(validation_data_type_ref, field_edit_value) {
-                        Ok(new_data_value) => {
-                            let mut edited_field = self.valued_struct_field.clone();
-
-                            edited_field.set_field_data(ValuedStructFieldData::Value(new_data_value));
-                            *self.struct_viewer_frame_action = StructViewerFrameAction::EditValue(edited_field);
-                        }
-                        Err(error) => {
-                            log::warn!("Failed to commit struct viewer value: {}", error);
-                        }
-                    }
+                    Self::commit_field_edit(
+                        self.valued_struct_field,
+                        validation_data_type_ref,
+                        field_edit_value,
+                        self.struct_viewer_frame_action,
+                    );
                 }
             }
         }
