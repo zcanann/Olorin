@@ -35,7 +35,7 @@ impl SerializableProjectFile for Project {
     fn load_from_path(project_directory_path: &Path) -> anyhow::Result<Self> {
         let project_info = ProjectInfo::load_from_path(&project_directory_path.join(Project::PROJECT_FILE))?;
         let mut project_items = HashMap::new();
-        let project_root_ref = ProjectItemRef::new(project_directory_path.to_path_buf());
+        let project_root_ref = ProjectItemRef::new(project_directory_path.join(Project::PROJECT_DIR));
         let project_root = ProjectItemTypeDirectory::new_project_item(&project_root_ref);
 
         project_items.insert(project_root_ref.clone(), project_root);

@@ -9,14 +9,21 @@ use crate::{
             project_hierarchy_take_over_state::ProjectHierarchyTakeOverState, project_hierarchy_view_data::ProjectHierarchyViewData,
         },
     },
+    views::struct_viewer::view_data::struct_viewer_view_data::StructViewerViewData,
 };
 use eframe::egui::{Align, Layout, Response, ScrollArea, TextureHandle, Ui, Widget, vec2};
 use epaint::{Color32, CornerRadius, Stroke, StrokeKind};
+use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;
+use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
+use squalr_engine_api::commands::project::save::project_save_request::ProjectSaveRequest;
+use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
 use squalr_engine_api::structures::projects::project_items::built_in_types::{
     project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory, project_item_type_pointer::ProjectItemTypePointer,
 };
+use squalr_engine_api::structures::projects::project_items::{project_item::ProjectItem, project_item_ref::ProjectItemRef};
+use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -26,6 +33,7 @@ pub struct ProjectHierarchyView {
     app_context: Arc<AppContext>,
     project_hierarchy_toolbar_view: ProjectHierarchyToolbarView,
     project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
+    struct_viewer_view_data: Dependency<StructViewerViewData>,
 }
 
 impl ProjectHierarchyView {
@@ -34,12 +42,16 @@ impl ProjectHierarchyView {
             .dependency_container
             .get_dependency::<ProjectHierarchyViewData>();
         let project_hierarchy_toolbar_view = ProjectHierarchyToolbarView::new(app_context.clone());
+        let struct_viewer_view_data = app_context
+            .dependency_container
+            .get_dependency::<StructViewerViewData>();
         ProjectHierarchyViewData::refresh_project_items(project_hierarchy_view_data.clone(), app_context.clone());
 
         Self {
             app_context,
             project_hierarchy_toolbar_view,
             project_hierarchy_view_data,
+            struct_viewer_view_data,
         }
     }
 }
@@ -51,6 +63,7 @@ impl Widget for ProjectHierarchyView {
     ) -> Response {
         self.refresh_if_project_changed();
 
+        let project_hierarchy_toolbar_view = self.project_hierarchy_toolbar_view.clone();
         let mut project_hierarchy_frame_action = ProjectHierarchyFrameAction::None;
         let mut drag_started_project_item_path: Option<PathBuf> = None;
         let mut hovered_drop_target_project_item_path: Option<PathBuf> = None;
@@ -68,7 +81,7 @@ impl Widget for ProjectHierarchyView {
                 let dragged_project_item_path = project_hierarchy_view_data.dragged_project_item_path.clone();
                 let pending_operation = project_hierarchy_view_data.pending_operation.clone();
 
-                user_interface.add(self.project_hierarchy_toolbar_view);
+                user_interface.add(project_hierarchy_toolbar_view);
 
                 match pending_operation {
                     ProjectHierarchyPendingOperation::Deleting => {
@@ -220,6 +233,7 @@ impl Widget for ProjectHierarchyView {
             ProjectHierarchyFrameAction::None => {}
             ProjectHierarchyFrameAction::SelectProjectItem(project_item_path) => {
                 ProjectHierarchyViewData::select_project_item(self.project_hierarchy_view_data.clone(), project_item_path);
+                self.focus_selected_project_item_in_struct_viewer();
             }
             ProjectHierarchyFrameAction::ToggleDirectoryExpansion(project_item_path) => {
                 ProjectHierarchyViewData::toggle_directory_expansion(self.project_hierarchy_view_data.clone(), project_item_path);
@@ -239,6 +253,129 @@ impl Widget for ProjectHierarchyView {
 }
 
 impl ProjectHierarchyView {
+    fn focus_selected_project_item_in_struct_viewer(&self) {
+        let selected_project_item_path = self
+            .project_hierarchy_view_data
+            .read("Project hierarchy selected project item for struct viewer focus")
+            .and_then(|project_hierarchy_view_data| project_hierarchy_view_data.selected_project_item_path.clone());
+        let selected_project_item = self
+            .project_hierarchy_view_data
+            .read("Project hierarchy selected project item data for struct viewer focus")
+            .and_then(|project_hierarchy_view_data| {
+                let selected_project_item_path = project_hierarchy_view_data
+                    .selected_project_item_path
+                    .as_ref()?;
+
+                project_hierarchy_view_data
+                    .project_items
+                    .iter()
+                    .find(|(project_item_ref, _)| project_item_ref.get_project_item_path() == selected_project_item_path)
+                    .map(|(_, project_item)| project_item.clone())
+            });
+
+        let Some(selected_project_item_path) = selected_project_item_path else {
+            StructViewerViewData::clear_focus(self.struct_viewer_view_data.clone());
+            return;
+        };
+        let Some(selected_project_item) = selected_project_item else {
+            StructViewerViewData::clear_focus(self.struct_viewer_view_data.clone());
+            return;
+        };
+        let app_context = self.app_context.clone();
+        let callback = Arc::new(move |edited_field: ValuedStructField| {
+            Self::apply_project_item_edit(app_context.clone(), selected_project_item_path.clone(), edited_field);
+        });
+
+        StructViewerViewData::focus_valued_struct(self.struct_viewer_view_data.clone(), selected_project_item.get_properties().clone(), callback);
+    }
+
+    fn apply_project_item_edit(
+        app_context: Arc<AppContext>,
+        project_item_path: PathBuf,
+        edited_field: ValuedStructField,
+    ) {
+        let project_manager = app_context.engine_unprivileged_state.get_project_manager();
+        let opened_project_lock = project_manager.get_opened_project();
+        let memory_write_request;
+
+        let mut opened_project_guard = match opened_project_lock.write() {
+            Ok(opened_project_guard) => opened_project_guard,
+            Err(error) => {
+                log::error!("Failed to acquire opened project lock for struct viewer edit: {}", error);
+                return;
+            }
+        };
+        let opened_project = match opened_project_guard.as_mut() {
+            Some(opened_project) => opened_project,
+            None => {
+                log::warn!("Cannot apply struct viewer edit without an opened project.");
+                return;
+            }
+        };
+        let project_item_ref = ProjectItemRef::new(project_item_path.clone());
+        {
+            let project_item = match opened_project.get_project_item_mut(&project_item_ref) {
+                Some(project_item) => project_item,
+                None => {
+                    log::warn!("Cannot apply struct viewer edit, project item was not found: {:?}", project_item_path);
+                    return;
+                }
+            };
+
+            project_item
+                .get_properties_mut()
+                .set_field_data(edited_field.get_name(), edited_field.get_field_data().clone(), edited_field.get_is_read_only());
+            project_item.set_has_unsaved_changes(true);
+            memory_write_request = Self::build_memory_write_request_for_project_item_edit(project_item, &edited_field);
+        }
+
+        opened_project
+            .get_project_info_mut()
+            .set_has_unsaved_changes(true);
+
+        drop(opened_project_guard);
+
+        let project_save_request = ProjectSaveRequest {};
+
+        project_save_request.send(&app_context.engine_unprivileged_state, |project_save_response| {
+            if !project_save_response.success {
+                log::error!("Failed to persist project item edit through project save command.");
+            }
+        });
+        project_manager.notify_project_items_changed();
+
+        if let Some(memory_write_request) = memory_write_request {
+            memory_write_request.send(&app_context.engine_unprivileged_state, |memory_write_response| {
+                if !memory_write_response.success {
+                    log::warn!("Project item address edit memory write command failed.");
+                }
+            });
+        }
+    }
+
+    fn build_memory_write_request_for_project_item_edit(
+        project_item: &mut ProjectItem,
+        edited_field: &ValuedStructField,
+    ) -> Option<MemoryWriteRequest> {
+        if project_item.get_item_type().get_project_item_type_id() != ProjectItemTypeAddress::PROJECT_ITEM_TYPE_ID {
+            return None;
+        }
+
+        if edited_field.get_name() != ProjectItemTypeAddress::PROPERTY_ADDRESS {
+            return None;
+        }
+
+        let edited_data_value = edited_field.get_data_value()?;
+        let address = ProjectItemTypeAddress::get_field_address(project_item);
+        let module_name = ProjectItemTypeAddress::get_field_module(project_item);
+
+        Some(MemoryWriteRequest {
+            address,
+            module_name,
+            value: edited_data_value.get_value_bytes().clone(),
+        })
+    }
+
     fn resolve_tree_entry_icon(
         app_context: Arc<AppContext>,
         project_item_type_id: &str,

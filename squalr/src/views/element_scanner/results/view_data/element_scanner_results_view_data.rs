@@ -22,6 +22,7 @@ use squalr_engine_api::{
 };
 use squalr_engine_session::engine_unprivileged_state::EngineUnprivilegedState;
 use std::ops::RangeInclusive;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::{thread, time::Duration};
 
@@ -472,11 +473,15 @@ impl ElementScannerResultsViewData {
     pub fn add_scan_results_to_project(
         element_scanner_results_view_data: Dependency<Self>,
         engine_unprivileged_state: Arc<EngineUnprivilegedState>,
+        target_directory_path: Option<PathBuf>,
     ) {
         let scan_result_refs = Self::collect_selected_scan_result_refs(element_scanner_results_view_data);
 
         if !scan_result_refs.is_empty() {
-            let project_items_add_request = ProjectItemsAddRequest { scan_result_refs };
+            let project_items_add_request = ProjectItemsAddRequest {
+                scan_result_refs,
+                target_directory_path,
+            };
 
             project_items_add_request.send(&engine_unprivileged_state, |_response| {});
         }
@@ -486,12 +491,16 @@ impl ElementScannerResultsViewData {
         element_scanner_results_view_data: Dependency<Self>,
         engine_unprivileged_state: Arc<EngineUnprivilegedState>,
         local_scan_result_index: i32,
+        target_directory_path: Option<PathBuf>,
     ) {
         let local_scan_result_indices = [local_scan_result_index];
         let scan_result_refs = Self::collect_scan_result_refs_by_indicies(element_scanner_results_view_data, &local_scan_result_indices);
 
         if !scan_result_refs.is_empty() {
-            let project_items_add_request = ProjectItemsAddRequest { scan_result_refs };
+            let project_items_add_request = ProjectItemsAddRequest {
+                scan_result_refs,
+                target_directory_path,
+            };
 
             project_items_add_request.send(&engine_unprivileged_state, |_response| {});
         }

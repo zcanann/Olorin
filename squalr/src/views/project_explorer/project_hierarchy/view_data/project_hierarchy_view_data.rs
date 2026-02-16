@@ -9,6 +9,7 @@ use squalr_engine_api::commands::project_items::list::project_items_list_request
 use squalr_engine_api::commands::project_items::reorder::project_items_reorder_request::ProjectItemsReorderRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::dependency_injection::dependency::Dependency;
+use squalr_engine_api::structures::projects::project::Project;
 use squalr_engine_api::structures::projects::project_info::ProjectInfo;
 use squalr_engine_api::structures::projects::project_items::built_in_types::{
     project_item_type_address::ProjectItemTypeAddress, project_item_type_directory::ProjectItemTypeDirectory, project_item_type_pointer::ProjectItemTypePointer,
@@ -72,12 +73,13 @@ impl ProjectHierarchyViewData {
             project_hierarchy_view_data.opened_project_root = project_items_list_response.opened_project_root;
             project_hierarchy_view_data.project_items = project_items_list_response.opened_project_items;
 
-            if let Some(project_info) = &project_hierarchy_view_data.opened_project_info {
-                if let Some(project_directory_path) = project_info.get_project_directory() {
-                    project_hierarchy_view_data
-                        .expanded_directory_paths
-                        .insert(project_directory_path);
-                }
+            if let Some(project_root_directory_path) = Self::resolve_project_root_path(
+                project_hierarchy_view_data.opened_project_info.as_ref(),
+                &project_hierarchy_view_data.project_items,
+            ) {
+                project_hierarchy_view_data
+                    .expanded_directory_paths
+                    .insert(project_root_directory_path);
             }
 
             project_hierarchy_view_data.tree_entries = Self::build_tree_entries(
@@ -122,6 +124,27 @@ impl ProjectHierarchyViewData {
         };
 
         project_hierarchy_view_data.selected_project_item_path = Some(project_item_path);
+    }
+
+    pub fn get_selected_directory_path(project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>) -> Option<PathBuf> {
+        let project_hierarchy_view_data = project_hierarchy_view_data.read("Project hierarchy selected directory path")?;
+        let selected_project_item_path = project_hierarchy_view_data
+            .selected_project_item_path
+            .as_ref()?;
+        let selected_project_item = project_hierarchy_view_data
+            .project_items
+            .iter()
+            .find(|(project_item_ref, _)| project_item_ref.get_project_item_path() == selected_project_item_path)
+            .map(|(_, project_item)| project_item);
+
+        if selected_project_item
+            .map(Self::is_directory_project_item)
+            .unwrap_or(false)
+        {
+            Some(selected_project_item_path.clone())
+        } else {
+            selected_project_item_path.parent().map(Path::to_path_buf)
+        }
     }
 
     pub fn toggle_directory_expansion(
@@ -334,20 +357,17 @@ impl ProjectHierarchyViewData {
         project_items: &[(ProjectItemRef, ProjectItem)],
         expanded_directory_paths: &HashSet<PathBuf>,
     ) -> Vec<ProjectHierarchyTreeEntry> {
-        let project_info = match opened_project_info {
-            Some(project_info) => project_info,
-            None => return Vec::new(),
-        };
-        let (project_directory_path, project_item_map, child_paths_by_parent_path) = match Self::build_project_hierarchy_maps(project_info, project_items) {
-            Some(project_hierarchy_maps) => project_hierarchy_maps,
-            None => return Vec::new(),
-        };
+        let (project_root_directory_path, project_item_map, child_paths_by_parent_path) =
+            match Self::build_project_hierarchy_maps(opened_project_info, project_items) {
+                Some(project_hierarchy_maps) => project_hierarchy_maps,
+                None => return Vec::new(),
+            };
 
         let mut visible_tree_entries = Vec::new();
 
         Self::append_visible_entries(
             &mut visible_tree_entries,
-            &project_directory_path,
+            &project_root_directory_path,
             &child_paths_by_parent_path,
             &project_item_map,
             0,
@@ -363,8 +383,8 @@ impl ProjectHierarchyViewData {
         dragged_project_item_path: &Path,
         target_project_item_path: &Path,
     ) -> Option<Vec<PathBuf>> {
-        let project_info = opened_project_info?;
-        let (project_directory_path, _project_item_map, mut child_paths_by_parent_path) = Self::build_project_hierarchy_maps(project_info, project_items)?;
+        let (project_root_directory_path, _project_item_map, mut child_paths_by_parent_path) =
+            Self::build_project_hierarchy_maps(opened_project_info, project_items)?;
         let dragged_parent_path = dragged_project_item_path.parent()?.to_path_buf();
         let target_parent_path = target_project_item_path.parent()?.to_path_buf();
 
@@ -389,7 +409,7 @@ impl ProjectHierarchyViewData {
         sibling_paths.insert(adjusted_target_sibling_index, dragged_path);
 
         let mut reordered_project_item_paths = Vec::new();
-        Self::append_project_item_paths_in_order(&project_directory_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
+        Self::append_project_item_paths_in_order(&project_root_directory_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
 
         Some(reordered_project_item_paths)
     }
@@ -470,9 +490,11 @@ impl ProjectHierarchyViewData {
     }
 
     fn build_project_hierarchy_maps(
-        project_info: &ProjectInfo,
+        opened_project_info: Option<&ProjectInfo>,
         project_items: &[(ProjectItemRef, ProjectItem)],
     ) -> Option<(PathBuf, HashMap<PathBuf, (ProjectItemRef, ProjectItem)>, HashMap<PathBuf, Vec<PathBuf>>)> {
+        let project_root_directory_path = Self::resolve_project_root_path(opened_project_info, project_items)?;
+        let project_info = opened_project_info?;
         let project_directory_path = project_info.get_project_directory()?;
         let project_item_map: HashMap<PathBuf, (ProjectItemRef, ProjectItem)> = project_items
             .iter()
@@ -487,14 +509,14 @@ impl ProjectHierarchyViewData {
         let mut child_paths_by_parent_path: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
 
         for project_item_path in project_item_map.keys() {
-            if project_item_path == &project_directory_path {
+            if project_item_path == &project_root_directory_path {
                 continue;
             }
 
             let parent_path = project_item_path
                 .parent()
                 .map(Path::to_path_buf)
-                .unwrap_or_else(|| project_directory_path.clone());
+                .unwrap_or_else(|| project_root_directory_path.clone());
 
             child_paths_by_parent_path
                 .entry(parent_path)
@@ -531,7 +553,25 @@ impl ProjectHierarchyViewData {
             });
         }
 
-        Some((project_directory_path, project_item_map, child_paths_by_parent_path))
+        Some((project_root_directory_path, project_item_map, child_paths_by_parent_path))
+    }
+
+    fn resolve_project_root_path(
+        opened_project_info: Option<&ProjectInfo>,
+        project_items: &[(ProjectItemRef, ProjectItem)],
+    ) -> Option<PathBuf> {
+        let project_info = opened_project_info?;
+        let project_directory_path = project_info.get_project_directory()?;
+        let hidden_project_root_path = project_directory_path.join(Project::PROJECT_DIR);
+        let contains_hidden_project_root = project_items
+            .iter()
+            .any(|(project_item_ref, _)| project_item_ref.get_project_item_path() == &hidden_project_root_path);
+
+        if contains_hidden_project_root {
+            Some(hidden_project_root_path)
+        } else {
+            Some(project_directory_path)
+        }
     }
 
     fn append_project_item_paths_in_order(

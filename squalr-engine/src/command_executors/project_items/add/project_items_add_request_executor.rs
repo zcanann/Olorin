@@ -14,7 +14,7 @@ use squalr_engine_api::structures::projects::project_items::project_item_ref::Pr
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_projects::project::serialization::serializable_project_file::SerializableProjectFile;
 use std::fs::{self, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
@@ -79,7 +79,7 @@ impl UnprivilegedCommandRequestExecutor for ProjectItemsAddRequest {
             }
         };
 
-        let added_file_paths = add_scan_results_to_project(opened_project, &project_directory_path, &scan_results);
+        let added_file_paths = add_scan_results_to_project(opened_project, &project_directory_path, &scan_results, &self.target_directory_path);
 
         if added_file_paths.is_empty() {
             return ProjectItemsAddResponse {
@@ -170,18 +170,23 @@ fn add_scan_results_to_project(
     opened_project: &mut Project,
     project_directory_path: &PathBuf,
     scan_results: &[ScanResult],
+    target_directory_path: &Option<PathBuf>,
 ) -> Vec<PathBuf> {
     let symbol_registry = SymbolRegistry::get_instance();
     let project_items = opened_project.get_project_items_mut();
     let mut added_file_paths = Vec::new();
-    let directory_relative_path = PathBuf::from("Address");
-    let directory_absolute_path = project_directory_path.join(&directory_relative_path);
-    let directory_project_item_ref = ProjectItemRef::new(directory_absolute_path);
+    let project_root_directory_path = project_directory_path.join(Project::PROJECT_DIR);
+    let root_directory_project_item_ref = ProjectItemRef::new(project_root_directory_path.clone());
 
-    if !project_items.contains_key(&directory_project_item_ref) {
-        let directory_project_item = ProjectItemTypeDirectory::new_project_item(&directory_project_item_ref);
-        project_items.insert(directory_project_item_ref, directory_project_item);
+    if !project_items.contains_key(&root_directory_project_item_ref) {
+        let root_directory_project_item = ProjectItemTypeDirectory::new_project_item(&root_directory_project_item_ref);
+        project_items.insert(root_directory_project_item_ref, root_directory_project_item);
     }
+    let selected_directory_path = resolve_selected_directory_path(project_directory_path, &project_root_directory_path, project_items, target_directory_path);
+    let directory_relative_path = selected_directory_path
+        .strip_prefix(project_directory_path)
+        .unwrap_or(&selected_directory_path)
+        .to_path_buf();
 
     for scan_result in scan_results {
         let data_type_ref = scan_result.get_data_type_ref();
@@ -221,6 +226,54 @@ fn add_scan_results_to_project(
     added_file_paths
 }
 
+fn resolve_selected_directory_path(
+    project_directory_path: &Path,
+    project_root_directory_path: &Path,
+    project_items: &std::collections::HashMap<ProjectItemRef, squalr_engine_api::structures::projects::project_items::project_item::ProjectItem>,
+    target_directory_path: &Option<PathBuf>,
+) -> PathBuf {
+    let Some(target_directory_path) = target_directory_path else {
+        return project_root_directory_path.to_path_buf();
+    };
+    let resolved_target_path = resolve_project_item_path(project_directory_path, target_directory_path);
+    let resolved_directory_path = if is_directory_path(&resolved_target_path, project_items) {
+        resolved_target_path
+    } else {
+        match resolved_target_path.parent() {
+            Some(parent_path) => parent_path.to_path_buf(),
+            None => project_root_directory_path.to_path_buf(),
+        }
+    };
+
+    if resolved_directory_path.starts_with(project_root_directory_path) {
+        resolved_directory_path
+    } else {
+        project_root_directory_path.to_path_buf()
+    }
+}
+
+fn resolve_project_item_path(
+    project_directory_path: &Path,
+    project_item_path: &Path,
+) -> PathBuf {
+    if project_item_path.is_absolute() {
+        project_item_path.to_path_buf()
+    } else {
+        project_directory_path.join(project_item_path)
+    }
+}
+
+fn is_directory_path(
+    project_item_path: &Path,
+    project_items: &std::collections::HashMap<ProjectItemRef, squalr_engine_api::structures::projects::project_items::project_item::ProjectItem>,
+) -> bool {
+    let project_item_ref = ProjectItemRef::new(project_item_path.to_path_buf());
+    project_items
+        .get(&project_item_ref)
+        .map(|project_item| project_item.get_item_type().get_project_item_type_id() == ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID)
+        .unwrap_or(project_item_path.extension().is_none())
+}
+
 fn create_placeholder_files(file_paths: &[PathBuf]) -> Result<(), String> {
     for file_path in file_paths {
         if let Some(parent_path) = file_path.parent() {
@@ -244,5 +297,80 @@ fn build_project_item_name(scan_result: &ScanResult) -> String {
         format!("{}+0x{:X}", scan_result.get_module(), scan_result.get_module_offset())
     } else {
         format!("0x{:X}", scan_result.get_address())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_selected_directory_path;
+    use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_address::ProjectItemTypeAddress;
+    use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
+    use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
+    use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
+    use std::collections::HashMap;
+    use std::path::{Path, PathBuf};
+
+    fn create_directory_item_map(
+        paths: &[&str],
+        project_directory_path: &Path,
+    ) -> HashMap<ProjectItemRef, ProjectItem> {
+        let mut project_items = HashMap::new();
+
+        for relative_path in paths {
+            let absolute_path = project_directory_path.join(relative_path);
+            let project_item_ref = ProjectItemRef::new(absolute_path.clone());
+            let project_item = ProjectItemTypeDirectory::new_project_item(&project_item_ref);
+
+            project_items.insert(project_item_ref, project_item);
+        }
+
+        project_items
+    }
+
+    #[test]
+    fn resolve_selected_directory_path_defaults_to_hidden_project_root() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let project_root_directory_path = project_directory_path.join("project");
+        let project_items = create_directory_item_map(&["project"], project_directory_path);
+
+        let resolved_directory_path = resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &None);
+
+        assert_eq!(resolved_directory_path, project_root_directory_path);
+    }
+
+    #[test]
+    fn resolve_selected_directory_path_uses_selected_directory_when_inside_hidden_root() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let project_root_directory_path = project_directory_path.join("project");
+        let project_items = create_directory_item_map(&["project", "project/Addresses"], project_directory_path);
+        let target_directory_path = Some(PathBuf::from("project/Addresses"));
+
+        let resolved_directory_path =
+            resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &target_directory_path);
+
+        assert_eq!(resolved_directory_path, project_directory_path.join("project/Addresses"));
+    }
+
+    #[test]
+    fn resolve_selected_directory_path_uses_parent_directory_for_selected_file() {
+        let project_directory_path = Path::new("C:/Projects/TestProject");
+        let project_root_directory_path = project_directory_path.join("project");
+        let mut project_items = create_directory_item_map(&["project", "project/Addresses"], project_directory_path);
+        let selected_file_path = project_directory_path.join("project/Addresses/health.json");
+        let selected_file_ref = ProjectItemRef::new(selected_file_path.clone());
+        let selected_file_item = ProjectItemTypeAddress::new_project_item(
+            "Health",
+            0x1234,
+            "",
+            "",
+            squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8::get_value_from_primitive(0),
+        );
+        project_items.insert(selected_file_ref, selected_file_item);
+        let target_directory_path = Some(selected_file_path);
+
+        let resolved_directory_path =
+            resolve_selected_directory_path(project_directory_path, &project_root_directory_path, &project_items, &target_directory_path);
+
+        assert_eq!(resolved_directory_path, project_directory_path.join("project/Addresses"));
     }
 }

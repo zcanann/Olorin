@@ -10,11 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- Double-click add to project should always prioritize adding to the selected directory item
-- There should be a root level folder (which is not displayed a folder) with all project items. This is to avoid conflicts with project.json
-- If no directory is selected, adding new items to the project should default to this root folder.
-- Struct viewer should work for project items (ie name).
-- Struct viewer should allow editing addresses to trigger a write to memory.
+- Audit and verify behavior of project-item memory write triggers for non-address-field edits.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -53,3 +49,11 @@ Information discovered during iteration:
 - Project hierarchy display name now comes from the project item `name` property (`ProjectItem::get_field_name`) with filename fallback for empty values.
 - Added activation checkboxes to all hierarchy rows and wired them to `project-items activate`; implemented recursive path-based activation in the unprivileged activate executor (folder toggles include descendants).
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr-engine project_items_activate_request_executor` (2 passed), `cargo test -p squalr-tests --test project_items_command_tests` (18 passed), `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed), and `cargo test -p squalr --no-run` (build successful).
+- `project-items add` now accepts optional target directory routing (`--target-directory-path`) and defaults to hidden root directory `project/` when no directory is selected.
+- Element scanner add flows (toolbar add-selection + row double-click) now resolve selected directory from `ProjectHierarchyViewData`; selected files route adds to their parent directory.
+- Project hierarchy now treats hidden root `project/` as the hierarchy root when present, so the root storage directory itself is not rendered as a visible folder entry.
+- Project serialization now uses hidden root item path `project/` on load, and project creation initializes root ref at `project/` instead of empty path.
+- Selecting project hierarchy entries now focuses struct viewer on project item properties; editing fields persists to project item files and refreshes hierarchy.
+- Address project-item struct edit of the `address` field now dispatches privileged `memory write` with edited bytes to the edited address.
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr-tests --test project_items_command_tests` (19 passed) and `cargo test -p squalr-engine project_items_add_request_executor` (3 passed).
+- Session checkpoint (2026-02-16): Ran `cargo test -p squalr --no-run` (build successful).

@@ -43,6 +43,7 @@ fn project_items_add_request_dispatches_unprivileged_command_and_invokes_typed_c
 
     let project_items_add_request = ProjectItemsAddRequest {
         scan_result_refs: vec![ScanResultRef::new(21), ScanResultRef::new(34)],
+        target_directory_path: None,
     };
     let callback_invoked = Arc::new(AtomicBool::new(false));
     let callback_invoked_clone = callback_invoked.clone();
@@ -68,6 +69,11 @@ fn project_items_add_request_dispatches_unprivileged_command_and_invokes_typed_c
             assert_eq!(captured_project_items_add_request.scan_result_refs.len(), 2);
             assert_eq!(captured_project_items_add_request.scan_result_refs[0].get_scan_result_global_index(), 21);
             assert_eq!(captured_project_items_add_request.scan_result_refs[1].get_scan_result_global_index(), 34);
+            assert!(
+                captured_project_items_add_request
+                    .target_directory_path
+                    .is_none()
+            );
         }
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
@@ -85,6 +91,7 @@ fn project_items_add_request_does_not_invoke_callback_when_response_variant_is_w
 
     let project_items_add_request = ProjectItemsAddRequest {
         scan_result_refs: vec![ScanResultRef::new(8)],
+        target_directory_path: None,
     };
     let callback_invoked = Arc::new(AtomicBool::new(false));
     let callback_invoked_clone = callback_invoked.clone();
@@ -104,6 +111,7 @@ fn project_items_add_request_does_not_invoke_callback_when_response_variant_is_w
         UnprivilegedCommand::ProjectItems(ProjectItemsCommand::Add { project_items_add_request }) => {
             assert_eq!(project_items_add_request.scan_result_refs.len(), 1);
             assert_eq!(project_items_add_request.scan_result_refs[0].get_scan_result_global_index(), 8);
+            assert!(project_items_add_request.target_directory_path.is_none());
         }
         dispatched_command => panic!("unexpected dispatched command: {dispatched_command:?}"),
     }
@@ -277,6 +285,36 @@ fn unprivileged_command_parser_accepts_project_items_add_with_long_flags() {
             assert_eq!(project_items_add_request.scan_result_refs.len(), 2);
             assert_eq!(project_items_add_request.scan_result_refs[0].get_scan_result_global_index(), 12);
             assert_eq!(project_items_add_request.scan_result_refs[1].get_scan_result_global_index(), 29);
+            assert!(project_items_add_request.target_directory_path.is_none());
+        }
+        parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
+    }
+}
+
+#[test]
+fn unprivileged_command_parser_accepts_project_items_add_target_directory_path() {
+    let parse_result = std::panic::catch_unwind(|| {
+        UnprivilegedCommand::from_iter_safe([
+            "squalr-cli",
+            "project-items",
+            "add",
+            "--scan-result-refs",
+            "12",
+            "--target-directory-path",
+            "project/Addresses",
+        ])
+    });
+
+    assert!(parse_result.is_ok());
+
+    let parsed_command_result = parse_result.expect("parser should not panic");
+    assert!(parsed_command_result.is_ok());
+
+    match parsed_command_result.expect("command should parse successfully") {
+        UnprivilegedCommand::ProjectItems(ProjectItemsCommand::Add { project_items_add_request }) => {
+            assert_eq!(project_items_add_request.scan_result_refs.len(), 1);
+            assert_eq!(project_items_add_request.scan_result_refs[0].get_scan_result_global_index(), 12);
+            assert_eq!(project_items_add_request.target_directory_path, Some(PathBuf::from("project/Addresses")));
         }
         parsed_command => panic!("unexpected parsed command: {parsed_command:?}"),
     }
