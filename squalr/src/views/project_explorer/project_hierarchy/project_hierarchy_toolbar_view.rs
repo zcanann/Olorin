@@ -1,31 +1,20 @@
 use crate::{
     app_context::AppContext,
     ui::{draw::icon_draw::IconDraw, widgets::controls::button::Button},
-    views::project_explorer::{
-        project_hierarchy::view_data::project_hierarchy_view_data::ProjectHierarchyViewData,
-        project_selector::view_data::project_selector_view_data::ProjectSelectorViewData,
-    },
+    views::project_explorer::project_selector::view_data::project_selector_view_data::ProjectSelectorViewData,
 };
 use eframe::egui::{Align, Layout, Response, Sense, Ui, UiBuilder, Widget};
 use epaint::{Color32, CornerRadius, vec2};
-use squalr_engine_api::dependency_injection::dependency::Dependency;
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ProjectHierarchyToolbarView {
     app_context: Arc<AppContext>,
-    project_hierarchy_view_data: Dependency<ProjectHierarchyViewData>,
 }
 
 impl ProjectHierarchyToolbarView {
     pub fn new(app_context: Arc<AppContext>) -> Self {
-        let project_hierarchy_view_data = app_context
-            .dependency_container
-            .get_dependency::<ProjectHierarchyViewData>();
-        let instance = Self {
-            app_context,
-            project_hierarchy_view_data,
-        };
+        let instance = Self { app_context };
 
         instance
     }

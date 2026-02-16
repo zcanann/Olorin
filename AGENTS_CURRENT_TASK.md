@@ -13,9 +13,9 @@ The goal is to keep the architecture in mind and not drift into minefields.
 - [x] Move project-item mutation flows to unprivileged command routing (implemented `project-items add` and moved scan-result add flow off privileged route).
 - [x] Replace privileged `scan-results add-to-project` path with an unprivileged project-items add command, then remove the stubbed privileged executor path.
 - [x] Expand `project-items` command surface beyond `list`/`activate` to support create, delete, rename, move, and reorder operations needed by project explorer UX.
-- [ ] Implement `ProjectHierarchyViewData` state model (loaded root item tree, selection, expanded directories, context/takeover state, pending operations).
-- [ ] Implement `ProjectHierarchyView` rendering of nested project items (directory tree) backed by `project-items list`, including row selection and expansion.
-- [ ] Render project item icons by type and add preview-value column behavior for address/pointer-style items.
+- [x] Implement `ProjectHierarchyViewData` state model (loaded root item tree, selection, expanded directories, context/takeover state, pending operations).
+- [x] Implement `ProjectHierarchyView` rendering of nested project items (directory tree) backed by `project-items list`, including row selection and expansion.
+- [x] Render project item icons by type and add preview-value column behavior for address/pointer-style items.
 - [ ] Implement non-modal delete confirmation flow in the project hierarchy panel (take-over panel content, not popup modal) and wire to delete command.
 - [ ] Implement drag/drop reordering in project hierarchy and persist ordering metadata.
 - [x] Implement sort-order persistence updates in project metadata (manifest and/or per-folder metadata), including API setters and save/load consistency.
@@ -44,3 +44,5 @@ Information discovered during iteration:
 - New mutation executors (`create/delete/rename/move`) apply filesystem operations then reload the opened project from disk to keep in-memory project state consistent.
 - Reorder now persists manifest sort order through `ProjectManifest::set_project_item_sort_order`, `ProjectInfo::get_project_manifest_mut`, and `project-items reorder` save path.
 - Added parser/dispatch/response tests for the expanded project-items surface in `squalr-tests/tests/project_items_command_tests.rs`.
+- Restored `project-items list` executor to return opened project info, root item, and all project items from unprivileged project manager state.
+- Implemented project hierarchy GUI state + rendering using `project-items list`, including nested tree flattening, selection, directory expand/collapse, type-based icons, and address/pointer preview text.
