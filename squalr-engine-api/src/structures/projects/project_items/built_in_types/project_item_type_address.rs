@@ -133,7 +133,7 @@ impl ProjectItemTypeAddress {
             match bytes.len() {
                 8 => return u64::from_le_bytes(bytes.try_into().unwrap_or([0u8; 8])),
                 4 => {
-                    let arr = [0u8; 4];
+                    let arr: [u8; 4] = bytes.try_into().unwrap_or([0u8; 4]);
 
                     return u32::from_le_bytes(arr) as u64;
                 }
@@ -230,7 +230,8 @@ impl ProjectItemTypeAddress {
 #[cfg(test)]
 mod tests {
     use super::ProjectItemTypeAddress;
-    use crate::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
+    use crate::structures::data_types::built_in_types::{u8::data_type_u8::DataTypeU8, u32::data_type_u32::DataTypeU32};
+    use crate::structures::structs::valued_struct_field::ValuedStructFieldData;
 
     #[test]
     fn new_project_item_uses_new_address_for_empty_name() {
@@ -251,5 +252,17 @@ mod tests {
         let mut project_item = ProjectItemTypeAddress::new_project_item("Health", 0x1234, "module", "", DataTypeU8::get_value_from_primitive(7));
 
         assert_eq!(ProjectItemTypeAddress::get_field_freeze_data_value_interpreter(&mut project_item), "7");
+    }
+
+    #[test]
+    fn get_field_address_reads_u32_bytes() {
+        let mut project_item = ProjectItemTypeAddress::new_project_item("Health", 0, "module", "", DataTypeU8::get_value_from_primitive(7));
+        let address_field_data = ValuedStructFieldData::Value(DataTypeU32::get_value_from_primitive(0x89ABCDEF));
+
+        project_item
+            .get_properties_mut()
+            .set_field_data(ProjectItemTypeAddress::PROPERTY_ADDRESS, address_field_data, false);
+
+        assert_eq!(ProjectItemTypeAddress::get_field_address(&mut project_item), 0x89ABCDEF);
     }
 }
