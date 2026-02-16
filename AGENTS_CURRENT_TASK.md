@@ -10,7 +10,7 @@ The goal is to keep the architecture in mind and not drift into minefields.
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks.)
-- [ ] Await next concrete `pr/project-explorer` requirement; current scoped implementation and tests are complete.
+- No remaining concrete tasks.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -43,3 +43,5 @@ Information discovered during iteration:
 - Added `project-items reorder` request dispatch tests in `squalr-tests` and unit tests for reorder manifest-path normalization in `squalr-engine`.
 - Session checkpoint (2026-02-16): Ran `cargo test -p squalr-tests --test project_items_command_tests` (18 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed).
 - Session checkpoint (2026-02-16, follow-up): Re-ran `cargo test -p squalr-tests --test project_items_command_tests` (18 passed) and `cargo test -p squalr-tests --test scan_results_command_tests` (20 passed); workspace remains clean and task is still awaiting next concrete `pr/project-explorer` requirement.
+- Fixed UI deadlock on scan-result double-click add-to-project: `ProjectManager::notify_project_items_changed` now uses non-blocking `try_read()` on the opened-project lock instead of blocking `read()`, preventing self-deadlock when called while project mutation executors hold the write lock.
+- Added regression test coverage in `squalr-engine-api` to verify `notify_project_items_changed` does not block while an opened-project write lock is held.
