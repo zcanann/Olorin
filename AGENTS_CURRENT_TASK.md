@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior for project open/close flows and hierarchy refresh sequencing under repeated failure/timeout conditions.
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior for background process/project list retries (auto-refresh status churn vs explicit user-action status feedback).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -80,5 +80,8 @@ Information discovered during iteration:
 - TUI process selector now tracks `has_loaded_process_list_once` and only marks loaded-state after successful list responses; this prevents repeated empty-list polling while preserving retry on failures/timeouts.
 - TUI project selector now sets `has_loaded_project_list_once` only after a successful `ProjectListRequest` response, restoring initial auto-load retry behavior after failed dispatch/timeout paths.
 - Added app-shell tests for process/project/project-item auto-refresh eligibility interval/load-state gating; validated with `cargo test -p squalr-tui` (46 passed).
+- GUI vs TUI parity audit (this pass): GUI hierarchy view continuously reconciles loaded hierarchy with engine-opened project state; TUI lacked equivalent reconciliation, which could leave stale active-project/hierarchy state after project open/close timeout or out-of-band state changes.
+- TUI app-shell tick flow now synchronizes active project identity from `ProjectManager::get_opened_project()` each tick; when active project directory changes, TUI clears project hierarchy + struct viewer focus and resets project-item auto-refresh timing for immediate requery.
+- Added app-shell tests for project-state synchronization behavior (directory-change reset path, same-directory preserve path, and immediate project-item auto-refresh eligibility after directory change); validated with `cargo test -p squalr-tui` (49 passed).
 
 

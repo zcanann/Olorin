@@ -65,7 +65,7 @@ use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
 use std::io::{self, Stdout};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
@@ -237,6 +237,7 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         let current_tick_time = Instant::now();
+        self.synchronize_active_project_from_engine_state(squalr_engine);
         self.register_scan_results_updated_listener_if_needed(squalr_engine);
         let did_requery_after_scan_results_update = self.query_scan_results_page_if_engine_event_pending(squalr_engine);
         if !did_requery_after_scan_results_update {
@@ -261,6 +262,68 @@ impl AppShell {
         }
 
         self.refresh_settings_on_tick_if_eligible(squalr_engine);
+    }
+
+    fn synchronize_active_project_from_engine_state(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let Some(engine_unprivileged_state) = squalr_engine.get_engine_unprivileged_state().as_ref() else {
+            return;
+        };
+
+        let opened_project_lock = engine_unprivileged_state
+            .get_project_manager()
+            .get_opened_project();
+        let (engine_active_project_name, engine_active_project_directory_path) = match opened_project_lock.read() {
+            Ok(opened_project_read_guard) => match opened_project_read_guard.as_ref() {
+                Some(opened_project) => (
+                    Some(opened_project.get_project_info().get_name().to_string()),
+                    opened_project.get_project_info().get_project_directory(),
+                ),
+                None => (None, None),
+            },
+            Err(lock_error) => {
+                log::error!("Failed to acquire opened project lock for TUI project-state synchronization: {}", lock_error);
+                return;
+            }
+        };
+
+        self.apply_engine_active_project_state(engine_active_project_name, engine_active_project_directory_path);
+    }
+
+    fn apply_engine_active_project_state(
+        &mut self,
+        engine_active_project_name: Option<String>,
+        engine_active_project_directory_path: Option<PathBuf>,
+    ) {
+        let did_active_project_change = self.app_state.project_explorer_pane_state.active_project_name != engine_active_project_name
+            || self
+                .app_state
+                .project_explorer_pane_state
+                .active_project_directory_path
+                != engine_active_project_directory_path;
+        if !did_active_project_change {
+            return;
+        }
+
+        let did_active_project_directory_change = self
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path
+            != engine_active_project_directory_path;
+
+        self.app_state
+            .project_explorer_pane_state
+            .set_active_project(engine_active_project_name, engine_active_project_directory_path);
+
+        if did_active_project_directory_change {
+            self.app_state.project_explorer_pane_state.clear_project_items();
+            self.app_state
+                .struct_viewer_pane_state
+                .clear_focus("Cleared struct viewer after project-state synchronization.");
+            self.last_project_items_auto_refresh_attempt_time = None;
+        }
     }
 
     fn register_scan_results_updated_listener_if_needed(
@@ -3473,6 +3536,7 @@ impl AppShell {
 mod tests {
     use crate::app::AppShell;
     use crate::state::pane::TuiPane;
+    use crate::state::project_explorer_pane_state::ProjectHierarchyEntry;
     use crate::state::settings_pane_state::SettingsCategory;
     use crate::state::struct_viewer_pane_state::StructViewerSource;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -3485,6 +3549,7 @@ mod tests {
     use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
     use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
     use squalr_engine_api::structures::structs::valued_struct_field::{ValuedStructField, ValuedStructFieldData};
+    use std::path::PathBuf;
     use std::time::{Duration, Instant};
 
     fn create_scan_result(scan_result_global_index: u64) -> ScanResult {
@@ -3700,6 +3765,171 @@ mod tests {
             .project_explorer_pane_state
             .has_loaded_project_item_list_once = true;
         assert!(!app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn engine_project_sync_clears_hierarchy_and_resets_project_item_refresh_timing_on_directory_change() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .set_active_project(Some("Alpha".to_string()), Some(PathBuf::from("C:/Projects/Alpha/project")));
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_item_list_once = true;
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .project_item_visible_entries = vec![ProjectHierarchyEntry {
+            project_item_path: PathBuf::from("C:/Projects/Alpha/project/project_items/Health.json"),
+            display_name: "Health".to_string(),
+            depth: 0,
+            is_directory: false,
+            is_expanded: false,
+            is_activated: false,
+        }];
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_item_visible_index = Some(0);
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .selected_item_path = Some("C:/Projects/Alpha/project/project_items/Health.json".to_string());
+        app_shell.last_project_items_auto_refresh_attempt_time = Some(Instant::now());
+
+        app_shell.apply_engine_active_project_state(Some("Beta".to_string()), Some(PathBuf::from("C:/Projects/Beta/project")));
+
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .active_project_name,
+            Some("Beta".to_string())
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .active_project_directory_path,
+            Some(PathBuf::from("C:/Projects/Beta/project"))
+        );
+        assert!(
+            !app_shell
+                .app_state
+                .project_explorer_pane_state
+                .has_loaded_project_item_list_once
+        );
+        assert!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .project_item_visible_entries
+                .is_empty()
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .selected_project_item_visible_index,
+            None
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .selected_item_path,
+            None
+        );
+        assert_eq!(app_shell.last_project_items_auto_refresh_attempt_time, None);
+    }
+
+    #[test]
+    fn engine_project_sync_preserves_hierarchy_when_directory_is_unchanged() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let active_directory_path = PathBuf::from("C:/Projects/Alpha/project");
+        let active_project_item_entry = ProjectHierarchyEntry {
+            project_item_path: PathBuf::from("C:/Projects/Alpha/project/project_items/Health.json"),
+            display_name: "Health".to_string(),
+            depth: 0,
+            is_directory: false,
+            is_expanded: false,
+            is_activated: false,
+        };
+        let previous_refresh_attempt_time = Some(Instant::now());
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .set_active_project(Some("Alpha".to_string()), Some(active_directory_path.clone()));
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_item_list_once = true;
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .project_item_visible_entries = vec![active_project_item_entry];
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_item_visible_index = Some(0);
+        app_shell.last_project_items_auto_refresh_attempt_time = previous_refresh_attempt_time;
+
+        app_shell.apply_engine_active_project_state(Some("Alpha Renamed".to_string()), Some(active_directory_path));
+
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .active_project_name,
+            Some("Alpha Renamed".to_string())
+        );
+        assert!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .has_loaded_project_item_list_once
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .project_item_visible_entries
+                .len(),
+            1
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .project_explorer_pane_state
+                .selected_project_item_visible_index,
+            Some(0)
+        );
+        assert_eq!(app_shell.last_project_items_auto_refresh_attempt_time, previous_refresh_attempt_time);
+    }
+
+    #[test]
+    fn engine_project_sync_allows_immediate_project_item_auto_refresh_after_directory_change() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .set_active_project(Some("Alpha".to_string()), Some(PathBuf::from("C:/Projects/Alpha/project")));
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_item_list_once = true;
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_item_list_response = false;
+        app_shell.last_project_items_auto_refresh_attempt_time = Some(current_tick_time);
+
+        app_shell.apply_engine_active_project_state(Some("Beta".to_string()), Some(PathBuf::from("C:/Projects/Beta/project")));
+
+        assert!(app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
     }
 
     #[test]
