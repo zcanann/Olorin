@@ -5,7 +5,7 @@ mod views;
 use crate::app::{AppShell, TerminalGuard};
 use anyhow::{Context, Result, bail};
 use squalr_engine::engine_mode::EngineMode;
-use squalr_engine::squalr_engine::SqualrEngine;
+use squalr_engine::squalr_engine::{SqualrEngine, SqualrEngineOptions};
 use std::time::Duration;
 
 fn main() -> Result<()> {
@@ -16,7 +16,13 @@ fn main() -> Result<()> {
         EngineMode::Standalone
     };
 
-    let mut squalr_engine = SqualrEngine::new(engine_mode).context("Fatal error initializing Squalr engine.")?;
+    let mut squalr_engine = SqualrEngine::new_with_options(
+        engine_mode,
+        SqualrEngineOptions {
+            enable_unprivileged_console_logging: false,
+        },
+    )
+    .context("Fatal error initializing Squalr engine.")?;
     squalr_engine.initialize();
 
     if engine_mode == EngineMode::Standalone {

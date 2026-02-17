@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI project against TUI and identify the next behavior-level parity gap.
+- Logging subsystem still emits repeated `attempted to set a logger after the logging system was already initialized` errors when multiple `SqualrEngine`/`EngineUnprivilegedState` instances are created in one process (notably tests). Make logger initialization idempotent/singleton-safe without losing output-pane log history behavior.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -113,3 +113,6 @@ Information discovered during iteration:
 - Updated `squalr-tui/src/app/mod.rs` module composition to include the new dispatch modules directly, preserving existing `AppShell` method surface for pane handlers/tick orchestration.
 - Validation pass after dispatch split + launch fix: `cargo test -p squalr-tui` (57 passed).
 - Checkpoint commit for dispatch split + launch parity: `52a25180` (`Split TUI command dispatch by domain and restore external launch`).
+- TUI logging bleed fix: `squalr-engine-session` logger now supports optional console sink (`LogDispatcherOptions`), `squalr-engine` exposes passthrough options (`SqualrEngineOptions`), and `squalr-tui` disables unprivileged console logging so logs flow to file + output pane instead of the terminal surface.
+- Removed direct terminal output from project manager watcher startup (`println!` -> `log::info!`) to prevent non-logger writes from corrupting the ratatui alternate screen.
+- Validation pass for logging bleed fix: `cargo test -p squalr-tui` (57 passed).

@@ -15,12 +15,29 @@ use std::{
 
 pub struct LogDispatcher {
     log_history: Arc<RwLock<VecDeque<LogEvent>>>,
+    options: LogDispatcherOptions,
+}
+
+#[derive(Clone, Copy)]
+pub struct LogDispatcherOptions {
+    pub enable_console_output: bool,
+}
+
+impl Default for LogDispatcherOptions {
+    fn default() -> Self {
+        Self { enable_console_output: true }
+    }
 }
 
 impl LogDispatcher {
     pub fn new() -> Self {
+        Self::new_with_options(LogDispatcherOptions::default())
+    }
+
+    pub fn new_with_options(options: LogDispatcherOptions) -> Self {
         let logger = LogDispatcher {
             log_history: Arc::new(RwLock::new(VecDeque::new())),
+            options,
         };
 
         if let Err(error) = logger.initialize() {
@@ -49,27 +66,27 @@ impl LogDispatcher {
             fs::rename(&log_file, &backup_file)?;
         }
 
-        let stdout = ConsoleAppender::builder()
-            .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} - {l} - {t} - {m}\n")))
-            .build();
-
         let file_appender = FileAppender::builder()
             .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} - {l} - {t} - {m}\n")))
             .build(log_file)?;
 
         let log_history_appender = LogHistoryAppender::new(self.log_history.clone());
 
-        let config = Config::builder()
-            .appender(Appender::builder().build("stdout", Box::new(stdout)))
+        let mut config_builder = Config::builder()
             .appender(Appender::builder().build("file", Box::new(file_appender)))
-            .appender(Appender::builder().build("log_events", Box::new(log_history_appender)))
-            .build(
-                Root::builder()
-                    .appender("stdout")
-                    .appender("file")
-                    .appender("log_events")
-                    .build(LevelFilter::Debug),
-            )?;
+            .appender(Appender::builder().build("log_events", Box::new(log_history_appender)));
+        let mut root_builder = Root::builder().appender("file").appender("log_events");
+
+        if self.options.enable_console_output {
+            let stdout_appender = ConsoleAppender::builder()
+                .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} - {l} - {t} - {m}\n")))
+                .build();
+
+            config_builder = config_builder.appender(Appender::builder().build("stdout", Box::new(stdout_appender)));
+            root_builder = root_builder.appender("stdout");
+        }
+
+        let config = config_builder.build(root_builder.build(LevelFilter::Debug))?;
 
         log4rs::init_config(config)?;
 
