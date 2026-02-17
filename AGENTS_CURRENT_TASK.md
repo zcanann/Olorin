@@ -16,7 +16,7 @@ Our current task, from `README.md`, is:
 - [x] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
 - [x] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
 - [x] Implement project selector parity: list/create/open/rename/delete/close project.
-- [ ] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
+- [x] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
 - [ ] Implement struct viewer parity for selected scan results/project items, including edit commit callback routing.
 - [ ] Implement settings panes parity (general/memory/scan list+set requests).
 - [ ] Implement output pane parity using log history stream + periodic redraw.
@@ -58,5 +58,6 @@ Information discovered during iteration:
 - TUI project selector now dispatches `ProjectListRequest`, `ProjectCreateRequest`, `ProjectOpenRequest`, `ProjectRenameRequest`, `ProjectDeleteRequest`, and `ProjectCloseRequest` with keyboard-first controls (`r`, `n`, `Enter`/`o`, `e`, `x`, `c`, `j`/`k`, plus inline name input commit/cancel).
 - Added `project_explorer_pane_state` reducer tests for default selection on list load, wraparound project selection, and rename-input guard behavior.
 - Checkpoint commit for project selector parity: `58e938ef` (`Implement TUI project selector command parity`).
+- TUI project hierarchy now dispatches `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, and `ProjectItemsReorderRequest` with keyboard-first controls (`i` hierarchy mode, `h` refresh, `j`/`k` select, `l`/`Left` expand-collapse, `Space` activate, `n` create folder, `x` confirm-delete, `m` stage move, `b` move here, `[`/`]` reorder).
 
 

@@ -1,6 +1,6 @@
 use crate::state::TuiAppState;
 use crate::state::pane::TuiPane;
-use crate::state::project_explorer_pane_state::ProjectSelectorInputMode;
+use crate::state::project_explorer_pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
 use anyhow::{Context, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
@@ -22,7 +22,13 @@ use squalr_engine_api::commands::project::delete::project_delete_request::Projec
 use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest;
 use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
+use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
 use squalr_engine_api::commands::project_items::add::project_items_add_request::ProjectItemsAddRequest;
+use squalr_engine_api::commands::project_items::create::project_items_create_request::ProjectItemsCreateRequest;
+use squalr_engine_api::commands::project_items::delete::project_items_delete_request::ProjectItemsDeleteRequest;
+use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
+use squalr_engine_api::commands::project_items::move_item::project_items_move_request::ProjectItemsMoveRequest;
+use squalr_engine_api::commands::project_items::reorder::project_items_reorder_request::ProjectItemsReorderRequest;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
 use squalr_engine_api::commands::scan::element_scan::element_scan_request::ElementScanRequest;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
@@ -209,6 +215,23 @@ impl AppShell {
                 .is_awaiting_project_list_response
         {
             self.refresh_project_list(squalr_engine);
+        }
+
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path
+            .is_some()
+            && !self
+                .app_state
+                .project_explorer_pane_state
+                .has_loaded_project_item_list_once
+            && !self
+                .app_state
+                .project_explorer_pane_state
+                .is_awaiting_project_item_list_response
+        {
+            self.refresh_project_items_list(squalr_engine);
         }
     }
 
@@ -428,6 +451,23 @@ impl AppShell {
         }
 
         match key_event.code {
+            KeyCode::Char('p') => self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectList,
+            KeyCode::Char('i') => self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectHierarchy,
+            _ => {}
+        }
+
+        match self.app_state.project_explorer_pane_state.focus_target {
+            ProjectExplorerFocusTarget::ProjectList => self.handle_project_list_key_event(key_event.code, squalr_engine),
+            ProjectExplorerFocusTarget::ProjectHierarchy => self.handle_project_hierarchy_key_event(key_event.code, squalr_engine),
+        }
+    }
+
+    fn handle_project_list_key_event(
+        &mut self,
+        key_code: KeyCode,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_code {
             KeyCode::Char('r') => self.refresh_project_list(squalr_engine),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.project_explorer_pane_state.select_next_project(),
             KeyCode::Up | KeyCode::Char('k') => self
@@ -454,6 +494,75 @@ impl AppShell {
         }
     }
 
+    fn handle_project_hierarchy_key_event(
+        &mut self,
+        key_code: KeyCode,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_code {
+            KeyCode::Char('h') => self.refresh_project_items_list(squalr_engine),
+            KeyCode::Down | KeyCode::Char('j') => self
+                .app_state
+                .project_explorer_pane_state
+                .select_next_project_item(),
+            KeyCode::Up | KeyCode::Char('k') => self
+                .app_state
+                .project_explorer_pane_state
+                .select_previous_project_item(),
+            KeyCode::Right | KeyCode::Char('l') => {
+                if !self
+                    .app_state
+                    .project_explorer_pane_state
+                    .expand_selected_project_item_directory()
+                {
+                    self.app_state.project_explorer_pane_state.status_message = "No expandable directory is selected.".to_string();
+                }
+            }
+            KeyCode::Left => {
+                if !self
+                    .app_state
+                    .project_explorer_pane_state
+                    .collapse_selected_project_item_directory_or_select_parent()
+                {
+                    self.app_state.project_explorer_pane_state.status_message = "No collapsible directory is selected.".to_string();
+                }
+            }
+            KeyCode::Char(' ') => self.toggle_selected_project_item_activation(squalr_engine),
+            KeyCode::Char('n') => {
+                if !self
+                    .app_state
+                    .project_explorer_pane_state
+                    .begin_create_project_directory_input()
+                {
+                    self.app_state.project_explorer_pane_state.status_message = "No project item directory target is selected.".to_string();
+                }
+            }
+            KeyCode::Char('m') => {
+                if self
+                    .app_state
+                    .project_explorer_pane_state
+                    .stage_selected_project_item_for_move()
+                {
+                    self.app_state.project_explorer_pane_state.status_message =
+                        "Staged selected project item for move. Select destination and press b.".to_string();
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "No project item is selected for move.".to_string();
+                }
+            }
+            KeyCode::Char('b') => self.move_staged_project_items_to_selected_directory(squalr_engine),
+            KeyCode::Char('u') => {
+                self.app_state
+                    .project_explorer_pane_state
+                    .clear_pending_move_source_paths();
+                self.app_state.project_explorer_pane_state.status_message = "Cleared staged project item move.".to_string();
+            }
+            KeyCode::Char('[') => self.reorder_selected_project_item(squalr_engine, true),
+            KeyCode::Char(']') => self.reorder_selected_project_item(squalr_engine, false),
+            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_project_item_with_confirmation(squalr_engine),
+            _ => {}
+        }
+    }
+
     fn commit_project_selector_input(
         &mut self,
         squalr_engine: &mut SqualrEngine,
@@ -461,6 +570,7 @@ impl AppShell {
         match self.app_state.project_explorer_pane_state.input_mode {
             ProjectSelectorInputMode::CreatingProject => self.create_project_from_pending_name(squalr_engine),
             ProjectSelectorInputMode::RenamingProject => self.rename_selected_project_from_pending_name(squalr_engine),
+            ProjectSelectorInputMode::CreatingProjectDirectory => self.create_project_directory_from_pending_name(squalr_engine),
             ProjectSelectorInputMode::None => {}
         }
     }
@@ -1307,6 +1417,56 @@ impl AppShell {
             .is_awaiting_project_list_response = false;
     }
 
+    fn refresh_project_items_list(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_item_list_response
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project item list request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project item listing.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_item_list_response = true;
+        self.app_state.project_explorer_pane_state.status_message = "Refreshing project item hierarchy.".to_string();
+
+        let project_items_list_request = ProjectItemsListRequest {};
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_list_request.send(engine_unprivileged_state, move |project_items_list_response| {
+            let _ = response_sender.send(project_items_list_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_items_list_response) => {
+                let project_item_count = project_items_list_response.opened_project_items.len();
+                self.app_state
+                    .project_explorer_pane_state
+                    .apply_project_items_list(project_items_list_response.opened_project_items);
+                self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} project items.", project_item_count);
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item list response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_item_list_response = false;
+    }
+
     fn create_project_from_pending_name(
         &mut self,
         squalr_engine: &mut SqualrEngine,
@@ -1376,6 +1536,380 @@ impl AppShell {
         self.app_state.project_explorer_pane_state.is_creating_project = false;
     }
 
+    fn create_project_directory_from_pending_name(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_creating_project_item
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project item create request already in progress.".to_string();
+            return;
+        }
+
+        let parent_directory_path = match self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_item_directory_target_path()
+        {
+            Some(parent_directory_path) => parent_directory_path,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No directory target is selected for project item create.".to_string();
+                return;
+            }
+        };
+
+        let project_item_name = match self
+            .app_state
+            .project_explorer_pane_state
+            .pending_project_name_trimmed()
+        {
+            Some(project_item_name) => project_item_name,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "Project item name is empty.".to_string();
+                return;
+            }
+        };
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project item create.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_creating_project_item = true;
+        self.app_state.project_explorer_pane_state.status_message =
+            format!("Creating directory '{}' under {}.", project_item_name, parent_directory_path.display());
+
+        let project_items_create_request = ProjectItemsCreateRequest {
+            parent_directory_path,
+            project_item_name: project_item_name.clone(),
+            project_item_type: "directory".to_string(),
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_create_request.send(engine_unprivileged_state, move |project_items_create_response| {
+            let _ = response_sender.send(project_items_create_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_items_create_response) => {
+                if project_items_create_response.success {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .cancel_project_name_input();
+                    self.app_state.project_explorer_pane_state.status_message = format!("Created project directory '{}'.", project_item_name);
+                    self.refresh_project_items_list(squalr_engine);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project item create request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item create response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_creating_project_item = false;
+    }
+
+    fn toggle_selected_project_item_activation(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_toggling_project_item_activation
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project item activation request already in progress.".to_string();
+            return;
+        }
+
+        let selected_project_item_path = match self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_item_path()
+        {
+            Some(selected_project_item_path) => selected_project_item_path,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No project item is selected for activation.".to_string();
+                return;
+            }
+        };
+        let is_target_activated = !self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_item_is_activated();
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message =
+                    "No unprivileged engine state is available for project item activation.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_toggling_project_item_activation = true;
+        self.app_state.project_explorer_pane_state.status_message =
+            format!("Setting activation={} for {}.", is_target_activated, selected_project_item_path.display());
+
+        let project_items_activate_request = ProjectItemsActivateRequest {
+            project_item_paths: vec![selected_project_item_path.display().to_string()],
+            is_activated: is_target_activated,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_activate_request.send(engine_unprivileged_state, move |project_items_activate_response| {
+            let _ = response_sender.send(project_items_activate_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(_) => {
+                self.app_state.project_explorer_pane_state.status_message = "Updated selected project item activation.".to_string();
+                self.refresh_project_items_list(squalr_engine);
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message =
+                    format!("Timed out waiting for project item activation response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_toggling_project_item_activation = false;
+    }
+
+    fn move_staged_project_items_to_selected_directory(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_moving_project_item
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project item move request already in progress.".to_string();
+            return;
+        }
+
+        if !self
+            .app_state
+            .project_explorer_pane_state
+            .has_pending_move_source_paths()
+        {
+            self.app_state.project_explorer_pane_state.status_message = "No staged project items to move.".to_string();
+            return;
+        }
+
+        let target_directory_path = match self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_item_directory_target_path()
+        {
+            Some(target_directory_path) => target_directory_path,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No target directory is selected for move.".to_string();
+                return;
+            }
+        };
+
+        let project_item_paths = self
+            .app_state
+            .project_explorer_pane_state
+            .pending_move_source_paths();
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for move.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_moving_project_item = true;
+        self.app_state.project_explorer_pane_state.status_message =
+            format!("Moving {} project items to {}.", project_item_paths.len(), target_directory_path.display());
+
+        let project_items_move_request = ProjectItemsMoveRequest {
+            project_item_paths,
+            target_directory_path,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_move_request.send(engine_unprivileged_state, move |project_items_move_response| {
+            let _ = response_sender.send(project_items_move_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_items_move_response) => {
+                if project_items_move_response.success {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .clear_pending_move_source_paths();
+                    self.app_state.project_explorer_pane_state.status_message =
+                        format!("Moved {} project items.", project_items_move_response.moved_project_item_count);
+                    self.refresh_project_items_list(squalr_engine);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project item move request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item move response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_moving_project_item = false;
+    }
+
+    fn reorder_selected_project_item(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        move_toward_previous_position: bool,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_reordering_project_item
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project item reorder request already in progress.".to_string();
+            return;
+        }
+
+        let project_item_paths = match self
+            .app_state
+            .project_explorer_pane_state
+            .build_reorder_request_paths_for_selected_project_item(move_toward_previous_position)
+        {
+            Some(project_item_paths) => project_item_paths,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "Selected project item cannot be reordered in that direction.".to_string();
+                return;
+            }
+        };
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for reorder.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_reordering_project_item = true;
+        self.app_state.project_explorer_pane_state.status_message = "Reordering project items.".to_string();
+
+        let project_items_reorder_request = ProjectItemsReorderRequest { project_item_paths };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_reorder_request.send(engine_unprivileged_state, move |project_items_reorder_response| {
+            let _ = response_sender.send(project_items_reorder_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_items_reorder_response) => {
+                if project_items_reorder_response.success {
+                    self.app_state.project_explorer_pane_state.status_message =
+                        format!("Reordered {} project items.", project_items_reorder_response.reordered_project_item_count);
+                    self.refresh_project_items_list(squalr_engine);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project item reorder request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item reorder response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_reordering_project_item = false;
+    }
+
+    fn delete_selected_project_item_with_confirmation(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_deleting_project_item
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project item delete request already in progress.".to_string();
+            return;
+        }
+
+        if !self
+            .app_state
+            .project_explorer_pane_state
+            .has_pending_delete_confirmation_for_selected_project_item()
+        {
+            if self
+                .app_state
+                .project_explorer_pane_state
+                .arm_delete_confirmation_for_selected_project_item()
+            {
+                self.app_state.project_explorer_pane_state.status_message = "Press x again to confirm deleting selected project item.".to_string();
+            } else {
+                self.app_state.project_explorer_pane_state.status_message = "No project item is selected for delete.".to_string();
+            }
+            return;
+        }
+
+        let project_item_paths = self
+            .app_state
+            .project_explorer_pane_state
+            .take_pending_delete_confirmation_paths();
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for delete.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_deleting_project_item = true;
+        self.app_state.project_explorer_pane_state.status_message = format!("Deleting {} project items.", project_item_paths.len());
+
+        let project_items_delete_request = ProjectItemsDeleteRequest { project_item_paths };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_delete_request.send(engine_unprivileged_state, move |project_items_delete_response| {
+            let _ = response_sender.send(project_items_delete_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_items_delete_response) => {
+                if project_items_delete_response.success {
+                    self.app_state.project_explorer_pane_state.status_message =
+                        format!("Deleted {} project items.", project_items_delete_response.deleted_project_item_count);
+                    self.refresh_project_items_list(squalr_engine);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project item delete request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item delete response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_deleting_project_item = false;
+    }
+
     fn open_selected_project(
         &mut self,
         squalr_engine: &mut SqualrEngine,
@@ -1430,7 +1964,9 @@ impl AppShell {
                     self.app_state
                         .project_explorer_pane_state
                         .set_active_project(Some(selected_project_name.clone()), Some(selected_project_directory_path.clone()));
+                    self.app_state.project_explorer_pane_state.clear_project_items();
                     self.app_state.project_explorer_pane_state.status_message = format!("Opened project '{}'.", selected_project_name);
+                    self.refresh_project_items_list(squalr_engine);
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "Project open request failed.".to_string();
                 }
@@ -1592,6 +2128,7 @@ impl AppShell {
                         self.app_state
                             .project_explorer_pane_state
                             .set_active_project(None, None);
+                        self.app_state.project_explorer_pane_state.clear_project_items();
                     }
                     self.app_state.project_explorer_pane_state.status_message = format!("Deleted project '{}'.", selected_project_name);
                     self.refresh_project_list(squalr_engine);
@@ -1639,6 +2176,7 @@ impl AppShell {
                     self.app_state
                         .project_explorer_pane_state
                         .set_active_project(None, None);
+                    self.app_state.project_explorer_pane_state.clear_project_items();
                     self.app_state.project_explorer_pane_state.status_message = "Closed active project.".to_string();
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "Project close request failed.".to_string();
