@@ -97,4 +97,4 @@ Information discovered during iteration:
 - Output pane cleanup: removed unused `apply_log_history` helper and updated reducer tests to call `apply_log_history_with_feedback(..., true)` directly; validated with `cargo test -p squalr-tui` (54 passed).
 - TUI architecture cleanup pass: pane modules moved from `squalr-tui/src/state/` to `squalr-tui/src/views/` to better mirror GUI layering; `squalr-tui/src/app/mod.rs` and `squalr-tui/src/state/mod.rs` are now include-only module files with re-exports; `TuiAppState` moved to `squalr-tui/src/state/app_state.rs`.
 - Validation pass after module relocation/refactor: `cargo test -p squalr-tui` (54 passed).
-
+- Checkpoint commit for module-layout cleanup: `21c60931` (`Refactor TUI module layout for app/state/views separation`).
