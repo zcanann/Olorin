@@ -150,10 +150,20 @@ impl AppShell {
             }
             KeyCode::Char('/') => self.app_state.process_selector_pane_state.begin_search_input(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.process_selector_pane_state.select_next_process(),
-            KeyCode::Up | KeyCode::Char('k') => self
-                .app_state
-                .process_selector_pane_state
-                .select_previous_process(),
+            KeyCode::Up | KeyCode::Char('k') => {
+                if self
+                    .app_state
+                    .process_selector_pane_state
+                    .selected_process_list_index
+                    == Some(0)
+                {
+                    self.app_state.process_selector_pane_state.begin_search_input();
+                } else {
+                    self.app_state
+                        .process_selector_pane_state
+                        .select_previous_process();
+                }
+            }
             KeyCode::Home => self
                 .app_state
                 .process_selector_pane_state

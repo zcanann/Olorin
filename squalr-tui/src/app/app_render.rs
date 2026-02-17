@@ -27,7 +27,7 @@ impl AppShell {
     ) {
         let rows = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(body_area);
 
         if self
@@ -49,7 +49,7 @@ impl AppShell {
     ) {
         let rows = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(body_area);
         let workspace_columns = Layout::default()
             .direction(Direction::Horizontal)
@@ -68,7 +68,7 @@ impl AppShell {
     ) {
         let rows = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
             .split(body_area);
 
         self.draw_single_pane(frame, rows[0], TuiPane::Settings);

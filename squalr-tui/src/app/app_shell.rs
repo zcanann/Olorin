@@ -135,7 +135,7 @@ impl AppShell {
 
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(8), Constraint::Min(0)])
+            .constraints([Constraint::Length(7), Constraint::Min(0)])
             .split(frame.area());
 
         let info_header = Paragraph::new(vec![
@@ -144,7 +144,6 @@ impl AppShell {
             Line::from(self.session_active_project_metadata_line()),
             Line::from(self.session_active_workspace_metadata_line()),
             Line::from(Self::footer_navigation_controls_line()),
-            Line::from(Self::footer_exit_controls_line()),
         ])
         .style(TuiTheme::panel_text_style())
         .block(TuiTheme::session_block("Info"));
@@ -162,11 +161,7 @@ impl AppShell {
     }
 
     fn footer_navigation_controls_line() -> &'static str {
-        "[NAV] F1 Project | F2 Scanner | F3 Settings | F4 Process Selector | Tab/Shift+Tab focus."
-    }
-
-    fn footer_exit_controls_line() -> &'static str {
-        "[EXIT] Ctrl+Q / Ctrl+C."
+        "[NAV] F1 toggle Process/Project | F2 Scanner | F3 Settings | F4 Project | Tab/Shift+Tab focus | Ctrl+Q/C exit."
     }
 
     fn session_opened_process_metadata_line(&self) -> String {
@@ -286,7 +281,7 @@ impl AppShell {
                 true
             }
             KeyCode::F(function_key_index) => {
-                if function_key_index == 4 {
+                if function_key_index == 1 {
                     self.app_state
                         .set_active_workspace_page(TuiWorkspacePage::ProjectWorkspace);
                     if self
@@ -327,6 +322,7 @@ impl AppShell {
 #[cfg(test)]
 mod tests {
     use super::AppShell;
+    use crate::state::workspace_page::TuiWorkspacePage;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use std::time::Duration;
 
@@ -361,5 +357,47 @@ mod tests {
 
         assert!(was_consumed);
         assert!(app_shell.should_exit);
+    }
+
+    #[test]
+    fn f1_toggles_back_to_process_selector_view() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .activate_project_explorer_view();
+        app_shell
+            .app_state
+            .set_active_workspace_page(TuiWorkspacePage::ScannerWorkspace);
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .opened_process_identifier = Some(1234);
+        let f1_key_event = KeyEvent::new(KeyCode::F(1), KeyModifiers::NONE);
+
+        let was_consumed = app_shell.handle_global_key_event(f1_key_event);
+
+        assert!(was_consumed);
+        assert_eq!(app_shell.app_state.active_workspace_page(), TuiWorkspacePage::ProjectWorkspace);
+        assert!(
+            app_shell
+                .app_state
+                .process_selector_pane_state
+                .is_process_selector_view_active
+        );
+    }
+
+    #[test]
+    fn f4_switches_to_project_workspace() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell
+            .app_state
+            .set_active_workspace_page(TuiWorkspacePage::ScannerWorkspace);
+        let f4_key_event = KeyEvent::new(KeyCode::F(4), KeyModifiers::NONE);
+
+        let was_consumed = app_shell.handle_global_key_event(f4_key_event);
+
+        assert!(was_consumed);
+        assert_eq!(app_shell.app_state.active_workspace_page(), TuiWorkspacePage::ProjectWorkspace);
     }
 }

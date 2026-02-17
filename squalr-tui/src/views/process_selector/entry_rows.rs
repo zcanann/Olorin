@@ -44,8 +44,9 @@ pub fn build_visible_process_entry_rows(
             .get(visible_process_position)
         {
             let is_selected_process = process_selector_pane_state.selected_process_list_index == Some(visible_process_position);
+            let should_highlight_selected_process = !is_search_input_active;
             let is_opened_process = process_selector_pane_state.opened_process_identifier == Some(process_entry.get_process_id_raw());
-            let marker_text = match (is_selected_process, is_opened_process) {
+            let marker_text = match (is_selected_process && should_highlight_selected_process, is_opened_process) {
                 (true, true) => ">*".to_string(),
                 (true, false) => ">".to_string(),
                 (false, true) => "*".to_string(),
@@ -54,7 +55,7 @@ pub fn build_visible_process_entry_rows(
             let primary_text = process_entry.get_name().to_string();
             let secondary_text = Some(format!("pid={}", process_entry.get_process_id_raw()));
 
-            if is_selected_process {
+            if is_selected_process && should_highlight_selected_process {
                 entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
             } else {
                 entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
@@ -63,4 +64,39 @@ pub fn build_visible_process_entry_rows(
     }
 
     entry_rows
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_visible_process_entry_rows;
+    use crate::state::pane_entry_row::PaneEntryRowTone;
+    use crate::views::process_selector::pane_state::{ProcessSelectorInputMode, ProcessSelectorPaneState};
+    use squalr_engine_api::structures::processes::process_info::ProcessInfo;
+
+    fn create_process_entry(
+        process_name: &str,
+        process_identifier: u32,
+    ) -> ProcessInfo {
+        ProcessInfo::new(process_identifier, process_name.to_string(), true, None)
+    }
+
+    #[test]
+    fn search_input_mode_highlights_only_search_row() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.apply_process_list(vec![
+            create_process_entry("Alpha", 100),
+            create_process_entry("Beta", 200),
+        ]);
+        process_selector_pane_state.selected_process_list_index = Some(0);
+        process_selector_pane_state.input_mode = ProcessSelectorInputMode::Search;
+        process_selector_pane_state.pending_search_name_input = "Al".to_string();
+
+        let visible_entry_rows = build_visible_process_entry_rows(&process_selector_pane_state, 5);
+
+        assert_eq!(visible_entry_rows[0].tone, PaneEntryRowTone::Selected);
+        assert_eq!(visible_entry_rows[0].marker_text, "/");
+        assert_eq!(visible_entry_rows[1].tone, PaneEntryRowTone::Normal);
+        assert_ne!(visible_entry_rows[1].marker_text, ">");
+        assert_ne!(visible_entry_rows[1].marker_text, ">*");
+    }
 }

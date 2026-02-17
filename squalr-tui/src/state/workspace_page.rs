@@ -11,9 +11,9 @@ pub enum TuiWorkspacePage {
 impl TuiWorkspacePage {
     pub fn from_function_key(function_key_index: u8) -> Option<Self> {
         match function_key_index {
-            1 => Some(Self::ProjectWorkspace),
             2 => Some(Self::ScannerWorkspace),
             3 => Some(Self::SettingsWorkspace),
+            4 => Some(Self::ProjectWorkspace),
             _ => None,
         }
     }
@@ -60,10 +60,10 @@ mod tests {
 
     #[test]
     fn function_keys_map_to_workspace_pages() {
-        assert_eq!(TuiWorkspacePage::from_function_key(1), Some(TuiWorkspacePage::ProjectWorkspace));
+        assert_eq!(TuiWorkspacePage::from_function_key(1), None);
         assert_eq!(TuiWorkspacePage::from_function_key(2), Some(TuiWorkspacePage::ScannerWorkspace));
         assert_eq!(TuiWorkspacePage::from_function_key(3), Some(TuiWorkspacePage::SettingsWorkspace));
-        assert_eq!(TuiWorkspacePage::from_function_key(4), None);
+        assert_eq!(TuiWorkspacePage::from_function_key(4), Some(TuiWorkspacePage::ProjectWorkspace));
     }
 
     #[test]
