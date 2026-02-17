@@ -88,13 +88,7 @@ impl TuiAppState {
         match pane {
             TuiPane::ProcessSelector => self.process_selector_pane_state.summary_lines(),
             TuiPane::ElementScanner => self.element_scanner_pane_state.summary_lines(),
-            TuiPane::ScanResults => {
-                vec![
-                    format!("page={}", self.scan_results_pane_state.current_page_index),
-                    format!("page_size={}", self.scan_results_pane_state.results_per_page),
-                    format!("selected_offset={:?}", self.scan_results_pane_state.selected_result_offset),
-                ]
-            }
+            TuiPane::ScanResults => self.scan_results_pane_state.summary_lines(),
             TuiPane::ProjectExplorer => {
                 vec![
                     format!("active_project={:?}", self.project_explorer_pane_state.active_project_name),

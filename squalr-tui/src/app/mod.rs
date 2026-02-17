@@ -15,10 +15,21 @@ use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
+use squalr_engine_api::commands::project_items::add::project_items_add_request::ProjectItemsAddRequest;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
 use squalr_engine_api::commands::scan::element_scan::element_scan_request::ElementScanRequest;
 use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
 use squalr_engine_api::commands::scan::reset::scan_reset_request::ScanResetRequest;
+use squalr_engine_api::commands::scan_results::delete::scan_results_delete_request::ScanResultsDeleteRequest;
+use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_request::ScanResultsFreezeRequest;
+use squalr_engine_api::commands::scan_results::query::scan_results_query_request::ScanResultsQueryRequest;
+use squalr_engine_api::commands::scan_results::refresh::scan_results_refresh_request::ScanResultsRefreshRequest;
+use squalr_engine_api::commands::scan_results::set_property::scan_results_set_property_request::ScanResultsSetPropertyRequest;
+use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
+use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
+use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
+use squalr_engine_api::structures::data_values::container_type::ContainerType;
+use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use std::io::{self, Stdout};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -190,6 +201,7 @@ impl AppShell {
         match self.app_state.focused_pane() {
             TuiPane::ProcessSelector => self.handle_process_selector_key_event(key_event.code, squalr_engine),
             TuiPane::ElementScanner => self.handle_element_scanner_key_event(key_event, squalr_engine),
+            TuiPane::ScanResults => self.handle_scan_results_key_event(key_event, squalr_engine),
             _ => {}
         }
     }
@@ -286,6 +298,83 @@ impl AppShell {
         }
     }
 
+    fn handle_scan_results_key_event(
+        &mut self,
+        key_event: KeyEvent,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let is_range_extend_modifier_active = key_event.modifiers.contains(KeyModifiers::SHIFT);
+
+        match key_event.code {
+            KeyCode::Char('r') => self.query_scan_results_current_page(squalr_engine),
+            KeyCode::Char('R') => self.refresh_selected_scan_results(squalr_engine),
+            KeyCode::Char(']') => self.query_next_scan_results_page(squalr_engine),
+            KeyCode::Char('[') => self.query_previous_scan_results_page(squalr_engine),
+            KeyCode::Down | KeyCode::Char('j') => {
+                if is_range_extend_modifier_active {
+                    self.app_state
+                        .scan_results_pane_state
+                        .set_selected_range_end_to_current();
+                }
+                self.app_state
+                    .scan_results_pane_state
+                    .select_next_result(is_range_extend_modifier_active);
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                if is_range_extend_modifier_active {
+                    self.app_state
+                        .scan_results_pane_state
+                        .set_selected_range_end_to_current();
+                }
+                self.app_state
+                    .scan_results_pane_state
+                    .select_previous_result(is_range_extend_modifier_active);
+            }
+            KeyCode::Home => {
+                if is_range_extend_modifier_active {
+                    self.app_state
+                        .scan_results_pane_state
+                        .set_selected_range_end_to_current();
+                }
+                self.app_state
+                    .scan_results_pane_state
+                    .select_first_result(is_range_extend_modifier_active);
+            }
+            KeyCode::End => {
+                if is_range_extend_modifier_active {
+                    self.app_state
+                        .scan_results_pane_state
+                        .set_selected_range_end_to_current();
+                }
+                self.app_state
+                    .scan_results_pane_state
+                    .select_last_result(is_range_extend_modifier_active);
+            }
+            KeyCode::Char('f') => self.toggle_selected_scan_results_frozen_state(squalr_engine),
+            KeyCode::Char('a') => self.add_selected_scan_results_to_project(squalr_engine),
+            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_scan_results(squalr_engine),
+            KeyCode::Enter => self.commit_selected_scan_results_value_edit(squalr_engine),
+            KeyCode::Backspace => self
+                .app_state
+                .scan_results_pane_state
+                .backspace_pending_value_edit(),
+            KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.app_state
+                    .scan_results_pane_state
+                    .clear_pending_value_edit();
+            }
+            KeyCode::Char('y') => self
+                .app_state
+                .scan_results_pane_state
+                .sync_pending_value_edit_from_selection(),
+            KeyCode::Char(scan_value_character) => self
+                .app_state
+                .scan_results_pane_state
+                .append_pending_value_edit_character(scan_value_character),
+            _ => {}
+        }
+    }
+
     fn reset_scan_state(
         &mut self,
         squalr_engine: &mut SqualrEngine,
@@ -334,6 +423,7 @@ impl AppShell {
                     self.app_state
                         .element_scanner_pane_state
                         .last_total_size_in_bytes = 0;
+                    self.app_state.scan_results_pane_state.clear_results();
                     self.app_state.element_scanner_pane_state.status_message = "Scan state reset.".to_string();
                 } else {
                     self.app_state.element_scanner_pane_state.status_message = "Scan reset request failed.".to_string();
@@ -496,6 +586,7 @@ impl AppShell {
                     .last_total_size_in_bytes = element_scan_response.scan_results_metadata.total_size_in_bytes;
                 self.app_state.element_scanner_pane_state.status_message =
                     format!("Scan complete with {} results.", element_scan_response.scan_results_metadata.result_count);
+                self.query_scan_results_current_page(squalr_engine);
             }
             Err(receive_error) => {
                 self.app_state.element_scanner_pane_state.status_message = format!("Timed out waiting for element scan response: {}", receive_error);
@@ -505,6 +596,435 @@ impl AppShell {
         self.app_state
             .element_scanner_pane_state
             .has_pending_scan_request = false;
+    }
+
+    fn query_scan_results_current_page(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.scan_results_pane_state.is_querying_scan_results {
+            self.app_state.scan_results_pane_state.status_message = "Scan results query already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for scan results query.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.scan_results_pane_state.is_querying_scan_results = true;
+        self.app_state.scan_results_pane_state.status_message =
+            format!("Querying scan results page {}.", self.app_state.scan_results_pane_state.current_page_index);
+
+        let page_index = self.app_state.scan_results_pane_state.current_page_index;
+        let scan_results_query_request = ScanResultsQueryRequest { page_index };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_results_query_request.send(engine_unprivileged_state, move |scan_results_query_response| {
+            let _ = response_sender.send(scan_results_query_response);
+        });
+
+        if !request_dispatched {
+            self.app_state.scan_results_pane_state.is_querying_scan_results = false;
+            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results query request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(scan_results_query_response) => {
+                self.apply_scan_results_query_response(scan_results_query_response);
+            }
+            Err(receive_error) => {
+                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results query response: {}", receive_error);
+            }
+        }
+
+        self.app_state.scan_results_pane_state.is_querying_scan_results = false;
+    }
+
+    fn query_next_scan_results_page(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let current_page_index = self.app_state.scan_results_pane_state.current_page_index;
+        let target_page_index = current_page_index.saturating_add(1);
+
+        if self
+            .app_state
+            .scan_results_pane_state
+            .set_current_page_index(target_page_index)
+        {
+            self.query_scan_results_current_page(squalr_engine);
+        }
+    }
+
+    fn query_previous_scan_results_page(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let current_page_index = self.app_state.scan_results_pane_state.current_page_index;
+        let target_page_index = current_page_index.saturating_sub(1);
+
+        if self
+            .app_state
+            .scan_results_pane_state
+            .set_current_page_index(target_page_index)
+        {
+            self.query_scan_results_current_page(squalr_engine);
+        }
+    }
+
+    fn refresh_selected_scan_results(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .scan_results_pane_state
+            .is_refreshing_scan_results
+        {
+            self.app_state.scan_results_pane_state.status_message = "Scan results refresh already in progress.".to_string();
+            return;
+        }
+
+        let selected_scan_result_refs = self
+            .app_state
+            .scan_results_pane_state
+            .selected_scan_result_refs();
+        if selected_scan_result_refs.is_empty() {
+            self.app_state.scan_results_pane_state.status_message = "No scan results are selected to refresh.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for scan results refresh.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .scan_results_pane_state
+            .is_refreshing_scan_results = true;
+        self.app_state.scan_results_pane_state.status_message = format!("Refreshing {} selected scan results.", selected_scan_result_refs.len());
+
+        let scan_results_refresh_request = ScanResultsRefreshRequest {
+            scan_result_refs: selected_scan_result_refs,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_results_refresh_request.send(engine_unprivileged_state, move |scan_results_refresh_response| {
+            let _ = response_sender.send(scan_results_refresh_response);
+        });
+
+        if !request_dispatched {
+            self.app_state
+                .scan_results_pane_state
+                .is_refreshing_scan_results = false;
+            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results refresh request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(scan_results_refresh_response) => {
+                let refreshed_result_count = scan_results_refresh_response.scan_results.len();
+                self.app_state
+                    .scan_results_pane_state
+                    .apply_refreshed_results(scan_results_refresh_response.scan_results);
+                self.app_state.scan_results_pane_state.status_message = format!("Refreshed {} scan results.", refreshed_result_count);
+            }
+            Err(receive_error) => {
+                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results refresh response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .scan_results_pane_state
+            .is_refreshing_scan_results = false;
+    }
+
+    fn toggle_selected_scan_results_frozen_state(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.scan_results_pane_state.is_freezing_scan_results {
+            self.app_state.scan_results_pane_state.status_message = "Scan results freeze request already in progress.".to_string();
+            return;
+        }
+
+        let selected_scan_result_refs = self
+            .app_state
+            .scan_results_pane_state
+            .selected_scan_result_refs();
+        if selected_scan_result_refs.is_empty() {
+            self.app_state.scan_results_pane_state.status_message = "No scan results are selected to freeze/unfreeze.".to_string();
+            return;
+        }
+
+        let target_frozen_state = !self
+            .app_state
+            .scan_results_pane_state
+            .any_selected_result_frozen();
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for freeze toggles.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.scan_results_pane_state.is_freezing_scan_results = true;
+        self.app_state.scan_results_pane_state.status_message = if target_frozen_state {
+            "Freezing selected scan results.".to_string()
+        } else {
+            "Unfreezing selected scan results.".to_string()
+        };
+
+        let scan_results_freeze_request = ScanResultsFreezeRequest {
+            scan_result_refs: selected_scan_result_refs,
+            is_frozen: target_frozen_state,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_results_freeze_request.send(engine_unprivileged_state, move |scan_results_freeze_response| {
+            let _ = response_sender.send(scan_results_freeze_response);
+        });
+
+        if !request_dispatched {
+            self.app_state.scan_results_pane_state.is_freezing_scan_results = false;
+            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results freeze request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(scan_results_freeze_response) => {
+                let failed_toggle_count = scan_results_freeze_response
+                    .failed_freeze_toggle_scan_result_refs
+                    .len();
+                self.app_state.scan_results_pane_state.status_message = if failed_toggle_count == 0 {
+                    if target_frozen_state {
+                        "Selected scan results frozen.".to_string()
+                    } else {
+                        "Selected scan results unfrozen.".to_string()
+                    }
+                } else {
+                    format!("Freeze toggle partially failed for {} entries.", failed_toggle_count)
+                };
+                self.refresh_selected_scan_results(squalr_engine);
+            }
+            Err(receive_error) => {
+                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results freeze response: {}", receive_error);
+            }
+        }
+
+        self.app_state.scan_results_pane_state.is_freezing_scan_results = false;
+    }
+
+    fn add_selected_scan_results_to_project(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .scan_results_pane_state
+            .is_adding_scan_results_to_project
+        {
+            self.app_state.scan_results_pane_state.status_message = "Add to project request already in progress.".to_string();
+            return;
+        }
+
+        let selected_scan_result_refs = self
+            .app_state
+            .scan_results_pane_state
+            .selected_scan_result_refs();
+        if selected_scan_result_refs.is_empty() {
+            self.app_state.scan_results_pane_state.status_message = "No scan results are selected to add to project.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for project item creation.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .scan_results_pane_state
+            .is_adding_scan_results_to_project = true;
+        self.app_state.scan_results_pane_state.status_message = format!("Adding {} scan results to project.", selected_scan_result_refs.len());
+
+        let project_items_add_request = ProjectItemsAddRequest {
+            scan_result_refs: selected_scan_result_refs,
+            target_directory_path: None,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_items_add_request.send(engine_unprivileged_state, move |project_items_add_response| {
+            let _ = response_sender.send(project_items_add_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_items_add_response) => {
+                self.app_state.scan_results_pane_state.status_message = if project_items_add_response.success {
+                    format!(
+                        "Added {} project items from selected scan results.",
+                        project_items_add_response.added_project_item_count
+                    )
+                } else {
+                    "Add-to-project request failed.".to_string()
+                };
+            }
+            Err(receive_error) => {
+                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for add-to-project response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .scan_results_pane_state
+            .is_adding_scan_results_to_project = false;
+    }
+
+    fn delete_selected_scan_results(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.scan_results_pane_state.is_deleting_scan_results {
+            self.app_state.scan_results_pane_state.status_message = "Delete request already in progress.".to_string();
+            return;
+        }
+
+        let selected_scan_result_refs = self
+            .app_state
+            .scan_results_pane_state
+            .selected_scan_result_refs();
+        if selected_scan_result_refs.is_empty() {
+            self.app_state.scan_results_pane_state.status_message = "No scan results are selected to delete.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for deletion.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.scan_results_pane_state.is_deleting_scan_results = true;
+        self.app_state.scan_results_pane_state.status_message = format!("Deleting {} selected scan results.", selected_scan_result_refs.len());
+
+        let scan_results_delete_request = ScanResultsDeleteRequest {
+            scan_result_refs: selected_scan_result_refs,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_results_delete_request.send(engine_unprivileged_state, move |scan_results_delete_response| {
+            let _ = response_sender.send(scan_results_delete_response);
+        });
+
+        if !request_dispatched {
+            self.app_state.scan_results_pane_state.is_deleting_scan_results = false;
+            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results delete request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(_scan_results_delete_response) => {
+                self.app_state.scan_results_pane_state.status_message = "Deleted selected scan results.".to_string();
+                self.query_scan_results_current_page(squalr_engine);
+            }
+            Err(receive_error) => {
+                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results delete response: {}", receive_error);
+            }
+        }
+
+        self.app_state.scan_results_pane_state.is_deleting_scan_results = false;
+    }
+
+    fn commit_selected_scan_results_value_edit(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.scan_results_pane_state.is_committing_value_edit {
+            self.app_state.scan_results_pane_state.status_message = "Value commit request already in progress.".to_string();
+            return;
+        }
+
+        let selected_scan_result_refs = self
+            .app_state
+            .scan_results_pane_state
+            .selected_scan_result_refs();
+        if selected_scan_result_refs.is_empty() {
+            self.app_state.scan_results_pane_state.status_message = "No scan results are selected to commit value edits.".to_string();
+            return;
+        }
+
+        let pending_value_edit_text = self
+            .app_state
+            .scan_results_pane_state
+            .pending_value_edit_text
+            .trim()
+            .to_string();
+        if pending_value_edit_text.is_empty() {
+            self.app_state.scan_results_pane_state.status_message = "Edit value is empty.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for value commits.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.scan_results_pane_state.is_committing_value_edit = true;
+        self.app_state.scan_results_pane_state.status_message = format!(
+            "Committing value edit '{}' for {} selected results.",
+            pending_value_edit_text,
+            selected_scan_result_refs.len()
+        );
+
+        let scan_results_set_property_request = ScanResultsSetPropertyRequest {
+            scan_result_refs: selected_scan_result_refs,
+            anonymous_value_string: AnonymousValueString::new(pending_value_edit_text, AnonymousValueStringFormat::Decimal, ContainerType::None),
+            field_namespace: ScanResult::PROPERTY_NAME_VALUE.to_string(),
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_results_set_property_request.send(engine_unprivileged_state, move |scan_results_set_property_response| {
+            let _ = response_sender.send(scan_results_set_property_response);
+        });
+
+        if !request_dispatched {
+            self.app_state.scan_results_pane_state.is_committing_value_edit = false;
+            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results set property request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(_scan_results_set_property_response) => {
+                self.app_state.scan_results_pane_state.status_message = "Committed selected scan result values.".to_string();
+                self.refresh_selected_scan_results(squalr_engine);
+            }
+            Err(receive_error) => {
+                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results set property response: {}", receive_error);
+            }
+        }
+
+        self.app_state.scan_results_pane_state.is_committing_value_edit = false;
+    }
+
+    fn apply_scan_results_query_response(
+        &mut self,
+        scan_results_query_response: squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse,
+    ) {
+        let result_count = scan_results_query_response.result_count;
+        let page_index = scan_results_query_response.page_index;
+        self.app_state
+            .scan_results_pane_state
+            .apply_query_response(scan_results_query_response);
+        self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
     }
 
     fn refresh_process_list(
