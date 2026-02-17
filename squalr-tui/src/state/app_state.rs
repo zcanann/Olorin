@@ -1,4 +1,5 @@
 use crate::state::pane::TuiPane;
+use crate::state::pane_entry_row::PaneEntryRow;
 use crate::state::pane_layout_state::PaneLayoutState;
 use crate::views::element_scanner_pane_state::ElementScannerPaneState;
 use crate::views::output_pane_state::OutputPaneState;
@@ -83,6 +84,25 @@ impl TuiAppState {
             TuiPane::StructViewer => self.struct_viewer_pane_state.summary_lines(),
             TuiPane::Output => self.output_pane_state.summary_lines(),
             TuiPane::Settings => self.settings_pane_state.summary_lines(),
+        }
+    }
+
+    pub fn pane_entry_rows(
+        &self,
+        pane: TuiPane,
+    ) -> Vec<PaneEntryRow> {
+        match pane {
+            TuiPane::ProcessSelector => self.process_selector_pane_state.visible_process_entry_rows(),
+            TuiPane::ScanResults => self.scan_results_pane_state.visible_scan_result_rows(),
+            TuiPane::ProjectExplorer => {
+                let mut entry_rows = self.project_explorer_pane_state.visible_project_entry_rows();
+                entry_rows.extend(
+                    self.project_explorer_pane_state
+                        .visible_project_item_entry_rows(),
+                );
+                entry_rows
+            }
+            _ => Vec::new(),
         }
     }
 

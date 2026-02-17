@@ -1,3 +1,4 @@
+use crate::state::pane_entry_row::PaneEntryRow;
 use squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
@@ -315,7 +316,7 @@ impl ScanResultsPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let mut summary_lines = vec![
+        vec![
             "Actions: r query page, R refresh current page values, [/] page, f freeze toggle, a add project, x delete.".to_string(),
             "Selection: Up/Down/j/k move, Shift+Up/Shift+Down range, Home/End bounds.".to_string(),
             "Value edit: digits/-/. set buffer, Backspace, Ctrl+u clear, Enter commit, y copy selected value.".to_string(),
@@ -336,42 +337,51 @@ impl ScanResultsPaneState {
             format!("adding={}", self.is_adding_scan_results_to_project),
             format!("committing={}", self.is_committing_value_edit),
             format!("status={}", self.status_message),
-        ];
+            "Entries (top 5).".to_string(),
+        ]
+    }
 
+    pub fn visible_scan_result_rows(&self) -> Vec<PaneEntryRow> {
+        let selected_result_range = self.selected_result_range();
         let visible_result_count = self.scan_results.len().min(5);
+        let mut entry_rows = Vec::with_capacity(visible_result_count);
+
         for visible_result_index in 0..visible_result_count {
             if let Some(scan_result) = self.scan_results.get(visible_result_index) {
-                let selected_marker = if self.selected_result_index == Some(visible_result_index) { ">" } else { " " };
-                let is_in_range = self
-                    .selected_result_range()
+                let is_selected_result = self.selected_result_index == Some(visible_result_index);
+                let is_in_selected_range = selected_result_range
+                    .as_ref()
                     .map(|selected_range| selected_range.contains(&visible_result_index))
                     .unwrap_or(false);
-                let range_marker = if is_in_range { "*" } else { " " };
                 let freeze_marker = if scan_result.get_is_frozen() { "F" } else { " " };
                 let value_preview = scan_result
                     .get_current_display_values()
                     .first()
                     .map(|display_value| display_value.get_anonymous_value_string().to_string())
                     .unwrap_or_else(|| "?".to_string());
-
-                summary_lines.push(format!(
-                    "{}{}{} idx={} global={} addr=0x{:X} type={} value={}",
-                    selected_marker,
-                    range_marker,
-                    freeze_marker,
+                let marker_text = format!("{}{}", if is_in_selected_range { "*" } else { " " }, freeze_marker);
+                let primary_text = format!(
+                    "idx={} global={} addr=0x{:X}",
                     visible_result_index,
                     scan_result
                         .get_base_result()
                         .get_scan_result_ref()
                         .get_scan_result_global_index(),
-                    scan_result.get_address(),
-                    scan_result.get_data_type_ref().get_data_type_id(),
-                    value_preview
-                ));
+                    scan_result.get_address()
+                );
+                let secondary_text = Some(format!("type={} value={}", scan_result.get_data_type_ref().get_data_type_id(), value_preview));
+
+                if is_selected_result {
+                    entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
+                } else if value_preview == "?" {
+                    entry_rows.push(PaneEntryRow::disabled(marker_text, primary_text, secondary_text));
+                } else {
+                    entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
+                }
             }
         }
 
-        summary_lines
+        entry_rows
     }
 
     fn selected_result_range(&self) -> Option<RangeInclusive<usize>> {

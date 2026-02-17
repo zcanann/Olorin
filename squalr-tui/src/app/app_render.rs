@@ -1,8 +1,9 @@
 use crate::app::AppShell;
 use crate::state::pane::TuiPane;
+use crate::state::pane_entry_row::PaneEntryRow;
 use crate::theme::TuiTheme;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::text::Line;
+use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 impl AppShell {
@@ -86,10 +87,54 @@ impl AppShell {
             .into_iter()
             .map(Line::from)
             .collect();
+        let entry_rows = self.app_state.pane_entry_rows(pane);
+        let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows);
 
         let pane_widget = Paragraph::new(pane_lines)
             .style(TuiTheme::panel_text_style())
             .block(TuiTheme::pane_block(&title, pane, is_focused));
         frame.render_widget(pane_widget, pane_area);
+    }
+
+    fn append_entry_row_lines(
+        &self,
+        mut pane_lines: Vec<Line<'static>>,
+        entry_rows: Vec<PaneEntryRow>,
+    ) -> Vec<Line<'static>> {
+        if entry_rows.is_empty() {
+            return pane_lines;
+        }
+
+        pane_lines.push(Line::from(String::new()));
+        for entry_row in entry_rows {
+            pane_lines.push(self.render_entry_row(entry_row));
+        }
+
+        pane_lines
+    }
+
+    fn render_entry_row(
+        &self,
+        entry_row: PaneEntryRow,
+    ) -> Line<'static> {
+        let marker_style = TuiTheme::pane_entry_marker_style(entry_row.tone);
+        let primary_style = TuiTheme::pane_entry_primary_style(entry_row.tone);
+        let secondary_style = TuiTheme::pane_entry_secondary_style(entry_row.tone);
+        let marker_text = if entry_row.marker_text.is_empty() {
+            "  ".to_string()
+        } else {
+            entry_row.marker_text
+        };
+        let mut entry_spans = vec![
+            Span::styled(format!("{:>2} ", marker_text), marker_style),
+            Span::styled(entry_row.primary_text, primary_style),
+        ];
+
+        if let Some(secondary_text) = entry_row.secondary_text {
+            entry_spans.push(Span::raw("  "));
+            entry_spans.push(Span::styled(secondary_text, secondary_style));
+        }
+
+        Line::from(entry_spans)
     }
 }

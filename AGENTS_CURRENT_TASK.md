@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: implement reusable pane-entry row rendering primitives (selected/normal/disabled variants) and migrate Process Selector, Scan Results, and Project Explorer summaries to use them so list-heavy panes read like real structured UIs rather than plain text dumps.
+- Concrete next subtask: split pane-entry rendering into focused submodules under `squalr-tui/src/views/` (for process/scan/project entry builders) so `*_pane_state` files stop carrying both reducer logic and display-row assembly details.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -129,3 +129,6 @@ Information discovered during iteration:
 - TUI visual hierarchy theming pass: added `squalr-tui/src/theme/mod.rs` with shared color tokens and reusable themed block builders for session/footer/panes, including per-pane accent colors and focused-pane emphasis.
 - Applied theme styles consistently across app background, header/footer containers, and all 7 core pane blocks in `app_shell` + `app_render`; pane content now uses shared text/status style tokens instead of default ratatui styles.
 - Validation pass for theme module integration: `cargo test -p squalr-tui` (57 passed).
+- TUI pane-entry primitive pass: added shared `PaneEntryRow`/`PaneEntryRowTone` model in `squalr-tui/src/state/pane_entry_row.rs` and integrated themed selected/normal/disabled row styles through `TuiTheme`.
+- Migrated Process Selector, Scan Results, and Project Explorer list-heavy summaries to produce structured entry rows (instead of inline marker-formatted strings), and wired rendering in `app_render` to draw these rows with marker/primary/secondary styling.
+- Validation pass for pane-entry primitive migration: `cargo test -p squalr-tui` (57 passed).

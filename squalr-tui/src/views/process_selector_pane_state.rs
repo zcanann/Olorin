@@ -1,3 +1,4 @@
+use crate::state::pane_entry_row::PaneEntryRow;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 
@@ -94,7 +95,7 @@ impl ProcessSelectorPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let mut summary_lines = vec![
+        vec![
             "Actions: r refresh, w windowed/full, Up/Down select, Enter open.".to_string(),
             format!("windowed_only={}", self.show_windowed_processes_only),
             format!("list_count={}", self.process_list_entries.len()),
@@ -106,26 +107,31 @@ impl ProcessSelectorPaneState {
             format!("awaiting_list={}", self.is_awaiting_process_list_response),
             format!("opening_process={}", self.is_opening_process),
             format!("status={}", self.status_message),
-        ];
+            "Entries (top 5).".to_string(),
+        ]
+    }
 
+    pub fn visible_process_entry_rows(&self) -> Vec<PaneEntryRow> {
         let visible_entry_count = self.process_list_entries.len().min(5);
+        let mut entry_rows = Vec::with_capacity(visible_entry_count);
+
         for visible_process_index in 0..visible_entry_count {
             if let Some(process_entry) = self.process_list_entries.get(visible_process_index) {
-                let selected_marker = if self.selected_process_list_index == Some(visible_process_index) {
-                    ">"
+                let is_selected_process = self.selected_process_list_index == Some(visible_process_index);
+                let is_opened_process = self.opened_process_identifier == Some(process_entry.get_process_id_raw());
+                let marker_text = if is_opened_process { "*".to_string() } else { String::new() };
+                let primary_text = process_entry.get_name().to_string();
+                let secondary_text = Some(format!("pid={}", process_entry.get_process_id_raw()));
+
+                if is_selected_process {
+                    entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
                 } else {
-                    " "
-                };
-                summary_lines.push(format!(
-                    "{} {} ({})",
-                    selected_marker,
-                    process_entry.get_name(),
-                    process_entry.get_process_id_raw()
-                ));
+                    entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
+                }
             }
         }
 
-        summary_lines
+        entry_rows
     }
 
     fn update_selected_process_fields(&mut self) {

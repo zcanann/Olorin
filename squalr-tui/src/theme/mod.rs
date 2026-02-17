@@ -1,4 +1,5 @@
 use crate::state::pane::TuiPane;
+use crate::state::pane_entry_row::PaneEntryRowTone;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders};
 
@@ -17,6 +18,34 @@ impl TuiTheme {
 
     pub fn status_text_style() -> Style {
         Style::default().fg(Color::Rgb(148, 163, 184))
+    }
+
+    pub fn pane_entry_marker_style(pane_entry_row_tone: PaneEntryRowTone) -> Style {
+        match pane_entry_row_tone {
+            PaneEntryRowTone::Selected => Style::default()
+                .fg(Color::Rgb(125, 211, 252))
+                .add_modifier(Modifier::BOLD),
+            PaneEntryRowTone::Normal => Style::default().fg(Color::Rgb(94, 234, 212)),
+            PaneEntryRowTone::Disabled => Style::default().fg(Color::Rgb(100, 116, 139)),
+        }
+    }
+
+    pub fn pane_entry_primary_style(pane_entry_row_tone: PaneEntryRowTone) -> Style {
+        match pane_entry_row_tone {
+            PaneEntryRowTone::Selected => Style::default()
+                .fg(Color::Rgb(241, 245, 249))
+                .add_modifier(Modifier::BOLD),
+            PaneEntryRowTone::Normal => Style::default().fg(Color::Rgb(214, 222, 235)),
+            PaneEntryRowTone::Disabled => Style::default().fg(Color::Rgb(148, 163, 184)),
+        }
+    }
+
+    pub fn pane_entry_secondary_style(pane_entry_row_tone: PaneEntryRowTone) -> Style {
+        match pane_entry_row_tone {
+            PaneEntryRowTone::Selected => Style::default().fg(Color::Rgb(191, 219, 254)),
+            PaneEntryRowTone::Normal => Style::default().fg(Color::Rgb(148, 163, 184)),
+            PaneEntryRowTone::Disabled => Style::default().fg(Color::Rgb(100, 116, 139)),
+        }
     }
 
     pub fn session_block<'a>(title: &'a str) -> Block<'a> {

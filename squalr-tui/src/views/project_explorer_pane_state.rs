@@ -1,3 +1,4 @@
+use crate::state::pane_entry_row::PaneEntryRow;
 use squalr_engine_api::structures::projects::project::Project;
 use squalr_engine_api::structures::projects::project_info::ProjectInfo;
 use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
@@ -521,7 +522,7 @@ impl ProjectExplorerPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let mut summary_lines = vec![
+        vec![
             "Mode: p project list, i project hierarchy.".to_string(),
             "Project list: r refresh, n create, Enter/o open, e rename, x delete, c close active.".to_string(),
             "Hierarchy: h refresh, j/k select, l expand, Left collapse, Space activate.".to_string(),
@@ -552,52 +553,53 @@ impl ProjectExplorerPaneState {
             format!("reordering_item={}", self.is_reordering_project_item),
             format!("activating_item={}", self.is_toggling_project_item_activation),
             format!("status={}", self.status_message),
-        ];
+            "Projects (top 5) + Hierarchy (top 10).".to_string(),
+        ]
+    }
 
+    pub fn visible_project_entry_rows(&self) -> Vec<PaneEntryRow> {
         let visible_entry_count = self.project_entries.len().min(5);
+        let mut entry_rows = Vec::with_capacity(visible_entry_count);
+
         for visible_project_index in 0..visible_entry_count {
             if let Some(project_entry) = self.project_entries.get(visible_project_index) {
-                let selected_marker = if self.selected_project_list_index == Some(visible_project_index) {
-                    ">"
-                } else {
-                    " "
-                };
-                let active_marker = if self
+                let is_selected_project = self.selected_project_list_index == Some(visible_project_index);
+                let is_active_project = self
                     .active_project_directory_path
                     .as_ref()
                     .zip(project_entry.get_project_directory())
-                    .is_some_and(|(active_project_directory, project_entry_directory)| *active_project_directory == project_entry_directory)
-                {
-                    "*"
-                } else {
-                    " "
-                };
+                    .is_some_and(|(active_project_directory, project_entry_directory)| *active_project_directory == project_entry_directory);
                 let project_directory_display = project_entry
                     .get_project_directory()
                     .map(|project_directory| project_directory.display().to_string())
                     .unwrap_or_else(|| "<unknown>".to_string());
+                let marker_text = if is_active_project { "*".to_string() } else { String::new() };
+                let primary_text = project_entry.get_name().to_string();
+                let secondary_text = Some(project_directory_display);
 
-                summary_lines.push(format!(
-                    "{}{} {} ({})",
-                    selected_marker,
-                    active_marker,
-                    project_entry.get_name(),
-                    project_directory_display
-                ));
+                if self.focus_target != ProjectExplorerFocusTarget::ProjectList {
+                    entry_rows.push(PaneEntryRow::disabled(marker_text, primary_text, secondary_text));
+                } else if is_selected_project {
+                    entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
+                } else {
+                    entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
+                }
             }
         }
 
+        entry_rows
+    }
+
+    pub fn visible_project_item_entry_rows(&self) -> Vec<PaneEntryRow> {
         let visible_project_item_count = self.project_item_visible_entries.len().min(10);
+        let mut entry_rows = Vec::with_capacity(visible_project_item_count);
+
         for visible_project_item_index in 0..visible_project_item_count {
             if let Some(project_item_entry) = self
                 .project_item_visible_entries
                 .get(visible_project_item_index)
             {
-                let selected_marker = if self.selected_project_item_visible_index == Some(visible_project_item_index) {
-                    ">"
-                } else {
-                    " "
-                };
+                let is_selected_project_item = self.selected_project_item_visible_index == Some(visible_project_item_index);
                 let activation_marker = if project_item_entry.is_activated { "*" } else { " " };
                 let directory_marker = if project_item_entry.is_directory {
                     if project_item_entry.is_expanded { "-" } else { "+" }
@@ -605,15 +607,21 @@ impl ProjectExplorerPaneState {
                     " "
                 };
                 let indentation = " ".repeat(project_item_entry.depth.saturating_mul(2));
+                let marker_text = format!("{}{}", activation_marker, directory_marker);
+                let primary_text = format!("{}{}", indentation, project_item_entry.display_name);
+                let secondary_text = Some(project_item_entry.project_item_path.display().to_string());
 
-                summary_lines.push(format!(
-                    "{}{}{} {}{}",
-                    selected_marker, activation_marker, directory_marker, indentation, project_item_entry.display_name
-                ));
+                if self.focus_target != ProjectExplorerFocusTarget::ProjectHierarchy {
+                    entry_rows.push(PaneEntryRow::disabled(marker_text, primary_text, secondary_text));
+                } else if is_selected_project_item {
+                    entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
+                } else {
+                    entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
+                }
             }
         }
 
-        summary_lines
+        entry_rows
     }
 
     fn update_selected_project_fields(&mut self) {
