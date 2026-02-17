@@ -11,7 +11,8 @@ Our current task, from `README.md`, is:
 - The TUI build for vscode should not be inside the vscode terminal, it should launch standalone.
 - [x] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting tick/auto-refresh orchestration into focused app submodules (maintain behavior parity + tests).
 - [x] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting pane-layout drawing helpers into a focused app rendering submodule (maintain behavior parity + tests).
-- [ ] Audit GUI vs TUI behavior parity again and identify the next concrete gap after app-shell rendering extraction.
+- [x] Audit GUI vs TUI behavior parity again and identify the next concrete gap after app-shell rendering extraction.
+- [ ] Add opened-process state synchronization parity in TUI by mirroring GUI `ProcessChangedEvent` handling (event listener + tick-safe state reconcile + tests).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -107,3 +108,5 @@ Information discovered during iteration:
 - TUI app-shell de-bloat pass: extracted pane layout rendering helpers from `squalr-tui/src/app/app_shell.rs` into `squalr-tui/src/app/app_render.rs`; `squalr-tui/src/app/mod.rs` now composes `app_render` alongside shell/tick/dispatch/key-handler modules.
 - Validation pass after pane-layout rendering extraction: `cargo test -p squalr-tui` (54 passed).
 - Checkpoint commit for pane-layout rendering extraction: `8fd1299c` (`Extract TUI pane layout rendering into app_render module`).
+- GUI vs TUI parity audit (this pass): GUI listens for `ProcessChangedEvent` in `main_shortcut_bar_view` and updates opened-process view state even for out-of-band process changes; TUI currently updates opened-process state only through explicit `ProcessOpenRequest` command responses.
+- Next behavior-level parity target identified: add event-driven opened-process synchronization in TUI (mirror GUI process-changed event handling and validate stale-state recovery paths with app-shell tests).
