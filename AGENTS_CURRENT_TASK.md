@@ -202,3 +202,4 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): forcing `[ROWS]` telemetry under ultra-small heights could consume the only content line and collapse entry-row capacity to zero (`height=1`, empty summary), creating a row-starvation tradeoff.
 - TUI telemetry reconciliation update: `app_render` now reconciles baseline row capacity against telemetry-adjusted capacity and keeps telemetry only when rows still fit; if telemetry would starve rows, it is removed and baseline row capacity is preserved. Stale `[ROWS]` lines are stripped when no rows fit.
 - Added focused `app_render` tests for telemetry reconciliation fallback, zero-capacity stripping, and non-starving telemetry preservation; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (101 passed).
+- Checkpoint commit for tiny-height telemetry/rows reconciliation parity: `9d015c57` (`Reconcile TUI row telemetry with tiny-height row capacity`).
