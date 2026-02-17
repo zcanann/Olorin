@@ -3,7 +3,7 @@ Our current task, from `README.md`, is:
 `pr/tui`
 
 # Notes from Owner (Readonly Section)
-- Try to follow a similar folder architecture to the GUI project as much as possible.
+- Try to follow a similar folder architecture to the GUI or CLI project as much as possible.
 - This means not bloating the shit out of any file and overloading it with responsibilities.
 
 ## Current Tasklist (ordered)
@@ -15,204 +15,20 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit condensed legend priority ordering for other entry-heavy panes under ultra-small height clamps so state-critical marker context is preserved.
+
+- Also, the current UX is fucking mind numbing.
+    - Process selector: Scrolling through processes 1 by 1 is actual lunacy. Showing only 1 item at any given time sucks, even a ring menu of 3 things would be better.
+    - Struct viewer is actually bad UX for a TUI. this is a GUI only thing. Special handling is required for editing project / scan results. Kill this struct viewer.
+    - Output view should show some output? its being crushed UI wise.
+    - Settings does not need to be visible. Hotkey to pop into settings, it should be full screen. This does not need dedicated real estate.
+    - Honestly same with scanners. Full screen takeover to element scanner + results.
+    - (Output visible on all pages)
+    - So 3 full screen pages thus far:
+        - Project explorer + output
+        - Element scanner + scan results + output
+        - Settings + output
 
 ## Important Information
-Append important discoveries. Compact regularly.
+Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
 
-Information found in initial audit:
-- `squalr-tui` currently initializes `SqualrEngine` only; no terminal event loop or UI rendering exists yet.
-- GUI default surface is 7 docked windows: Process Selector, Project Explorer, Struct Viewer, Output, Element Scanner, Pointer Scanner, Settings.
-- Pointer Scanner is currently a stub in GUI too, so TUI can keep it placeholder without parity regression.
-- High-value parity path is command/view-data parity, not pixel/docking parity. Mouse-heavy drag interactions should become keyboard commands in TUI.
-
-Information discovered during iteration:
-- Process selector command parity requirements identified: `ProcessListRequest` (windowed + full) and `ProcessOpenRequest`.
-- Element scanner command parity requirements identified: `ScanNewRequest`, `ElementScanRequest`, `ScanCollectValuesRequest`, `ScanResetRequest`.
-- Scan results command parity requirements identified: `ScanResultsQueryRequest`, `ScanResultsRefreshRequest`, `ScanResultsSetPropertyRequest`, `ScanResultsFreezeRequest`, `ScanResultsDeleteRequest`, `ProjectItemsAddRequest`.
-- Project selector command parity requirements identified: `ProjectListRequest`, `ProjectCreateRequest`, `ProjectOpenRequest`, `ProjectRenameRequest`, `ProjectDeleteRequest`, `ProjectCloseRequest`.
-- Project hierarchy command parity requirements identified: `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, `ProjectItemsReorderRequest`, plus edit side effects (`ProjectSaveRequest`, `ProjectItemsRenameRequest`, `MemoryWriteRequest`).
-- Settings command parity requirements identified: list/set pairs for general, memory, and scan settings.
-- Existing GUI view-data modules already encapsulate most command logic and are a strong extraction target for shared UI-agnostic state/actions to reduce duplication between egui and ratatui.
-- `squalr-tui` now has a working ratatui+crossterm shell with alternate-screen setup/restore, raw-mode guard via `Drop`, tick-based redraw loop, and keyboard exit handling (`q`, `Esc`, `Ctrl+C`).
-- `ratatui` is pinned to `0.30.0` with `crossterm_0_29` feature to avoid workspace dependency resolution conflicts seen with `0.29.0`.
-- `squalr-tui` state is now split into dedicated pane modules under `src/state/` with a single `TuiAppState` aggregator, and app shell/runtime is separated into `src/app/mod.rs` to match the owner’s anti-bloat guidance.
-- Checkpoint commit for this milestone: `f1236be0` (`Add pane-split TUI state model scaffold`).
-- TUI now renders a real multi-pane top-level layout with keyboard-only workflow: focus cycle (`Tab`/`Shift+Tab`), direct pane focus (`1-7`), pane visibility toggles (`Ctrl+1-7` or `v` for focused pane), and restore-all (`0`).
-- Added reducer tests in `squalr-tui` for focus cycling across hidden panes, hidden-pane focus restore, and guard rails preventing all panes from being hidden.
-- TUI process selector now dispatches `ProcessListRequest` (windowed/full toggle) and `ProcessOpenRequest` from keyboard-first controls (`r`, `w`, `Up/Down`, `Enter`), with synchronous response handling and visible status messages in-pane.
-- Checkpoint commit for process selector parity: `92cad535` (`Implement TUI process selector command parity`).
-- TUI element scanner now dispatches `ScanResetRequest`, `ScanCollectValuesRequest`, `ScanNewRequest`, and `ElementScanRequest` with keyboard-first controls (`n`, `c`, `s`, `t`/`T`, `a`, `x`, `j`/`k`, `m`/`M`) and per-pane status/result metadata updates.
-- Added `element_scanner_pane_state` reducer tests for constraint cap/retention, data type cycling, and relative constraint serialization behavior.
-- Checkpoint commit for element scanner parity: `55a6a38f` (`Implement TUI element scanner command parity`).
-- TUI scan results pane now dispatches `ScanResultsQueryRequest`, `ScanResultsRefreshRequest`, `ScanResultsFreezeRequest`, `ScanResultsDeleteRequest`, `ProjectItemsAddRequest`, and `ScanResultsSetPropertyRequest` via keyboard-first controls (`r`, `R`, `[`/`]`, `Up`/`Down`, `Shift+Up`/`Shift+Down`, `f`, `a`, `x`, `Enter`).
-- Added `scan_results_pane_state` reducer tests for page-change selection reset and range-based selected scan-result ref collection.
-- Checkpoint commit for scan results parity: `1e89edc0` (`Implement TUI scan results pane command parity`).
-- TUI project selector now dispatches `ProjectListRequest`, `ProjectCreateRequest`, `ProjectOpenRequest`, `ProjectRenameRequest`, `ProjectDeleteRequest`, and `ProjectCloseRequest` with keyboard-first controls (`r`, `n`, `Enter`/`o`, `e`, `x`, `c`, `j`/`k`, plus inline name input commit/cancel).
-- Added `project_explorer_pane_state` reducer tests for default selection on list load, wraparound project selection, and rename-input guard behavior.
-- Checkpoint commit for project selector parity: `58e938ef` (`Implement TUI project selector command parity`).
-- TUI project hierarchy now dispatches `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, and `ProjectItemsReorderRequest` with keyboard-first controls (`i` hierarchy mode, `h` refresh, `j`/`k` select, `l`/`Left` expand-collapse, `Space` activate, `n` create folder, `x` confirm-delete, `m` stage move, `b` move here, `[`/`]` reorder).
-- Checkpoint commit for project hierarchy parity: `7d69407d` (`Implement TUI project hierarchy keyboard command parity`).
-- TUI struct viewer now tracks focused source (`scan results` or `project items`), supports keyboard-first field navigation/edit buffering (`j`/`k`, `Enter`, text input), and routes commits through scan-result/property commands (`ScanResultsSetPropertyRequest`, `ScanResultsFreezeRequest`) and project-item edit routing (`ProjectSaveRequest`, `ProjectItemsRenameRequest`, `MemoryWriteRequest`) with selection sync from scan-results/project-hierarchy reducers.
-- TUI settings pane now has keyboard-first category/field reducers and command parity for general/memory/scan list+set requests, including in-pane state summaries and per-category apply actions.
-- TUI output pane now reads log history from `EngineUnprivilegedState` on tick, supports periodic redraw/preview, and adds keyboard actions for refresh (`r`), clear (`x`), and max-line bounds (`+`/`-`).
-- Added focused tests for settings and output reducers plus app-level focused-pane keyboard routing in `squalr-tui`; validated with `cargo test -p squalr-tui` (25 passed).
-- Checkpoint commit for settings/output/test parity: `468acfcb` (`Implement TUI settings/output parity and routing tests`).
-- GUI vs TUI parity audit (this pass): command request surface in `squalr/src/views` and `squalr-tui/src` is now matched for all high-value panes (process, element scanner, scan results, project selector/hierarchy, struct viewer, settings).
-- Remaining high-value parity gap is behavior-level, not command-level: GUI wires `ScanResultsUpdatedEvent` and periodic `ScanResultsRefreshRequest` in `element_scanner_results_view_data`, while TUI currently relies on manual refresh triggers and selected-only refresh actions.
-- Next concrete `pr/tui` implementation target is to add event-driven and periodic scan-results synchronization in `squalr-tui` with keyboard-first status visibility and reducer/app-shell tests for throttling and requery behavior.
-- TUI app shell now registers a one-time `ScanResultsUpdatedEvent` listener, tracks event counters thread-safely, and requeries the current scan-results page on tick when pending updates exist and no query is in flight.
-- TUI scan-results refresh now supports a bounded periodic loop driven by scan setting `results_read_interval_ms` clamped to 50-5000ms, gated to visible scan-results pane + active selection and suppressed during conflicting in-flight operations.
-- Added app-shell tests for engine-update signal gating, visibility/selection gating for periodic refresh, and bounded interval behavior; validated with `cargo test -p squalr-tui` (28 passed).
-- GUI vs TUI parity audit (this pass): GUI refreshes values for the entire queried scan-results page on its loop; TUI previously refreshed only selected rows. TUI now refreshes all current-page rows for periodic/manual refresh paths and no longer requires an active selection for periodic refresh gating.
-- Updated scan-results periodic refresh tests to validate pane-visibility + non-empty-page gating and bounded interval behavior against the page-level refresh model; validated with `cargo test -p squalr-tui` (28 passed).
-- Next behavior-level parity target identified: GUI struct viewer exposes multiple display representations per field (`anonymize_value_to_supported_formats`), while TUI currently surfaces/edits only a single default-format representation.
-- TUI struct viewer now materializes supported per-field display representations via `SymbolRegistry::anonymize_value_to_supported_formats`, tracks active format per field, and supports keyboard-first format cycling (`[` previous, `]` next) with in-pane status and summary feedback.
-- Added struct-viewer reducer tests for format cycling and uncommitted-edit guard behavior, plus app-shell tests for focused `]` key routing and struct-edit payload formatting via a request-builder helper (`build_scan_results_set_property_request_for_struct_edit`).
-- Validation pass: `cargo test -p squalr-tui` (32 passed).
-- GUI vs TUI struct-viewer behavior audit (this pass): GUI only presents value edit affordances for editable value fields; nested/read-only fields remain non-committable. TUI now mirrors this by blocking text-edit mutations for non-editable selections and emitting explicit status feedback (`read-only` / nested unsupported) before commit.
-- TUI struct-viewer summary semantics now expose field-kind and editability markers (`VAL|RW`, `VAL|RO`, `NEST|RW|RO`) and render `<nested>` preview when no direct display value exists, closing the remaining field-level status visibility gap from the prior task.
-- Added reducer and app-shell tests for read-only edit guarding/status messaging and validated with `cargo test -p squalr-tui` (34 passed).
-- Checkpoint commit for struct-viewer affordance parity: `f99a826e` (`Align TUI struct-viewer edit affordances with GUI behavior`).
-- GUI vs TUI parity audit (this pass): TUI reducer refreshes were resetting user selection to index 0 for process list, project list, and scan results query responses; GUI keeps context across refreshes, so this caused keyboard UX drift.
-- TUI reducers now preserve selection by stable identity where available: process id in `ProcessSelectorPaneState`, project directory path in `ProjectExplorerPaneState`, and scan-result global index in `ScanResultsPaneState` (with bounded fallback behavior when prior selections are missing).
-- Added reducer coverage for each preserve-selection path and scan-results identity remap behavior; validated with `cargo test -p squalr-tui` (38 passed).
-- GUI vs TUI parity audit (this pass): project hierarchy refresh could retain stale transient state in TUI (`expanded_directory_paths`, staged move paths, pending delete-confirm paths) when list responses removed items; GUI retain/refresh paths implicitly drop invalid references.
-- `ProjectExplorerPaneState::apply_project_items_list` now prunes invalid expanded/staged/confirm paths against refreshed project items, while preserving selected hierarchy entry by stable path when available.
-- Added reducer tests for project-item selection preservation and stale refresh-state pruning; validated with `cargo test -p squalr-tui` (40 passed).
-- GUI vs TUI parity audit (this pass): `settings` auto-refresh previously depended on a `"Ready."` status sentinel, which blocked retries after non-ready statuses. TUI now uses explicit load-state (`has_loaded_settings_once`) with bounded retry cadence in app-shell tick flow.
-- GUI vs TUI parity audit (this pass): periodic `output` refresh previously overwrote pane status each tick. TUI now preserves manual/status feedback during tick refresh and only updates output status text for explicit user-triggered refresh.
-- Added tests for settings auto-refresh eligibility interval/load-state gating and output status preservation, plus reducer coverage for opt-in output status updates; validated with `cargo test -p squalr-tui` (43 passed).
-- GUI vs TUI parity audit (this pass): process/project initial auto-load retry behavior was inconsistent. TUI now uses explicit auto-refresh eligibility + bounded retry cadence for process list, project list, and project-item list loads in app-shell tick flow.
-- TUI process selector now tracks `has_loaded_process_list_once` and only marks loaded-state after successful list responses; this prevents repeated empty-list polling while preserving retry on failures/timeouts.
-- TUI project selector now sets `has_loaded_project_list_once` only after a successful `ProjectListRequest` response, restoring initial auto-load retry behavior after failed dispatch/timeout paths.
-- Added app-shell tests for process/project/project-item auto-refresh eligibility interval/load-state gating; validated with `cargo test -p squalr-tui` (46 passed).
-- GUI vs TUI parity audit (this pass): GUI hierarchy view continuously reconciles loaded hierarchy with engine-opened project state; TUI lacked equivalent reconciliation, which could leave stale active-project/hierarchy state after project open/close timeout or out-of-band state changes.
-- TUI app-shell tick flow now synchronizes active project identity from `ProjectManager::get_opened_project()` each tick; when active project directory changes, TUI clears project hierarchy + struct viewer focus and resets project-item auto-refresh timing for immediate requery.
-- Added app-shell tests for project-state synchronization behavior (directory-change reset path, same-directory preserve path, and immediate project-item auto-refresh eligibility after directory change); validated with `cargo test -p squalr-tui` (49 passed).
-- Checkpoint commit for project-state synchronization parity: `085f006c` (`Sync TUI active project state with engine on tick`).
-- GUI vs TUI parity audit (this pass): background process/project/project-item auto-refresh retries in TUI were still overwriting pane status text (`Refreshing...`, `Loaded...`, timeout) and could hide explicit user-command feedback.
-- TUI process/project/project-item refresh handlers now have explicit feedback gating (`*_with_feedback`), with tick-driven retries using no-status mode while user actions keep status updates.
-- Added app-shell tests for background refresh status preservation across process/project/project-item paths; validated with `cargo test -p squalr-tui` (52 passed).
-- GUI vs TUI parity audit (this pass): engine-event-driven scan-results requery (`ScanResultsUpdatedEvent`) in TUI was still routed through a status-updating query path, causing background sync to overwrite manual scan-results status messages unlike other auto-refresh flows.
-- TUI scan-results querying now has explicit feedback gating (`query_scan_results_current_page_with_feedback`), with event-driven requery using no-status mode while explicit user actions retain status updates.
-- Added app-shell tests for scan-results status behavior split: engine-event requery preserves existing manual status and user-triggered query updates status; validated with `cargo test -p squalr-tui` (54 passed).
-- VS Code launch parity fix: `squalr-tui` launch configs now set CodeLLDB `terminal` to `external` so debugging spawns an interactive terminal window instead of relying on a non-interactive debug console pipe.
-- VS Code TUI launch ergonomics update: moved `squalr-tui` debug/release launch entries to the top of `.vscode/launch.json` and switched their CodeLLDB `terminal` target to `integrated` so default F5/debug dropdown behavior opens the ratatui surface directly inside VS Code.
-- TUI startup robustness fix: `TerminalGuard::new` now performs an explicit `stdin/stdout/stderr` TTY preflight and returns a clear actionable error when no interactive terminal is attached (`set terminal to external or integrated` in VS Code).
-- Output pane cleanup: removed unused `apply_log_history` helper and updated reducer tests to call `apply_log_history_with_feedback(..., true)` directly; validated with `cargo test -p squalr-tui` (54 passed).
-- TUI architecture cleanup pass: pane modules moved from `squalr-tui/src/state/` to `squalr-tui/src/views/` to better mirror GUI layering; `squalr-tui/src/app/mod.rs` and `squalr-tui/src/state/mod.rs` are now include-only module files with re-exports; `TuiAppState` moved to `squalr-tui/src/state/app_state.rs`.
-- Validation pass after module relocation/refactor: `cargo test -p squalr-tui` (54 passed).
-- Checkpoint commit for module-layout cleanup: `21c60931` (`Refactor TUI module layout for app/state/views separation`).
-- TUI app-shell de-bloat pass: extracted pane-focused keyboard routing into `squalr-tui/src/app/pane_key_handlers.rs` and command/request dispatch + struct-viewer commit routing into `squalr-tui/src/app/command_dispatch.rs`; `squalr-tui/src/app/mod.rs` now composes `app_shell`, `pane_key_handlers`, and `command_dispatch` modules.
-- Validation pass after handler/dispatch extraction: `cargo test -p squalr-tui` (54 passed).
-- TUI app-shell de-bloat pass: extracted tick/auto-refresh orchestration and engine-event/project-state synchronization from `squalr-tui/src/app/app_shell.rs` into `squalr-tui/src/app/app_tick.rs`; tick helper methods now use `pub(super)` visibility for cross-module composition and existing app-shell tests.
-- Validation pass after tick-orchestration extraction: `cargo test -p squalr-tui` (54 passed).
-- TUI app-shell de-bloat pass: extracted pane layout rendering helpers from `squalr-tui/src/app/app_shell.rs` into `squalr-tui/src/app/app_render.rs`; `squalr-tui/src/app/mod.rs` now composes `app_render` alongside shell/tick/dispatch/key-handler modules.
-- Validation pass after pane-layout rendering extraction: `cargo test -p squalr-tui` (54 passed).
-- Checkpoint commit for pane-layout rendering extraction: `8fd1299c` (`Extract TUI pane layout rendering into app_render module`).
-- GUI vs TUI parity audit (this pass): GUI listens for `ProcessChangedEvent` in `main_shortcut_bar_view` and updates opened-process view state even for out-of-band process changes; TUI currently updates opened-process state only through explicit `ProcessOpenRequest` command responses.
-- Next behavior-level parity target identified: add event-driven opened-process synchronization in TUI (mirror GUI process-changed event handling and validate stale-state recovery paths with app-shell tests).
-- TUI app shell now registers a one-time `ProcessChangedEvent` listener, stores the latest opened-process payload thread-safely, and reconciles process-selector opened-process state on tick when pending engine updates exist.
-- Added app-shell tests for process-change synchronization behavior (pending update apply, no-op without updates, and stale-state clear on `None` payload); validated with `cargo test -p squalr-tui` (57 passed).
-- TUI VS Code launch parity now enforces standalone terminals: `.vscode/launch.json` uses CodeLLDB `terminal: external` for all `squalr-tui` launch entries.
-- TUI app-shell command dispatch de-bloat pass: split `squalr-tui/src/app/command_dispatch.rs` into focused domain modules (`command_dispatch_scan.rs` for scan/process flows and `command_dispatch_project.rs` for project/item flows) while keeping `command_dispatch.rs` scoped to output/settings/struct-commit coordination.
-- Updated `squalr-tui/src/app/mod.rs` module composition to include the new dispatch modules directly, preserving existing `AppShell` method surface for pane handlers/tick orchestration.
-- Validation pass after dispatch split + launch fix: `cargo test -p squalr-tui` (57 passed).
-- Checkpoint commit for dispatch split + launch parity: `52a25180` (`Split TUI command dispatch by domain and restore external launch`).
-- TUI logging bleed fix: `squalr-engine-session` logger now supports optional console sink (`LogDispatcherOptions`), `squalr-engine` exposes passthrough options (`SqualrEngineOptions`), and `squalr-tui` disables unprivileged console logging so logs flow to file + output pane instead of the terminal surface.
-- Removed direct terminal output from project manager watcher startup (`println!` -> `log::info!`) to prevent non-logger writes from corrupting the ratatui alternate screen.
-- Validation pass for logging bleed fix: `cargo test -p squalr-tui` (57 passed).
-- Logger idempotency fix: `squalr-engine-session/src/logging/log_dispatcher.rs` now uses process-wide singleton logger state (`OnceLock<log4rs::Handle>` + init mutex) and shared in-memory log history (`LazyLock<Arc<RwLock<VecDeque<LogEvent>>>>`) so repeated `EngineUnprivilegedState` creation no longer reinitializes the global logger.
-- Added unit coverage for repeated `LogDispatcher` initialization sharing history without reinit errors (`logging::log_dispatcher::tests::repeated_initialization_uses_shared_log_history`).
-- Validation pass for logger idempotency + TUI regression: `cargo test -p squalr-engine-session` (1 passed), `cargo test -p squalr-tui` (57 passed).
-- Checkpoint commit for logger idempotency fix: `c8cfa01b` (`Make engine-session logger initialization singleton-safe`).
-- TUI visual hierarchy theming pass: added `squalr-tui/src/theme/mod.rs` with shared color tokens and reusable themed block builders for session/footer/panes, including per-pane accent colors and focused-pane emphasis.
-- Applied theme styles consistently across app background, header/footer containers, and all 7 core pane blocks in `app_shell` + `app_render`; pane content now uses shared text/status style tokens instead of default ratatui styles.
-- Validation pass for theme module integration: `cargo test -p squalr-tui` (57 passed).
-- TUI pane-entry primitive pass: added shared `PaneEntryRow`/`PaneEntryRowTone` model in `squalr-tui/src/state/pane_entry_row.rs` and integrated themed selected/normal/disabled row styles through `TuiTheme`.
-- Migrated Process Selector, Scan Results, and Project Explorer list-heavy summaries to produce structured entry rows (instead of inline marker-formatted strings), and wired rendering in `app_render` to draw these rows with marker/primary/secondary styling.
-- Validation pass for pane-entry primitive migration: `cargo test -p squalr-tui` (57 passed).
-- TUI pane-entry folderization pass: extracted process/scan/project pane-entry row builders into focused modules under `squalr-tui/src/views/process_selector/entry_rows.rs`, `squalr-tui/src/views/scan_results/entry_rows.rs`, and `squalr-tui/src/views/project_explorer/entry_rows.rs`; pane-state files now delegate entry-row assembly to these submodules.
-- Validation pass for pane-entry folderization: `cargo test -p squalr-tui` (57 passed).
-- TUI pane-summary folderization pass: extracted pane summary/presentation builders from all `*_pane_state` files into focused `views/*/summary.rs` modules (`process_selector`, `scan_results`, `project_explorer`, `element_scanner`, `settings`, `struct_viewer`, `output`), leaving pane-state files focused on reducer/state transitions.
-- Added view module wiring for new summary modules (`squalr-tui/src/views/{element_scanner,output,settings,struct_viewer}/mod.rs` and expanded existing `mod.rs` exports); `summary_lines()` methods now delegate to module builders.
-- Validation pass after summary extraction refactor: `cargo test -p squalr-tui` (57 passed).
-- TUI project hierarchy folderization pass: extracted non-presentation hierarchy builders from `squalr-tui/src/views/project_explorer_pane_state.rs` into focused modules under `squalr-tui/src/views/project_explorer/`: graph construction (`hierarchy_graph.rs`), visible hierarchy projection (`hierarchy_visibility.rs`), and preorder traversal (`hierarchy_walk.rs`).
-- `ProjectExplorerPaneState` now delegates hierarchy map construction and visibility rebuilding through these new modules, reducing reducer coupling to graph/visibility implementation details while preserving existing command/reducer behavior.
-- Validation pass after hierarchy-builder extraction: `cargo test -p squalr-tui` (57 passed).
-- TUI project-explorer pane-state folderization pass: relocated `squalr-tui/src/views/project_explorer_pane_state.rs` to `squalr-tui/src/views/project_explorer/pane_state.rs`, rewired view/app/state imports to `crate::views::project_explorer::pane_state::*`, and updated module exports (`views/project_explorer/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after project-explorer pane-state relocation: `cargo test -p squalr-tui` (57 passed).
-- TUI process-selector pane-state folderization pass: relocated `squalr-tui/src/views/process_selector_pane_state.rs` to `squalr-tui/src/views/process_selector/pane_state.rs`, rewired view/app/state imports to `crate::views::process_selector::pane_state::*`, and updated module exports (`views/process_selector/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after process-selector pane-state relocation: `cargo test -p squalr-tui` (57 passed).
-- Checkpoint commit for process-selector pane-state folderization: `bffc7af5` (`Relocate process selector pane state into feature folder`).
-- TUI scan-results pane-state folderization pass: relocated `squalr-tui/src/views/scan_results_pane_state.rs` to `squalr-tui/src/views/scan_results/pane_state.rs`, rewired view/app/state imports to `crate::views::scan_results::pane_state::*`, and updated module exports (`views/scan_results/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after scan-results pane-state relocation: `cargo test -p squalr-tui` (57 passed).
-- TUI element-scanner pane-state folderization pass: relocated `squalr-tui/src/views/element_scanner_pane_state.rs` to `squalr-tui/src/views/element_scanner/pane_state.rs`, rewired view/state imports to `crate::views::element_scanner::pane_state::*`, and updated module exports (`views/element_scanner/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after element-scanner pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
-- Checkpoint commit for element-scanner pane-state folderization: `61c9f2f0` (`Relocate element scanner pane state into feature folder`).
-- TUI output pane-state folderization pass: relocated `squalr-tui/src/views/output_pane_state.rs` to `squalr-tui/src/views/output/pane_state.rs`, rewired state/view imports to `crate::views::output::pane_state::*`, and updated module exports (`views/output/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after output pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
-- TUI settings pane-state folderization pass: relocated `squalr-tui/src/views/settings_pane_state.rs` to `squalr-tui/src/views/settings/pane_state.rs`, rewired view/app/state imports to `crate::views::settings::pane_state::*`, and updated module exports (`views/settings/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after settings pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
-- TUI struct-viewer pane-state folderization pass: relocated `squalr-tui/src/views/struct_viewer_pane_state.rs` to `squalr-tui/src/views/struct_viewer/pane_state.rs`, rewired view/app/state imports to `crate::views::struct_viewer::pane_state::*`, and updated module exports (`views/struct_viewer/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
-- Validation pass after struct-viewer pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
-- GUI vs TUI parity audit (this pass): non-pane-state module layout is now aligned (feature folders + app-shell composition modules), but layout behavior still diverged because TUI split each column into equal heights while GUI default docking intentionally prioritizes scanner/results-heavy regions.
-- TUI layout behavior update: added `squalr-tui/src/app/pane_layout.rs` to encode deliberate per-pane vertical weights with focused-pane boost, and wired `app_render` to use ratio constraints derived from these weights instead of equal-split row allocation.
-- Added unit tests for pane-layout weight behavior (`focused` boost and `unlisted focus` no-op) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (59 passed).
-- TUI app-shell session metadata parity update: header/footer now reserve multi-line space and surface opened-process + active-project context as first-class session lines via dedicated `AppShell` metadata builders (`session_opened_process_metadata_line`, `session_active_project_metadata_line`).
-- Added focused app-shell tests for populated and unset session metadata rendering paths; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (61 passed).
-- GUI top-surface affordance audit (this pass): GUI main shortcut bar prioritizes compact icon-first status context for process state, while TUI session metadata previously used longer prose labels.
-- TUI session metadata presentation update: `AppShell` header lines now use condensed icon-like markers (`[MODE]`, `[PROC]`, `[PROJ]`) and compact value formatting (including path condensation to `.../<parent>/<leaf>` for active project context).
-- Updated app-shell metadata tests to assert condensed marker-form output and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (61 passed).
-- GUI top-surface shortcut affordance audit follow-through: condensed TUI footer controls into marker-group lines (`[NAV]`, `[EXIT]`) and removed redundant keyboard-first prose to improve legend density while retaining readability.
-- Added focused app-shell regression coverage for footer marker-line text (`footer_control_lines_use_condensed_marker_groups`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (62 passed).
-- Per-pane legend density pass: all `views/*/summary.rs` lead lines now use condensed marker groups (for example `[ACT]`, `[NAV]`, `[EDIT]`, `[MODE]`, `[LIST]`, `[TREE]`, `[MOVE]`, `[INPUT]`, `[CAT]`, `[FMT]`) and aligned short-form keybinding phrasing across process selector, element scanner, scan results, project explorer, struct viewer, settings, and output panes.
-- Added summary-module regression tests asserting marker-group lead lines in each pane summary builder and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (69 passed).
-- TUI non-legend summary density pass: state/metrics/status body lines in all pane summary builders now use condensed marker groups (for example `[MODE]`, `[LIST]`, `[META]`, `[OPS]`, `[STAT]`, `[FLD]`) instead of raw `key=value` rows.
-- TUI narrow-terminal readability pass: pane summary rendering now applies width-aware truncation with ellipsis in `app_render` before paragraph composition, reducing hard clipping/wrap churn in narrow pane widths.
-- Added `app_render` unit coverage for truncation behavior (`unchanged short`, `ellipsis narrow`, `single-width fallback`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (72 passed).
-- Checkpoint commit for summary density + narrow-width truncation pass: `1c006ca7` (`Densify TUI summary body markers and clamp narrow-width lines`).
-- TUI pane-entry row truncation parity pass: `app_render` now applies width-aware fitting for entry rows with a fixed marker column, bounded primary/secondary allocation, and narrow-width secondary omission to keep selection markers and leading context readable on constrained pane widths.
-- Added focused `app_render` unit coverage for marker alignment and entry-row truncation/splitting behavior (including fixed marker-width rendering assertions); validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (76 passed).
-- GUI vs TUI parity audit (this pass): pane entry-row builders were hard-pinned to top-of-list slices (`0..min(capacity)`), causing keyboard navigation context loss once selections moved beyond initial visible rows.
-- TUI pane-entry viewport behavior update: added shared selection-relative viewport helper (`views/entry_row_viewport.rs`) and switched process/project/scan entry-row builders to centered/clamped selection windowing instead of top-pinned slicing.
-- Added focused viewport tests (shared helper + process/project/project-item/scan entry-row builders) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (84 passed).
-- GUI vs TUI parity audit (this pass): pane-entry viewport capacities were still fixed constants (`5/10`) and did not scale with pane-height changes from weighted layout + focus boosts.
-- TUI pane-entry viewport sizing update: `app_render` now computes per-pane entry capacity from real pane content height after summary lines and routes that capacity through `TuiAppState` into process/project/scan entry-row builders; fixed row-cap constants were removed from these builders.
-- Project explorer capacity split update: `TuiAppState` now dynamically partitions project vs hierarchy entry-row budgets from total pane capacity (focused-target-aware when only one row fits), preserving bounded rendering while scaling with layout changes.
-- Added focused app-state coverage for project-explorer capacity budgeting behavior and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (86 passed).
-- GUI vs TUI parity audit (this pass): non-entry summary previews still used fixed caps (`struct_viewer` field preview `min(5)` and `output` log preview `min(8)`), so preview density did not scale with weighted pane height/focus changes.
-- TUI non-entry summary preview sizing update: `app_render` now passes measured pane content height into `TuiAppState::pane_summary_lines`, which computes dynamic preview budgets for `struct_viewer` and `output` (`fixed summary lines` + height-derived remainder); summary builders now consume explicit preview capacities instead of fixed caps.
-- Added focused summary tests for zero-preview-capacity behavior in `struct_viewer` and `output`, and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (88 passed).
-- Checkpoint commit for non-entry summary preview scaling: `4771c4c6` (`Scale TUI non-entry summary previews with pane height`).
-- GUI vs TUI parity audit (this pass): `settings` and `element_scanner` summaries could clip selected field/constraint context under tiny pane heights because full summaries were rendered without per-pane priority.
-- TUI non-entry tiny-height priority pass: `settings` and `element_scanner` now build capacity-aware summaries that prioritize controls, selected field/constraint row, and status before lower-priority metadata/context lines; `TuiAppState::pane_summary_lines` now routes pane height into these capacity-aware builders.
-- Added focused summary tests for tiny-capacity selected-line visibility in both panes and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (90 passed).
-- GUI vs TUI parity audit (this pass): entry-heavy panes (`process_selector`, `scan_results`, `project_explorer`) could still starve entry rendering under tiny heights because summary lines consumed all content budget and a mandatory separator consumed the final line.
-- TUI tiny-height entry safeguard pass: `app_render` now clamps summary-line count for entry-heavy panes using per-pane minimum entry-row budgets, computes entry capacity with a conditional summary/entry separator, and preserves existing behavior for non-entry-heavy panes.
-- Added focused `app_render` tests for summary clamping, tiny-height single-row entry capacity without separator, and non-entry-heavy unchanged capacity behavior; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (93 passed).
-- GUI vs TUI parity audit (this pass): `[ROWS]` telemetry lines in entry-heavy pane summaries were hardcoded (`top=5`, `projects=5|hierarchy=10`) and diverged from dynamic pane-height-driven entry capacities.
-- TUI telemetry alignment update: `app_render` now computes final per-pane entry-row capacity first, then replaces the existing `[ROWS]` summary line in-place via `TuiAppState::pane_row_telemetry_line(...)` so telemetry matches the live render budget without changing summary line counts.
-- Added focused coverage for telemetry replacement and project-explorer split telemetry capacities (`app_render` + `state::app_state`), and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (96 passed).
-- GUI vs TUI parity audit (this pass): ultra-small summary clamping could drop `[ROWS]` lines in entry-heavy panes, allowing rows to render without telemetry and creating stale capacity visibility.
-- TUI ultra-small telemetry visibility update: `app_render` now upserts `[ROWS]` telemetry for entry-heavy panes before final row-capacity calculation and recalculates capacity after insertion; this keeps telemetry synchronized whenever rows are rendered and avoids phantom minimum-row capacity when summary+separator already consume space.
-- Added focused `app_render` tests for telemetry upsert behavior (missing-marker replacement and empty-summary insertion) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (98 passed).
-- Checkpoint commit for ultra-small telemetry visibility parity: `cfffc8b0` (`Enforce TUI rows telemetry visibility under tiny pane heights`).
-- GUI vs TUI parity audit (this pass): forcing `[ROWS]` telemetry under ultra-small heights could consume the only content line and collapse entry-row capacity to zero (`height=1`, empty summary), creating a row-starvation tradeoff.
-- TUI telemetry reconciliation update: `app_render` now reconciles baseline row capacity against telemetry-adjusted capacity and keeps telemetry only when rows still fit; if telemetry would starve rows, it is removed and baseline row capacity is preserved. Stale `[ROWS]` lines are stripped when no rows fit.
-- Added focused `app_render` tests for telemetry reconciliation fallback, zero-capacity stripping, and non-starving telemetry preservation; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (101 passed).
-- Checkpoint commit for tiny-height telemetry/rows reconciliation parity: `9d015c57` (`Reconcile TUI row telemetry with tiny-height row capacity`).
-- GUI vs TUI parity audit (this pass): ultra-small width + height rendering still had a marker-visibility gap where fixed-width marker prefixes (`" * "`) could collapse to blank-leading output at width `1`, obscuring selection state in entry-heavy panes.
-- TUI ultra-small marker visibility update: `app_render` marker prefix formatting is now width-aware (`0/1/2/3+` columns), preserving visible markers at tiny widths while keeping fixed marker-column alignment at normal widths; final summary lines are re-fit after telemetry reconciliation to keep post-reconcile telemetry display width-safe.
-- Added focused `app_render` tests for tiny-width marker formatting/rendering (`entry_marker_prefix_preserves_marker_visibility_in_tiny_widths`, `entry_row_render_keeps_marker_visible_at_single_column_width`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (103 passed).
-- Checkpoint commit for ultra-small width marker visibility parity: `9c5cf2cd` (`Preserve TUI entry markers at ultra-small pane widths`).
-
-
-- GUI vs TUI parity audit (this pass): project-explorer hierarchy uses two-character markers (`activation + directory`), and width=1 rendering previously collapsed these markers to `.` via generic truncation, obscuring state semantics in ultra-small panes.
-- TUI ultra-small marker readability fix: `app_render` now resolves single-column marker prefixes from the first visible marker character (fallback space), preserving meaningful hierarchy markers (`*`, `+`, `-`) at width=1 instead of `.`.
-- TUI project-explorer legend clarity update: added explicit `[MARK]` summary line documenting project/hierarchy marker semantics to balance dual-list marker readability tradeoffs.
-- Added focused `app_render` test coverage for width=1 two-character marker behavior and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (104 passed).
-- GUI vs TUI parity audit (this pass): project-explorer ultra-small height clamping could still drop `[MARK]` when only one summary line survived because `[MODE]` preceded `[MARK]` in summary ordering.
-- TUI project-explorer summary priority update: moved `[MARK]` legend line to the first summary slot so heavy clamp paths preserve marker semantics before mode metadata.
-- Added focused `app_render` regression test (`project_explorer_clamp_preserves_mark_legend_at_tiny_height`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (105 passed).
+- 
