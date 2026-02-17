@@ -184,3 +184,4 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): non-entry summary previews still used fixed caps (`struct_viewer` field preview `min(5)` and `output` log preview `min(8)`), so preview density did not scale with weighted pane height/focus changes.
 - TUI non-entry summary preview sizing update: `app_render` now passes measured pane content height into `TuiAppState::pane_summary_lines`, which computes dynamic preview budgets for `struct_viewer` and `output` (`fixed summary lines` + height-derived remainder); summary builders now consume explicit preview capacities instead of fixed caps.
 - Added focused summary tests for zero-preview-capacity behavior in `struct_viewer` and `output`, and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (88 passed).
+- Checkpoint commit for non-entry summary preview scaling: `4771c4c6` (`Scale TUI non-entry summary previews with pane height`).
