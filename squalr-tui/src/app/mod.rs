@@ -105,12 +105,16 @@ pub struct AppShell {
     pub consumed_scan_results_update_counter: u64,
     pub has_registered_scan_results_updated_listener: bool,
     pub last_scan_results_periodic_refresh_time: Option<Instant>,
+    pub last_process_list_auto_refresh_attempt_time: Option<Instant>,
+    pub last_project_list_auto_refresh_attempt_time: Option<Instant>,
+    pub last_project_items_auto_refresh_attempt_time: Option<Instant>,
     pub last_settings_auto_refresh_attempt_time: Option<Instant>,
 }
 
 impl AppShell {
     const MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 50;
     const MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 5_000;
+    const MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS: u64 = 1_000;
     const MIN_SETTINGS_AUTO_REFRESH_INTERVAL_MS: u64 = 1_000;
 
     pub fn new(tick_rate: Duration) -> Self {
@@ -123,6 +127,9 @@ impl AppShell {
             consumed_scan_results_update_counter: 0,
             has_registered_scan_results_updated_listener: false,
             last_scan_results_periodic_refresh_time: None,
+            last_process_list_auto_refresh_attempt_time: None,
+            last_project_list_auto_refresh_attempt_time: None,
+            last_project_items_auto_refresh_attempt_time: None,
             last_settings_auto_refresh_attempt_time: None,
         }
     }
@@ -229,6 +236,7 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        let current_tick_time = Instant::now();
         self.register_scan_results_updated_listener_if_needed(squalr_engine);
         let did_requery_after_scan_results_update = self.query_scan_results_page_if_engine_event_pending(squalr_engine);
         if !did_requery_after_scan_results_update {
@@ -237,45 +245,18 @@ impl AppShell {
 
         self.refresh_output_log_history(squalr_engine);
 
-        if self
-            .app_state
-            .process_selector_pane_state
-            .process_list_entries
-            .is_empty()
-            && !self
-                .app_state
-                .process_selector_pane_state
-                .is_awaiting_process_list_response
-        {
+        if self.should_refresh_process_list_on_tick(current_tick_time) {
+            self.last_process_list_auto_refresh_attempt_time = Some(current_tick_time);
             self.refresh_process_list(squalr_engine);
         }
 
-        if !self
-            .app_state
-            .project_explorer_pane_state
-            .has_loaded_project_list_once
-            && !self
-                .app_state
-                .project_explorer_pane_state
-                .is_awaiting_project_list_response
-        {
+        if self.should_refresh_project_list_on_tick(current_tick_time) {
+            self.last_project_list_auto_refresh_attempt_time = Some(current_tick_time);
             self.refresh_project_list(squalr_engine);
         }
 
-        if self
-            .app_state
-            .project_explorer_pane_state
-            .active_project_directory_path
-            .is_some()
-            && !self
-                .app_state
-                .project_explorer_pane_state
-                .has_loaded_project_item_list_once
-            && !self
-                .app_state
-                .project_explorer_pane_state
-                .is_awaiting_project_item_list_response
-        {
+        if self.should_refresh_project_items_list_on_tick(current_tick_time) {
+            self.last_project_items_auto_refresh_attempt_time = Some(current_tick_time);
             self.refresh_project_items_list(squalr_engine);
         }
 
@@ -356,6 +337,86 @@ impl AppShell {
         match self.last_settings_auto_refresh_attempt_time {
             Some(last_settings_auto_refresh_attempt_time) => {
                 current_tick_time.duration_since(last_settings_auto_refresh_attempt_time) >= Duration::from_millis(Self::MIN_SETTINGS_AUTO_REFRESH_INTERVAL_MS)
+            }
+            None => true,
+        }
+    }
+
+    fn should_refresh_process_list_on_tick(
+        &self,
+        current_tick_time: Instant,
+    ) -> bool {
+        if self
+            .app_state
+            .process_selector_pane_state
+            .has_loaded_process_list_once
+            || self
+                .app_state
+                .process_selector_pane_state
+                .is_awaiting_process_list_response
+        {
+            return false;
+        }
+
+        match self.last_process_list_auto_refresh_attempt_time {
+            Some(last_process_list_auto_refresh_attempt_time) => {
+                current_tick_time.duration_since(last_process_list_auto_refresh_attempt_time)
+                    >= Duration::from_millis(Self::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS)
+            }
+            None => true,
+        }
+    }
+
+    fn should_refresh_project_list_on_tick(
+        &self,
+        current_tick_time: Instant,
+    ) -> bool {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_list_once
+            || self
+                .app_state
+                .project_explorer_pane_state
+                .is_awaiting_project_list_response
+        {
+            return false;
+        }
+
+        match self.last_project_list_auto_refresh_attempt_time {
+            Some(last_project_list_auto_refresh_attempt_time) => {
+                current_tick_time.duration_since(last_project_list_auto_refresh_attempt_time)
+                    >= Duration::from_millis(Self::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS)
+            }
+            None => true,
+        }
+    }
+
+    fn should_refresh_project_items_list_on_tick(
+        &self,
+        current_tick_time: Instant,
+    ) -> bool {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path
+            .is_none()
+            || self
+                .app_state
+                .project_explorer_pane_state
+                .has_loaded_project_item_list_once
+            || self
+                .app_state
+                .project_explorer_pane_state
+                .is_awaiting_project_item_list_response
+        {
+            return false;
+        }
+
+        match self.last_project_items_auto_refresh_attempt_time {
+            Some(last_project_items_auto_refresh_attempt_time) => {
+                current_tick_time.duration_since(last_project_items_auto_refresh_attempt_time)
+                    >= Duration::from_millis(Self::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS)
             }
             None => true,
         }
@@ -2301,6 +2362,9 @@ impl AppShell {
                 self.app_state
                     .process_selector_pane_state
                     .apply_process_list(process_list_response.processes);
+                self.app_state
+                    .process_selector_pane_state
+                    .has_loaded_process_list_once = true;
                 self.app_state.process_selector_pane_state.status_message = format!("Loaded {} processes.", process_count);
             }
             Err(receive_error) => {
@@ -2405,9 +2469,6 @@ impl AppShell {
 
         self.app_state
             .project_explorer_pane_state
-            .has_loaded_project_list_once = true;
-        self.app_state
-            .project_explorer_pane_state
             .is_awaiting_project_list_response = true;
         self.app_state.project_explorer_pane_state.status_message = "Refreshing project list.".to_string();
 
@@ -2423,6 +2484,9 @@ impl AppShell {
                 self.app_state
                     .project_explorer_pane_state
                     .apply_project_list(project_list_response.projects_info);
+                self.app_state
+                    .project_explorer_pane_state
+                    .has_loaded_project_list_once = true;
                 self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} projects.", project_count);
             }
             Err(receive_error) => {
@@ -3543,6 +3607,99 @@ mod tests {
 
         app_shell.last_scan_results_periodic_refresh_time = Some(current_tick_time - Duration::from_millis(1_100));
         assert!(app_shell.should_refresh_scan_results_page_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn process_list_auto_refresh_eligibility_uses_load_state_and_interval() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .has_loaded_process_list_once = false;
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .is_awaiting_process_list_response = false;
+
+        assert!(app_shell.should_refresh_process_list_on_tick(current_tick_time));
+
+        app_shell.last_process_list_auto_refresh_attempt_time = Some(current_tick_time);
+        assert!(!app_shell.should_refresh_process_list_on_tick(current_tick_time));
+
+        app_shell.last_process_list_auto_refresh_attempt_time =
+            Some(current_tick_time - Duration::from_millis(AppShell::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS + 1));
+        assert!(app_shell.should_refresh_process_list_on_tick(current_tick_time));
+
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .has_loaded_process_list_once = true;
+        assert!(!app_shell.should_refresh_process_list_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn project_list_auto_refresh_eligibility_uses_load_state_and_interval() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_list_once = false;
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_list_response = false;
+
+        assert!(app_shell.should_refresh_project_list_on_tick(current_tick_time));
+
+        app_shell.last_project_list_auto_refresh_attempt_time = Some(current_tick_time);
+        assert!(!app_shell.should_refresh_project_list_on_tick(current_tick_time));
+
+        app_shell.last_project_list_auto_refresh_attempt_time =
+            Some(current_tick_time - Duration::from_millis(AppShell::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS + 1));
+        assert!(app_shell.should_refresh_project_list_on_tick(current_tick_time));
+
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_list_once = true;
+        assert!(!app_shell.should_refresh_project_list_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn project_items_auto_refresh_eligibility_requires_active_project_and_interval() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_item_list_once = false;
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_item_list_response = false;
+
+        assert!(!app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
+
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path = Some("C:/Projects/Alpha/project".into());
+        assert!(app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
+
+        app_shell.last_project_items_auto_refresh_attempt_time = Some(current_tick_time);
+        assert!(!app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
+
+        app_shell.last_project_items_auto_refresh_attempt_time =
+            Some(current_tick_time - Duration::from_millis(AppShell::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS + 1));
+        assert!(app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
+
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_item_list_once = true;
+        assert!(!app_shell.should_refresh_project_items_list_on_tick(current_tick_time));
     }
 
     #[test]

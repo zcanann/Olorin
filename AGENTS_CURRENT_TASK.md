@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior in process/project panes during initial auto-load and retry paths.
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior for project open/close flows and hierarchy refresh sequencing under repeated failure/timeout conditions.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -76,5 +76,9 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): `settings` auto-refresh previously depended on a `"Ready."` status sentinel, which blocked retries after non-ready statuses. TUI now uses explicit load-state (`has_loaded_settings_once`) with bounded retry cadence in app-shell tick flow.
 - GUI vs TUI parity audit (this pass): periodic `output` refresh previously overwrote pane status each tick. TUI now preserves manual/status feedback during tick refresh and only updates output status text for explicit user-triggered refresh.
 - Added tests for settings auto-refresh eligibility interval/load-state gating and output status preservation, plus reducer coverage for opt-in output status updates; validated with `cargo test -p squalr-tui` (43 passed).
+- GUI vs TUI parity audit (this pass): process/project initial auto-load retry behavior was inconsistent. TUI now uses explicit auto-refresh eligibility + bounded retry cadence for process list, project list, and project-item list loads in app-shell tick flow.
+- TUI process selector now tracks `has_loaded_process_list_once` and only marks loaded-state after successful list responses; this prevents repeated empty-list polling while preserving retry on failures/timeouts.
+- TUI project selector now sets `has_loaded_project_list_once` only after a successful `ProjectListRequest` response, restoring initial auto-load retry behavior after failed dispatch/timeout paths.
+- Added app-shell tests for process/project/project-item auto-refresh eligibility interval/load-state gating; validated with `cargo test -p squalr-tui` (46 passed).
 
 
