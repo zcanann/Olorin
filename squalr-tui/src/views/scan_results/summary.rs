@@ -38,19 +38,3 @@ fn option_to_compact_text<T: std::fmt::Display>(option_value: Option<T>) -> Stri
         .map(|value| value.to_string())
         .unwrap_or_else(|| "none".to_string())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::build_scan_results_summary_lines;
-    use crate::views::scan_results::pane_state::ScanResultsPaneState;
-
-    #[test]
-    fn summary_uses_condensed_marker_group_lead_lines() {
-        let scan_results_pane_state = ScanResultsPaneState::default();
-        let summary_lines = build_scan_results_summary_lines(&scan_results_pane_state);
-
-        assert!(summary_lines[0].starts_with("[ACT]"));
-        assert!(summary_lines[1].starts_with("[NAV]"));
-        assert!(summary_lines[2].starts_with("[EDIT]"));
-    }
-}

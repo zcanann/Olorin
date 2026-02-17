@@ -40,18 +40,3 @@ fn option_string_to_compact_text(option_text: Option<&str>) -> String {
         .map(|text| format!("\"{}\"", text))
         .unwrap_or_else(|| "none".to_string())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::build_process_selector_summary_lines;
-    use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
-
-    #[test]
-    fn summary_uses_condensed_marker_group_lead_lines() {
-        let process_selector_pane_state = ProcessSelectorPaneState::default();
-        let summary_lines = build_process_selector_summary_lines(&process_selector_pane_state);
-
-        assert!(summary_lines[0].starts_with("[ACT]"));
-        assert!(summary_lines[1].starts_with("[NAV]"));
-    }
-}

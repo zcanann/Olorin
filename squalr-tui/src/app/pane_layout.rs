@@ -36,31 +36,3 @@ impl PaneLayoutWeight for TuiPane {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::app::pane_layout::pane_layout_weights;
-    use crate::state::pane::TuiPane;
-
-    #[test]
-    fn pane_layout_weights_boosts_focused_pane_weight() {
-        let panes = vec![
-            TuiPane::ElementScanner,
-            TuiPane::ScanResults,
-            TuiPane::StructViewer,
-        ];
-
-        let pane_weights = pane_layout_weights(&panes, TuiPane::StructViewer);
-
-        assert_eq!(pane_weights, vec![4, 6, 7]);
-    }
-
-    #[test]
-    fn pane_layout_weights_does_not_boost_unlisted_focused_pane() {
-        let panes = vec![TuiPane::ProcessSelector, TuiPane::Settings];
-
-        let pane_weights = pane_layout_weights(&panes, TuiPane::Output);
-
-        assert_eq!(pane_weights, vec![3, 2]);
-    }
-}

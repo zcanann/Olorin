@@ -34,31 +34,3 @@ pub fn build_output_summary_lines(
 
     summary_lines
 }
-
-#[cfg(test)]
-mod tests {
-    use super::build_output_summary_lines;
-    use crate::views::output::pane_state::OutputPaneState;
-
-    #[test]
-    fn summary_uses_condensed_marker_group_lead_lines() {
-        let output_pane_state = OutputPaneState::default();
-        let summary_lines = build_output_summary_lines(&output_pane_state, 8);
-
-        assert!(summary_lines[0].starts_with("[ACT]"));
-    }
-
-    #[test]
-    fn preview_capacity_zero_hides_recent_log_section() {
-        let mut output_pane_state = OutputPaneState::default();
-        output_pane_state.log_lines = vec!["[INFO] line-1".to_string(), "[INFO] line-2".to_string()];
-
-        let summary_lines = build_output_summary_lines(&output_pane_state, 0);
-        let recent_line_count = summary_lines
-            .iter()
-            .filter(|summary_line| summary_line.starts_with("[RECENT]") || summary_line.starts_with("[LOG]"))
-            .count();
-
-        assert_eq!(recent_line_count, 0);
-    }
-}

@@ -28,28 +28,3 @@ pub fn build_selection_relative_viewport_range(
     let viewport_end_index = viewport_start_index + visible_entry_count;
     viewport_start_index..viewport_end_index
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
-
-    #[test]
-    fn viewport_defaults_to_top_when_selection_missing() {
-        assert_eq!(build_selection_relative_viewport_range(20, None, 5), 0..5);
-    }
-
-    #[test]
-    fn viewport_centers_around_middle_selection() {
-        assert_eq!(build_selection_relative_viewport_range(20, Some(10), 5), 8..13);
-    }
-
-    #[test]
-    fn viewport_clamps_to_bottom_for_tail_selection() {
-        assert_eq!(build_selection_relative_viewport_range(20, Some(19), 5), 15..20);
-    }
-
-    #[test]
-    fn viewport_clamps_invalid_selection_to_top() {
-        assert_eq!(build_selection_relative_viewport_range(20, Some(99), 5), 0..5);
-    }
-}

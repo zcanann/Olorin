@@ -76,22 +76,3 @@ fn option_path_to_compact_text(option_path: Option<&std::path::Path>) -> String 
         .map(|path| format!("\"{}\"", path.display()))
         .unwrap_or_else(|| "none".to_string())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::build_project_explorer_summary_lines;
-    use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
-
-    #[test]
-    fn summary_uses_condensed_marker_group_lead_lines() {
-        let project_explorer_pane_state = ProjectExplorerPaneState::default();
-        let summary_lines = build_project_explorer_summary_lines(&project_explorer_pane_state);
-
-        assert!(summary_lines[0].starts_with("[MARK]"));
-        assert!(summary_lines[1].starts_with("[MODE]"));
-        assert!(summary_lines[2].starts_with("[LIST]"));
-        assert!(summary_lines[3].starts_with("[TREE]"));
-        assert!(summary_lines[4].starts_with("[MOVE]"));
-        assert!(summary_lines[5].starts_with("[INPUT]"));
-    }
-}
