@@ -50,5 +50,6 @@ Information discovered during iteration:
 - TUI settings pane now has keyboard-first category/field reducers and command parity for general/memory/scan list+set requests, including in-pane state summaries and per-category apply actions.
 - TUI output pane now reads log history from `EngineUnprivilegedState` on tick, supports periodic redraw/preview, and adds keyboard actions for refresh (`r`), clear (`x`), and max-line bounds (`+`/`-`).
 - Added focused tests for settings and output reducers plus app-level focused-pane keyboard routing in `squalr-tui`; validated with `cargo test -p squalr-tui` (25 passed).
+- Checkpoint commit for settings/output/test parity: `468acfcb` (`Implement TUI settings/output parity and routing tests`).
 
 
