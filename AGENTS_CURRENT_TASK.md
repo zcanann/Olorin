@@ -11,7 +11,7 @@ Our current task, from `README.md`, is:
 - [x] Audit the GUI project and produce a ratatui-first TUI parity plan.
 - [x] Implement ratatui app shell in `squalr-tui` (terminal init/restore, tick loop, input loop, graceful shutdown).
 - [x] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
-- [ ] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
+- [x] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
 - [ ] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
 - [ ] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
 - [ ] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
@@ -45,3 +45,7 @@ Information discovered during iteration:
 - `ratatui` is pinned to `0.30.0` with `crossterm_0_29` feature to avoid workspace dependency resolution conflicts seen with `0.29.0`.
 - `squalr-tui` state is now split into dedicated pane modules under `src/state/` with a single `TuiAppState` aggregator, and app shell/runtime is separated into `src/app/mod.rs` to match the owner’s anti-bloat guidance.
 - Checkpoint commit for this milestone: `f1236be0` (`Add pane-split TUI state model scaffold`).
+- TUI now renders a real multi-pane top-level layout with keyboard-only workflow: focus cycle (`Tab`/`Shift+Tab`), direct pane focus (`1-7`), pane visibility toggles (`Ctrl+1-7` or `v` for focused pane), and restore-all (`0`).
+- Added reducer tests in `squalr-tui` for focus cycling across hidden panes, hidden-pane focus restore, and guard rails preventing all panes from being hidden.
+
+

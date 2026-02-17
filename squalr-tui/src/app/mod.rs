@@ -1,11 +1,12 @@
 use crate::state::TuiAppState;
+use crate::state::pane::TuiPane;
 use anyhow::{Context, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 use crossterm::{cursor, execute};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
-use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
@@ -91,7 +92,7 @@ impl AppShell {
     ) {
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(0)])
+            .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
             .split(frame.area());
 
         let header_text = match engine_mode {
@@ -100,25 +101,21 @@ impl AppShell {
             EngineMode::PrivilegedShell => "Squalr TUI (Privileged Shell)",
         };
 
-        let header = Paragraph::new(header_text)
-            .style(Style::default().add_modifier(Modifier::BOLD))
-            .block(Block::default().borders(Borders::ALL).title("Session"));
+        let header = Paragraph::new(vec![
+            Line::from(header_text),
+            Line::from("Focus: Tab / Shift+Tab. Focus pane: 1-7. Toggle pane: Ctrl+1-7 or v. Show all: 0."),
+        ])
+        .style(Style::default().add_modifier(Modifier::BOLD))
+        .block(Block::default().borders(Borders::ALL).title("Session"));
         frame.render_widget(header, vertical_chunks[0]);
 
-        let mut status_lines = vec![
-            Line::from("App shell initialized."),
-            Line::from("Controls: q / Esc / Ctrl+C to exit."),
-            Line::from(format!("Pane state model initialized for {} panes.", self.app_state.pane_count())),
-        ];
-        status_lines.extend(
-            self.app_state
-                .status_summary_lines()
-                .into_iter()
-                .map(Line::from),
-        );
+        self.draw_pane_layout(frame, vertical_chunks[1]);
 
-        let body = Paragraph::new(status_lines).block(Block::default().borders(Borders::ALL).title("Status"));
-        frame.render_widget(body, vertical_chunks[1]);
+        let footer = Paragraph::new(vec![Line::from(
+            "Global: q / Esc / Ctrl+C to exit. Non-mouse workflow enabled for pane navigation and visibility.",
+        )])
+        .block(Block::default().borders(Borders::ALL).title("Controls"));
+        frame.render_widget(footer, vertical_chunks[2]);
     }
 
     fn handle_event(
@@ -133,10 +130,110 @@ impl AppShell {
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.should_exit = true,
                 KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => self.should_exit = true,
+                KeyCode::Tab => self.app_state.cycle_focus_forward(),
+                KeyCode::BackTab => self.app_state.cycle_focus_backward(),
+                KeyCode::Char('v') => {
+                    let _toggle_succeeded = self.app_state.toggle_focused_pane_visibility();
+                }
+                KeyCode::Char('0') => self.app_state.show_all_panes(),
+                KeyCode::Char(shortcut_digit) => {
+                    if let Some(target_pane) = TuiPane::from_shortcut_digit(shortcut_digit) {
+                        if key_event.modifiers.contains(KeyModifiers::CONTROL) {
+                            let _toggle_succeeded = self.app_state.toggle_pane_visibility(target_pane);
+                        } else {
+                            self.app_state.set_focus_to_pane(target_pane);
+                        }
+                    }
+                }
                 _ => {}
             }
         }
     }
 
     fn on_tick(&mut self) {}
+
+    fn draw_pane_layout(
+        &self,
+        frame: &mut ratatui::Frame<'_>,
+        body_area: Rect,
+    ) {
+        let left_column_panes: Vec<TuiPane> = [
+            TuiPane::ProcessSelector,
+            TuiPane::ProjectExplorer,
+            TuiPane::Settings,
+        ]
+        .into_iter()
+        .filter(|pane| self.app_state.is_pane_visible(*pane))
+        .collect();
+        let right_column_panes: Vec<TuiPane> = [
+            TuiPane::ElementScanner,
+            TuiPane::ScanResults,
+            TuiPane::StructViewer,
+            TuiPane::Output,
+        ]
+        .into_iter()
+        .filter(|pane| self.app_state.is_pane_visible(*pane))
+        .collect();
+
+        match (left_column_panes.is_empty(), right_column_panes.is_empty()) {
+            (false, false) => {
+                let columns = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
+                    .split(body_area);
+                self.draw_pane_column(frame, columns[0], &left_column_panes);
+                self.draw_pane_column(frame, columns[1], &right_column_panes);
+            }
+            (false, true) => self.draw_pane_column(frame, body_area, &left_column_panes),
+            (true, false) => self.draw_pane_column(frame, body_area, &right_column_panes),
+            (true, true) => {}
+        }
+    }
+
+    fn draw_pane_column(
+        &self,
+        frame: &mut ratatui::Frame<'_>,
+        column_area: Rect,
+        panes: &[TuiPane],
+    ) {
+        if panes.is_empty() {
+            return;
+        }
+
+        let row_constraints: Vec<Constraint> = panes
+            .iter()
+            .map(|_| Constraint::Ratio(1, panes.len() as u32))
+            .collect();
+        let row_areas = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(row_constraints)
+            .split(column_area);
+
+        for (row_index, pane) in panes.iter().enumerate() {
+            self.draw_single_pane(frame, row_areas[row_index], *pane);
+        }
+    }
+
+    fn draw_single_pane(
+        &self,
+        frame: &mut ratatui::Frame<'_>,
+        pane_area: Rect,
+        pane: TuiPane,
+    ) {
+        let is_focused = self.app_state.focused_pane() == pane;
+        let mut title = format!("{} [{}]", pane.title(), pane.shortcut_digit());
+        if is_focused {
+            title.push_str(" *");
+        }
+
+        let pane_lines: Vec<Line<'static>> = self
+            .app_state
+            .pane_summary_lines(pane)
+            .into_iter()
+            .map(Line::from)
+            .collect();
+
+        let pane_widget = Paragraph::new(pane_lines).block(Block::default().borders(Borders::ALL).title(title));
+        frame.render_widget(pane_widget, pane_area);
+    }
 }
