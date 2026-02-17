@@ -1,9 +1,11 @@
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::project_explorer::entry_rows::{build_visible_project_entry_rows, build_visible_project_item_entry_rows};
+use crate::views::project_explorer::hierarchy_graph::{build_project_item_hierarchy_graph, is_directory_project_item};
+use crate::views::project_explorer::hierarchy_visibility::build_visible_hierarchy_entries;
+use crate::views::project_explorer::hierarchy_walk::build_project_item_paths_preorder;
 use crate::views::project_explorer::summary::build_project_explorer_summary_lines;
 use squalr_engine_api::structures::projects::project::Project;
 use squalr_engine_api::structures::projects::project_info::ProjectInfo;
-use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
 use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
 use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
 use std::collections::{HashMap, HashSet};
@@ -103,57 +105,27 @@ impl ProjectExplorerPaneState {
         opened_project_items: Vec<(ProjectItemRef, ProjectItem)>,
     ) {
         let selected_project_item_path_before_refresh = self.selected_project_item_path();
-
-        self.opened_project_item_map.clear();
-        self.child_paths_by_parent_path.clear();
-        self.root_project_item_paths.clear();
-
-        for (project_item_ref, project_item) in opened_project_items {
-            self.opened_project_item_map
-                .insert(project_item_ref.get_project_item_path().clone(), project_item);
-        }
-
-        let all_project_item_paths: HashSet<PathBuf> = self.opened_project_item_map.keys().cloned().collect();
-        for project_item_path in &all_project_item_paths {
-            let parent_directory_path = project_item_path.parent().map(Path::to_path_buf);
-            if parent_directory_path
-                .as_ref()
-                .is_some_and(|candidate_parent_path| all_project_item_paths.contains(candidate_parent_path))
-            {
-                if let Some(parent_directory_path) = parent_directory_path {
-                    self.child_paths_by_parent_path
-                        .entry(parent_directory_path)
-                        .or_default()
-                        .push(project_item_path.clone());
-                }
-            } else {
-                self.root_project_item_paths.push(project_item_path.clone());
-            }
-        }
-
-        self.root_project_item_paths.sort();
-        for child_paths in self.child_paths_by_parent_path.values_mut() {
-            child_paths.sort();
-        }
-
-        let valid_project_item_paths: HashSet<PathBuf> = self.opened_project_item_map.keys().cloned().collect();
-        let valid_directory_paths: HashSet<PathBuf> = self
-            .opened_project_item_map
-            .iter()
-            .filter_map(|(project_item_path, project_item)| {
-                if Self::is_directory_project_item(project_item) {
-                    Some(project_item_path.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-        self.expanded_directory_paths
-            .retain(|expanded_directory_path| valid_directory_paths.contains(expanded_directory_path));
+        let hierarchy_graph = build_project_item_hierarchy_graph(opened_project_items);
+        self.opened_project_item_map = hierarchy_graph.opened_project_item_map;
+        self.child_paths_by_parent_path = hierarchy_graph.child_paths_by_parent_path;
+        self.root_project_item_paths = hierarchy_graph.root_project_item_paths;
+        self.expanded_directory_paths.retain(|expanded_directory_path| {
+            hierarchy_graph
+                .valid_directory_paths
+                .contains(expanded_directory_path)
+        });
         self.pending_move_source_paths
-            .retain(|pending_move_source_path| valid_project_item_paths.contains(pending_move_source_path));
+            .retain(|pending_move_source_path| {
+                hierarchy_graph
+                    .valid_project_item_paths
+                    .contains(pending_move_source_path)
+            });
         self.pending_delete_confirmation_paths
-            .retain(|pending_delete_confirmation_path| valid_project_item_paths.contains(pending_delete_confirmation_path));
+            .retain(|pending_delete_confirmation_path| {
+                hierarchy_graph
+                    .valid_project_item_paths
+                    .contains(pending_delete_confirmation_path)
+            });
 
         self.rebuild_visible_hierarchy_entries();
         self.restore_selected_project_item_path(selected_project_item_path_before_refresh);
@@ -380,10 +352,7 @@ impl ProjectExplorerPaneState {
             }
         }
 
-        let mut reordered_project_item_paths = Vec::new();
-        for root_project_item_path in &root_project_item_paths {
-            Self::append_project_item_paths_preorder(root_project_item_path, &child_paths_by_parent_path, &mut reordered_project_item_paths);
-        }
+        let reordered_project_item_paths = build_project_item_paths_preorder(&root_project_item_paths, &child_paths_by_parent_path);
 
         Some(
             reordered_project_item_paths
@@ -549,59 +518,13 @@ impl ProjectExplorerPaneState {
     }
 
     fn rebuild_visible_hierarchy_entries(&mut self) {
-        self.project_item_visible_entries.clear();
-        if !self.is_hierarchy_expanded {
-            return;
-        }
-
-        let root_project_item_paths = self.root_project_item_paths.clone();
-        for root_project_item_path in &root_project_item_paths {
-            self.append_visible_hierarchy_entries(root_project_item_path, 0);
-        }
-    }
-
-    fn append_visible_hierarchy_entries(
-        &mut self,
-        project_item_path: &Path,
-        project_item_depth: usize,
-    ) {
-        let Some(project_item) = self.opened_project_item_map.get(project_item_path).cloned() else {
-            return;
-        };
-
-        let is_directory = Self::is_directory_project_item(&project_item);
-        let is_expanded = is_directory && self.expanded_directory_paths.contains(project_item_path);
-        let child_paths = self
-            .child_paths_by_parent_path
-            .get(project_item_path)
-            .cloned()
-            .unwrap_or_default();
-
-        let mut display_name = project_item.get_field_name();
-        if display_name.is_empty() {
-            display_name = project_item_path
-                .file_name()
-                .and_then(|file_name| file_name.to_str())
-                .unwrap_or_default()
-                .to_string();
-        }
-
-        self.project_item_visible_entries.push(ProjectHierarchyEntry {
-            project_item_path: project_item_path.to_path_buf(),
-            display_name,
-            depth: project_item_depth,
-            is_directory,
-            is_expanded,
-            is_activated: project_item.get_is_activated(),
-        });
-
-        if !is_expanded {
-            return;
-        }
-
-        for child_path in &child_paths {
-            self.append_visible_hierarchy_entries(child_path, project_item_depth + 1);
-        }
+        self.project_item_visible_entries = build_visible_hierarchy_entries(
+            self.is_hierarchy_expanded,
+            &self.opened_project_item_map,
+            &self.child_paths_by_parent_path,
+            &self.root_project_item_paths,
+            &self.expanded_directory_paths,
+        );
     }
 
     fn restore_selected_project_item_path(
@@ -627,17 +550,13 @@ impl ProjectExplorerPaneState {
             .map(|project_item_path| project_item_path.display().to_string());
     }
 
-    fn is_directory_project_item(project_item: &ProjectItem) -> bool {
-        project_item.get_item_type().get_project_item_type_id() == ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID
-    }
-
     fn is_directory_path(
         &self,
         project_item_path: &Path,
     ) -> bool {
         self.opened_project_item_map
             .get(project_item_path)
-            .map(Self::is_directory_project_item)
+            .map(is_directory_project_item)
             .unwrap_or(false)
     }
 
@@ -672,19 +591,6 @@ impl ProjectExplorerPaneState {
                 return candidate_directory_name;
             }
             suffix_number += 1;
-        }
-    }
-
-    fn append_project_item_paths_preorder(
-        project_item_path: &Path,
-        child_paths_by_parent_path: &HashMap<PathBuf, Vec<PathBuf>>,
-        reordered_project_item_paths: &mut Vec<PathBuf>,
-    ) {
-        reordered_project_item_paths.push(project_item_path.to_path_buf());
-        if let Some(child_paths) = child_paths_by_parent_path.get(project_item_path) {
-            for child_path in child_paths {
-                Self::append_project_item_paths_preorder(child_path, child_paths_by_parent_path, reordered_project_item_paths);
-            }
         }
     }
 
