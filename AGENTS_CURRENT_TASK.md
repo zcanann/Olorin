@@ -22,7 +22,7 @@ Our current task, from `README.md`, is:
 - [ ] Implement output pane parity using log history stream + periodic redraw.
 - [ ] Add focused unit tests in `squalr-tui` for pure state reducers and keyboard command routing.
 - [x] Run `cargo fmt` and targeted tests (`cargo test -p squalr-tui` + selected engine/view-model tests as needed).
-- [ ] Checkpoint commit and keep this task file compact as milestones complete.
+- [x] Checkpoint commit and keep this task file compact as milestones complete.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -44,3 +44,4 @@ Information discovered during iteration:
 - `squalr-tui` now has a working ratatui+crossterm shell with alternate-screen setup/restore, raw-mode guard via `Drop`, tick-based redraw loop, and keyboard exit handling (`q`, `Esc`, `Ctrl+C`).
 - `ratatui` is pinned to `0.30.0` with `crossterm_0_29` feature to avoid workspace dependency resolution conflicts seen with `0.29.0`.
 - `squalr-tui` state is now split into dedicated pane modules under `src/state/` with a single `TuiAppState` aggregator, and app shell/runtime is separated into `src/app/mod.rs` to match the owner’s anti-bloat guidance.
+- Checkpoint commit for this milestone: `f1236be0` (`Add pane-split TUI state model scaffold`).
