@@ -12,9 +12,10 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 use squalr_engine::engine_mode::EngineMode;
 use squalr_engine::squalr_engine::SqualrEngine;
+use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use std::io::{self, IsTerminal, Stdout};
-use std::sync::Arc;
 use std::sync::atomic::AtomicU64;
+use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 pub struct TerminalGuard {
@@ -57,6 +58,10 @@ pub struct AppShell {
     pub scan_results_update_counter: Arc<AtomicU64>,
     pub consumed_scan_results_update_counter: u64,
     pub has_registered_scan_results_updated_listener: bool,
+    pub process_changed_update_counter: Arc<AtomicU64>,
+    pub consumed_process_changed_update_counter: u64,
+    pub pending_opened_process_from_event: Arc<RwLock<Option<OpenedProcessInfo>>>,
+    pub has_registered_process_changed_listener: bool,
     pub last_scan_results_periodic_refresh_time: Option<Instant>,
     pub last_process_list_auto_refresh_attempt_time: Option<Instant>,
     pub last_project_list_auto_refresh_attempt_time: Option<Instant>,
@@ -79,6 +84,10 @@ impl AppShell {
             scan_results_update_counter: Arc::new(AtomicU64::new(0)),
             consumed_scan_results_update_counter: 0,
             has_registered_scan_results_updated_listener: false,
+            process_changed_update_counter: Arc::new(AtomicU64::new(0)),
+            consumed_process_changed_update_counter: 0,
+            pending_opened_process_from_event: Arc::new(RwLock::new(None)),
+            has_registered_process_changed_listener: false,
             last_scan_results_periodic_refresh_time: None,
             last_process_list_auto_refresh_attempt_time: None,
             last_project_list_auto_refresh_attempt_time: None,
@@ -199,6 +208,8 @@ mod tests {
     use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
     use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
+    use squalr_engine_api::structures::memory::bitness::Bitness;
+    use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
     use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
     use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
     use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
@@ -338,6 +349,92 @@ mod tests {
                 .status_message
                 .starts_with("Loaded page ")
         );
+    }
+
+    #[test]
+    fn process_changed_engine_update_syncs_opened_process_when_pending() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let opened_process = OpenedProcessInfo::new(4242, "sync-target.exe".to_string(), 1337, Bitness::Bit64, None);
+        if let Ok(mut pending_opened_process_guard) = app_shell.pending_opened_process_from_event.write() {
+            *pending_opened_process_guard = Some(opened_process);
+        }
+        app_shell
+            .process_changed_update_counter
+            .store(1, std::sync::atomic::Ordering::Relaxed);
+
+        let did_synchronize = app_shell.synchronize_opened_process_from_engine_event_if_pending();
+
+        assert!(did_synchronize);
+        assert_eq!(
+            app_shell
+                .app_state
+                .process_selector_pane_state
+                .opened_process_identifier,
+            Some(4242)
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .process_selector_pane_state
+                .opened_process_name,
+            Some("sync-target.exe".to_string())
+        );
+        assert_eq!(app_shell.consumed_process_changed_update_counter, 1);
+    }
+
+    #[test]
+    fn process_changed_engine_update_sync_noops_without_pending_update() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+
+        let did_synchronize = app_shell.synchronize_opened_process_from_engine_event_if_pending();
+
+        assert!(!did_synchronize);
+        assert_eq!(
+            app_shell
+                .app_state
+                .process_selector_pane_state
+                .opened_process_identifier,
+            None
+        );
+        assert_eq!(app_shell.consumed_process_changed_update_counter, 0);
+    }
+
+    #[test]
+    fn process_changed_engine_update_sync_clears_opened_process_on_none() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .opened_process_identifier = Some(1001);
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .opened_process_name = Some("stale.exe".to_string());
+        if let Ok(mut pending_opened_process_guard) = app_shell.pending_opened_process_from_event.write() {
+            *pending_opened_process_guard = None;
+        }
+        app_shell
+            .process_changed_update_counter
+            .store(1, std::sync::atomic::Ordering::Relaxed);
+
+        let did_synchronize = app_shell.synchronize_opened_process_from_engine_event_if_pending();
+
+        assert!(did_synchronize);
+        assert_eq!(
+            app_shell
+                .app_state
+                .process_selector_pane_state
+                .opened_process_identifier,
+            None
+        );
+        assert_eq!(
+            app_shell
+                .app_state
+                .process_selector_pane_state
+                .opened_process_name,
+            None
+        );
+        assert_eq!(app_shell.consumed_process_changed_update_counter, 1);
     }
 
     #[test]

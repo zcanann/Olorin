@@ -2,7 +2,9 @@ use super::app_shell::AppShell;
 use crate::state::pane::TuiPane;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
+use squalr_engine_api::events::process::changed::process_changed_event::ProcessChangedEvent;
 use squalr_engine_api::events::scan_results::updated::scan_results_updated_event::ScanResultsUpdatedEvent;
+use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
@@ -15,6 +17,8 @@ impl AppShell {
         let current_tick_time = Instant::now();
         self.synchronize_active_project_from_engine_state(squalr_engine);
         self.register_scan_results_updated_listener_if_needed(squalr_engine);
+        self.register_process_changed_listener_if_needed(squalr_engine);
+        let _did_synchronize_opened_process = self.synchronize_opened_process_from_engine_event_if_pending();
         let did_requery_after_scan_results_update = self.query_scan_results_page_if_engine_event_pending(squalr_engine);
         if !did_requery_after_scan_results_update {
             self.refresh_scan_results_on_interval_if_eligible(squalr_engine);
@@ -119,6 +123,59 @@ impl AppShell {
         });
 
         self.has_registered_scan_results_updated_listener = true;
+    }
+
+    pub(super) fn register_process_changed_listener_if_needed(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.has_registered_process_changed_listener {
+            return;
+        }
+
+        let Some(engine_unprivileged_state) = squalr_engine.get_engine_unprivileged_state().as_ref() else {
+            return;
+        };
+        let process_changed_update_counter = self.process_changed_update_counter.clone();
+        let pending_opened_process_from_event = self.pending_opened_process_from_event.clone();
+        engine_unprivileged_state.listen_for_engine_event::<ProcessChangedEvent>(move |process_changed_event| {
+            if let Ok(mut pending_opened_process_guard) = pending_opened_process_from_event.write() {
+                *pending_opened_process_guard = process_changed_event.process_info.clone();
+                process_changed_update_counter.fetch_add(1, Ordering::Relaxed);
+            } else {
+                log::error!("Failed to acquire process event lock in TUI process-change listener.");
+            }
+        });
+
+        self.has_registered_process_changed_listener = true;
+    }
+
+    pub(super) fn synchronize_opened_process_from_engine_event_if_pending(&mut self) -> bool {
+        let latest_process_changed_update_counter = self.process_changed_update_counter.load(Ordering::Relaxed);
+        if latest_process_changed_update_counter == self.consumed_process_changed_update_counter {
+            return false;
+        }
+
+        let pending_opened_process_from_event = match self.pending_opened_process_from_event.read() {
+            Ok(pending_opened_process_guard) => pending_opened_process_guard.clone(),
+            Err(lock_error) => {
+                log::error!("Failed to acquire process event lock for TUI process-state synchronization: {}", lock_error);
+                return false;
+            }
+        };
+
+        self.apply_engine_opened_process_state(pending_opened_process_from_event);
+        self.consumed_process_changed_update_counter = latest_process_changed_update_counter;
+        true
+    }
+
+    pub(super) fn apply_engine_opened_process_state(
+        &mut self,
+        opened_process: Option<OpenedProcessInfo>,
+    ) {
+        self.app_state
+            .process_selector_pane_state
+            .set_opened_process(opened_process);
     }
 
     pub(super) fn query_scan_results_page_if_engine_event_pending(
