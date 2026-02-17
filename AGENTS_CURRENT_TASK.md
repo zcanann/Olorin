@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status/selection behavior in remaining panes after list/query refreshes.
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior in settings/output panes during periodic auto-refresh paths.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -70,5 +70,8 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): TUI reducer refreshes were resetting user selection to index 0 for process list, project list, and scan results query responses; GUI keeps context across refreshes, so this caused keyboard UX drift.
 - TUI reducers now preserve selection by stable identity where available: process id in `ProcessSelectorPaneState`, project directory path in `ProjectExplorerPaneState`, and scan-result global index in `ScanResultsPaneState` (with bounded fallback behavior when prior selections are missing).
 - Added reducer coverage for each preserve-selection path and scan-results identity remap behavior; validated with `cargo test -p squalr-tui` (38 passed).
+- GUI vs TUI parity audit (this pass): project hierarchy refresh could retain stale transient state in TUI (`expanded_directory_paths`, staged move paths, pending delete-confirm paths) when list responses removed items; GUI retain/refresh paths implicitly drop invalid references.
+- `ProjectExplorerPaneState::apply_project_items_list` now prunes invalid expanded/staged/confirm paths against refreshed project items, while preserving selected hierarchy entry by stable path when available.
+- Added reducer tests for project-item selection preservation and stale refresh-state pruning; validated with `cargo test -p squalr-tui` (40 passed).
 
 

@@ -133,6 +133,25 @@ impl ProjectExplorerPaneState {
             child_paths.sort();
         }
 
+        let valid_project_item_paths: HashSet<PathBuf> = self.opened_project_item_map.keys().cloned().collect();
+        let valid_directory_paths: HashSet<PathBuf> = self
+            .opened_project_item_map
+            .iter()
+            .filter_map(|(project_item_path, project_item)| {
+                if Self::is_directory_project_item(project_item) {
+                    Some(project_item_path.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        self.expanded_directory_paths
+            .retain(|expanded_directory_path| valid_directory_paths.contains(expanded_directory_path));
+        self.pending_move_source_paths
+            .retain(|pending_move_source_path| valid_project_item_paths.contains(pending_move_source_path));
+        self.pending_delete_confirmation_paths
+            .retain(|pending_delete_confirmation_path| valid_project_item_paths.contains(pending_delete_confirmation_path));
+
         self.rebuild_visible_hierarchy_entries();
         self.restore_selected_project_item_path(selected_project_item_path_before_refresh);
         self.has_loaded_project_item_list_once = true;
@@ -803,8 +822,22 @@ impl Default for ProjectExplorerPaneState {
 #[cfg(test)]
 mod tests {
     use crate::state::project_explorer_pane_state::{ProjectExplorerPaneState, ProjectSelectorInputMode};
+    use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
+    use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
     use squalr_engine_api::structures::projects::{project_info::ProjectInfo, project_manifest::ProjectManifest};
     use std::path::PathBuf;
+
+    fn create_directory_project_item_entry(
+        project_item_path: PathBuf
+    ) -> (
+        ProjectItemRef,
+        squalr_engine_api::structures::projects::project_items::project_item::ProjectItem,
+    ) {
+        let project_item_ref = ProjectItemRef::new(project_item_path);
+        let project_item = ProjectItemTypeDirectory::new_project_item(&project_item_ref);
+
+        (project_item_ref, project_item)
+    }
 
     #[test]
     fn apply_project_list_selects_first_project() {
@@ -903,5 +936,59 @@ mod tests {
             project_explorer_pane_state.selected_project_directory_path,
             Some(PathBuf::from("C:/Projects/Beta/project"))
         );
+    }
+
+    #[test]
+    fn apply_project_items_list_preserves_selected_item_by_path() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        let first_directory_path = PathBuf::from("root/a");
+        let second_directory_path = PathBuf::from("root/b");
+        project_explorer_pane_state.apply_project_items_list(vec![
+            create_directory_project_item_entry(first_directory_path.clone()),
+            create_directory_project_item_entry(second_directory_path.clone()),
+        ]);
+        project_explorer_pane_state.select_next_project_item();
+        assert_eq!(project_explorer_pane_state.selected_project_item_path(), Some(second_directory_path.clone()));
+
+        project_explorer_pane_state.apply_project_items_list(vec![
+            create_directory_project_item_entry(second_directory_path.clone()),
+            create_directory_project_item_entry(PathBuf::from("root/c")),
+        ]);
+
+        assert_eq!(project_explorer_pane_state.selected_project_item_path(), Some(second_directory_path));
+    }
+
+    #[test]
+    fn apply_project_items_list_prunes_stale_refresh_state() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        let retained_directory_path = PathBuf::from("root/retained");
+        let removed_directory_path = PathBuf::from("root/removed");
+        project_explorer_pane_state
+            .expanded_directory_paths
+            .insert(retained_directory_path.clone());
+        project_explorer_pane_state
+            .expanded_directory_paths
+            .insert(removed_directory_path.clone());
+        project_explorer_pane_state.pending_move_source_paths = vec![retained_directory_path.clone(), removed_directory_path.clone()];
+        project_explorer_pane_state.pending_delete_confirmation_paths = vec![removed_directory_path.clone(), retained_directory_path.clone()];
+
+        project_explorer_pane_state.apply_project_items_list(vec![create_directory_project_item_entry(
+            retained_directory_path.clone(),
+        )]);
+
+        assert_eq!(
+            project_explorer_pane_state
+                .expanded_directory_paths
+                .contains(&retained_directory_path),
+            true
+        );
+        assert_eq!(
+            project_explorer_pane_state
+                .expanded_directory_paths
+                .contains(&removed_directory_path),
+            false
+        );
+        assert_eq!(project_explorer_pane_state.pending_move_source_paths, vec![retained_directory_path.clone()]);
+        assert_eq!(project_explorer_pane_state.pending_delete_confirmation_paths, vec![retained_directory_path]);
     }
 }
