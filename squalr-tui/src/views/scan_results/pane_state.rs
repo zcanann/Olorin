@@ -383,7 +383,7 @@ impl Default for ScanResultsPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::views::scan_results_pane_state::ScanResultsPaneState;
+    use crate::views::scan_results::pane_state::ScanResultsPaneState;
     use squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse;
     use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
     use squalr_engine_api::structures::scan_results::scan_result::ScanResult;

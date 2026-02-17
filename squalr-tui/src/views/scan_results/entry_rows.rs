@@ -1,5 +1,5 @@
 use crate::state::pane_entry_row::PaneEntryRow;
-use crate::views::scan_results_pane_state::ScanResultsPaneState;
+use crate::views::scan_results::pane_state::ScanResultsPaneState;
 use std::ops::RangeInclusive;
 
 pub fn build_visible_scan_result_rows(scan_results_pane_state: &ScanResultsPaneState) -> Vec<PaneEntryRow> {

@@ -1,4 +1,4 @@
-use crate::views::scan_results_pane_state::ScanResultsPaneState;
+use crate::views::scan_results::pane_state::ScanResultsPaneState;
 
 pub fn build_scan_results_summary_lines(scan_results_pane_state: &ScanResultsPaneState) -> Vec<String> {
     vec![

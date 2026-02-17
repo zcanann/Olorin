@@ -5,7 +5,6 @@ pub mod output_pane_state;
 pub mod process_selector;
 pub mod project_explorer;
 pub mod scan_results;
-pub mod scan_results_pane_state;
 pub mod settings;
 pub mod settings_pane_state;
 pub mod struct_viewer;
