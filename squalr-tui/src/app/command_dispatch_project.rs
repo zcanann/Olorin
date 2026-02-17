@@ -1,5 +1,5 @@
 use super::app_shell::AppShell;
-use crate::views::project_explorer_pane_state::ProjectSelectorInputMode;
+use crate::views::project_explorer::pane_state::ProjectSelectorInputMode;
 use anyhow::Result;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;

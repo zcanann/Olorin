@@ -1,4 +1,4 @@
-use crate::views::project_explorer_pane_state::ProjectExplorerPaneState;
+use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
 
 pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<String> {
     vec![

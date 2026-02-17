@@ -1,5 +1,5 @@
 use crate::state::pane_entry_row::PaneEntryRow;
-use crate::views::project_explorer_pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
+use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
 
 pub fn build_visible_project_entry_rows(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<PaneEntryRow> {
     let visible_project_count = project_explorer_pane_state.project_entries.len().min(5);

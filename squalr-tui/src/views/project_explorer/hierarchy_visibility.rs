@@ -1,5 +1,5 @@
 use crate::views::project_explorer::hierarchy_graph::is_directory_project_item;
-use crate::views::project_explorer_pane_state::ProjectHierarchyEntry;
+use crate::views::project_explorer::pane_state::ProjectHierarchyEntry;
 use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};

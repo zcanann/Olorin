@@ -1,6 +1,6 @@
 use super::app_shell::AppShell;
 use crate::state::pane::TuiPane;
-use crate::views::project_explorer_pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
+use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use squalr_engine::squalr_engine::SqualrEngine;
 
