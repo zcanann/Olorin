@@ -273,7 +273,7 @@ impl ScanResultsPaneState {
 
     pub fn summary_lines(&self) -> Vec<String> {
         let mut summary_lines = vec![
-            "Actions: r query page, R refresh values, [/] page, f freeze toggle, a add project, x delete.".to_string(),
+            "Actions: r query page, R refresh current page values, [/] page, f freeze toggle, a add project, x delete.".to_string(),
             "Selection: Up/Down/j/k move, Shift+Up/Shift+Down range, Home/End bounds.".to_string(),
             "Value edit: digits/-/. set buffer, Backspace, Ctrl+u clear, Enter commit, y copy selected value.".to_string(),
             format!("page={}/{}", self.current_page_index, self.cached_last_page_index),

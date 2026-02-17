@@ -8,7 +8,8 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Audit GUI vs TUI for the next behavior-level parity gap and add concrete follow-up task(s).
+- [ ] Implement struct viewer display-format parity in TUI (field-level cycling across supported `AnonymousValueString` formats, keyboard-first controls, and visible status/state feedback).
+- [ ] Add reducer/app-shell tests that validate struct viewer format cycling behavior and verify edit commit continues to route correct command payloads.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -57,5 +58,8 @@ Information discovered during iteration:
 - TUI app shell now registers a one-time `ScanResultsUpdatedEvent` listener, tracks event counters thread-safely, and requeries the current scan-results page on tick when pending updates exist and no query is in flight.
 - TUI scan-results refresh now supports a bounded periodic loop driven by scan setting `results_read_interval_ms` clamped to 50-5000ms, gated to visible scan-results pane + active selection and suppressed during conflicting in-flight operations.
 - Added app-shell tests for engine-update signal gating, visibility/selection gating for periodic refresh, and bounded interval behavior; validated with `cargo test -p squalr-tui` (28 passed).
+- GUI vs TUI parity audit (this pass): GUI refreshes values for the entire queried scan-results page on its loop; TUI previously refreshed only selected rows. TUI now refreshes all current-page rows for periodic/manual refresh paths and no longer requires an active selection for periodic refresh gating.
+- Updated scan-results periodic refresh tests to validate pane-visibility + non-empty-page gating and bounded interval behavior against the page-level refresh model; validated with `cargo test -p squalr-tui` (28 passed).
+- Next behavior-level parity target identified: GUI struct viewer exposes multiple display representations per field (`anonymize_value_to_supported_formats`), while TUI currently surfaces/edits only a single default-format representation.
 
 
