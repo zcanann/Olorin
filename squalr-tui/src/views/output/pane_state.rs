@@ -70,7 +70,7 @@ impl Default for OutputPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::views::output_pane_state::OutputPaneState;
+    use crate::views::output::pane_state::OutputPaneState;
     use log::Level;
     use squalr_engine_api::structures::logging::log_event::LogEvent;
 

@@ -1,6 +1,5 @@
 pub mod element_scanner;
 pub mod output;
-pub mod output_pane_state;
 pub mod process_selector;
 pub mod project_explorer;
 pub mod scan_results;

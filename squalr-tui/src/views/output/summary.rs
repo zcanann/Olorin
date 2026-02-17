@@ -1,4 +1,4 @@
-use crate::views::output_pane_state::OutputPaneState;
+use crate::views::output::pane_state::OutputPaneState;
 
 pub fn build_output_summary_lines(output_pane_state: &OutputPaneState) -> Vec<String> {
     let mut summary_lines = vec![

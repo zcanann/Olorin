@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: continue pane-state folderization by relocating `squalr-tui/src/views/output_pane_state.rs` into `squalr-tui/src/views/output/` (plus matching module wiring and import updates) so pane-state placement consistently mirrors GUI-side feature subfolders.
+- Concrete next subtask: continue pane-state folderization by relocating `squalr-tui/src/views/settings_pane_state.rs` into `squalr-tui/src/views/settings/` (plus matching module wiring and import updates) so pane-state placement consistently mirrors GUI-side feature subfolders.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -150,3 +150,5 @@ Information discovered during iteration:
 - TUI element-scanner pane-state folderization pass: relocated `squalr-tui/src/views/element_scanner_pane_state.rs` to `squalr-tui/src/views/element_scanner/pane_state.rs`, rewired view/state imports to `crate::views::element_scanner::pane_state::*`, and updated module exports (`views/element_scanner/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
 - Validation pass after element-scanner pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
 - Checkpoint commit for element-scanner pane-state folderization: `61c9f2f0` (`Relocate element scanner pane state into feature folder`).
+- TUI output pane-state folderization pass: relocated `squalr-tui/src/views/output_pane_state.rs` to `squalr-tui/src/views/output/pane_state.rs`, rewired state/view imports to `crate::views::output::pane_state::*`, and updated module exports (`views/output/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
+- Validation pass after output pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
