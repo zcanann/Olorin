@@ -54,5 +54,6 @@ Information discovered during iteration:
 - Checkpoint commit for element scanner parity: `55a6a38f` (`Implement TUI element scanner command parity`).
 - TUI scan results pane now dispatches `ScanResultsQueryRequest`, `ScanResultsRefreshRequest`, `ScanResultsFreezeRequest`, `ScanResultsDeleteRequest`, `ProjectItemsAddRequest`, and `ScanResultsSetPropertyRequest` via keyboard-first controls (`r`, `R`, `[`/`]`, `Up`/`Down`, `Shift+Up`/`Shift+Down`, `f`, `a`, `x`, `Enter`).
 - Added `scan_results_pane_state` reducer tests for page-change selection reset and range-based selected scan-result ref collection.
+- Checkpoint commit for scan results parity: `1e89edc0` (`Implement TUI scan results pane command parity`).
 
 
