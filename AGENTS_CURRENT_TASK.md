@@ -2,11 +2,15 @@
 Our current task, from `README.md`, is:
 `pr/tui`
 
+# Notes from Owner (Readonly Section)
+- Try to follow a similar folder architecture to the GUI project as much as possible.
+- This means not bloating the shit out of any file and overloading it with responsibilities.
+
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 - [x] Audit the GUI project and produce a ratatui-first TUI parity plan.
 - [x] Implement ratatui app shell in `squalr-tui` (terminal init/restore, tick loop, input loop, graceful shutdown).
-- [ ] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
+- [x] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
 - [ ] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
 - [ ] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
 - [ ] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
@@ -17,7 +21,7 @@ Our current task, from `README.md`, is:
 - [ ] Implement settings panes parity (general/memory/scan list+set requests).
 - [ ] Implement output pane parity using log history stream + periodic redraw.
 - [ ] Add focused unit tests in `squalr-tui` for pure state reducers and keyboard command routing.
-- [ ] Run `cargo fmt` and targeted tests (`cargo test -p squalr-tui` + selected engine/view-model tests as needed).
+- [x] Run `cargo fmt` and targeted tests (`cargo test -p squalr-tui` + selected engine/view-model tests as needed).
 - [ ] Checkpoint commit and keep this task file compact as milestones complete.
 
 ## Important Information
@@ -39,3 +43,4 @@ Information discovered during iteration:
 - Existing GUI view-data modules already encapsulate most command logic and are a strong extraction target for shared UI-agnostic state/actions to reduce duplication between egui and ratatui.
 - `squalr-tui` now has a working ratatui+crossterm shell with alternate-screen setup/restore, raw-mode guard via `Drop`, tick-based redraw loop, and keyboard exit handling (`q`, `Esc`, `Ctrl+C`).
 - `ratatui` is pinned to `0.30.0` with `crossterm_0_29` feature to avoid workspace dependency resolution conflicts seen with `0.29.0`.
+- `squalr-tui` state is now split into dedicated pane modules under `src/state/` with a single `TuiAppState` aggregator, and app shell/runtime is separated into `src/app/mod.rs` to match the owner’s anti-bloat guidance.
