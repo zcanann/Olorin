@@ -89,13 +89,7 @@ impl TuiAppState {
             TuiPane::ProcessSelector => self.process_selector_pane_state.summary_lines(),
             TuiPane::ElementScanner => self.element_scanner_pane_state.summary_lines(),
             TuiPane::ScanResults => self.scan_results_pane_state.summary_lines(),
-            TuiPane::ProjectExplorer => {
-                vec![
-                    format!("active_project={:?}", self.project_explorer_pane_state.active_project_name),
-                    format!("selected_item={:?}", self.project_explorer_pane_state.selected_item_path),
-                    format!("expanded={}", self.project_explorer_pane_state.is_hierarchy_expanded),
-                ]
-            }
+            TuiPane::ProjectExplorer => self.project_explorer_pane_state.summary_lines(),
             TuiPane::StructViewer => {
                 vec![
                     format!("selected_struct={:?}", self.struct_viewer_pane_state.selected_struct_name),

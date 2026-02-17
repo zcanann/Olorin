@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
 - [x] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
 - [x] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
 - [x] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
-- [ ] Implement project selector parity: list/create/open/rename/delete/close project.
+- [x] Implement project selector parity: list/create/open/rename/delete/close project.
 - [ ] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
 - [ ] Implement struct viewer parity for selected scan results/project items, including edit commit callback routing.
 - [ ] Implement settings panes parity (general/memory/scan list+set requests).
@@ -55,5 +55,7 @@ Information discovered during iteration:
 - TUI scan results pane now dispatches `ScanResultsQueryRequest`, `ScanResultsRefreshRequest`, `ScanResultsFreezeRequest`, `ScanResultsDeleteRequest`, `ProjectItemsAddRequest`, and `ScanResultsSetPropertyRequest` via keyboard-first controls (`r`, `R`, `[`/`]`, `Up`/`Down`, `Shift+Up`/`Shift+Down`, `f`, `a`, `x`, `Enter`).
 - Added `scan_results_pane_state` reducer tests for page-change selection reset and range-based selected scan-result ref collection.
 - Checkpoint commit for scan results parity: `1e89edc0` (`Implement TUI scan results pane command parity`).
+- TUI project selector now dispatches `ProjectListRequest`, `ProjectCreateRequest`, `ProjectOpenRequest`, `ProjectRenameRequest`, `ProjectDeleteRequest`, and `ProjectCloseRequest` with keyboard-first controls (`r`, `n`, `Enter`/`o`, `e`, `x`, `c`, `j`/`k`, plus inline name input commit/cancel).
+- Added `project_explorer_pane_state` reducer tests for default selection on list load, wraparound project selection, and rename-input guard behavior.
 
 

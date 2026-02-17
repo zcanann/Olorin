@@ -1,5 +1,6 @@
 use crate::state::TuiAppState;
 use crate::state::pane::TuiPane;
+use crate::state::project_explorer_pane_state::ProjectSelectorInputMode;
 use anyhow::{Context, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
@@ -15,6 +16,12 @@ use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
+use squalr_engine_api::commands::project::close::project_close_request::ProjectCloseRequest;
+use squalr_engine_api::commands::project::create::project_create_request::ProjectCreateRequest;
+use squalr_engine_api::commands::project::delete::project_delete_request::ProjectDeleteRequest;
+use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
+use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest;
+use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
 use squalr_engine_api::commands::project_items::add::project_items_add_request::ProjectItemsAddRequest;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
 use squalr_engine_api::commands::scan::element_scan::element_scan_request::ElementScanRequest;
@@ -191,6 +198,18 @@ impl AppShell {
         {
             self.refresh_process_list(squalr_engine);
         }
+
+        if !self
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_list_once
+            && !self
+                .app_state
+                .project_explorer_pane_state
+                .is_awaiting_project_list_response
+        {
+            self.refresh_project_list(squalr_engine);
+        }
     }
 
     fn handle_focused_pane_event(
@@ -202,6 +221,7 @@ impl AppShell {
             TuiPane::ProcessSelector => self.handle_process_selector_key_event(key_event.code, squalr_engine),
             TuiPane::ElementScanner => self.handle_element_scanner_key_event(key_event, squalr_engine),
             TuiPane::ScanResults => self.handle_scan_results_key_event(key_event, squalr_engine),
+            TuiPane::ProjectExplorer => self.handle_project_explorer_key_event(key_event, squalr_engine),
             _ => {}
         }
     }
@@ -372,6 +392,76 @@ impl AppShell {
                 .scan_results_pane_state
                 .append_pending_value_edit_character(scan_value_character),
             _ => {}
+        }
+    }
+
+    fn handle_project_explorer_key_event(
+        &mut self,
+        key_event: KeyEvent,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.project_explorer_pane_state.input_mode != ProjectSelectorInputMode::None {
+            match key_event.code {
+                KeyCode::Esc => self
+                    .app_state
+                    .project_explorer_pane_state
+                    .cancel_project_name_input(),
+                KeyCode::Backspace => self
+                    .app_state
+                    .project_explorer_pane_state
+                    .backspace_pending_project_name(),
+                KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .clear_pending_project_name();
+                }
+                KeyCode::Enter => self.commit_project_selector_input(squalr_engine),
+                KeyCode::Char(project_name_character) => {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .append_pending_project_name_character(project_name_character);
+                }
+                _ => {}
+            }
+
+            return;
+        }
+
+        match key_event.code {
+            KeyCode::Char('r') => self.refresh_project_list(squalr_engine),
+            KeyCode::Down | KeyCode::Char('j') => self.app_state.project_explorer_pane_state.select_next_project(),
+            KeyCode::Up | KeyCode::Char('k') => self
+                .app_state
+                .project_explorer_pane_state
+                .select_previous_project(),
+            KeyCode::Enter | KeyCode::Char('o') => self.open_selected_project(squalr_engine),
+            KeyCode::Char('n') => self
+                .app_state
+                .project_explorer_pane_state
+                .begin_create_project_input(),
+            KeyCode::Char('e') => {
+                if !self
+                    .app_state
+                    .project_explorer_pane_state
+                    .begin_rename_selected_project_input()
+                {
+                    self.app_state.project_explorer_pane_state.status_message = "No project is selected for rename.".to_string();
+                }
+            }
+            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_project(squalr_engine),
+            KeyCode::Char('c') => self.close_active_project(squalr_engine),
+            _ => {}
+        }
+    }
+
+    fn commit_project_selector_input(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match self.app_state.project_explorer_pane_state.input_mode {
+            ProjectSelectorInputMode::CreatingProject => self.create_project_from_pending_name(squalr_engine),
+            ProjectSelectorInputMode::RenamingProject => self.rename_selected_project_from_pending_name(squalr_engine),
+            ProjectSelectorInputMode::None => {}
         }
     }
 
@@ -1162,6 +1252,404 @@ impl AppShell {
         }
 
         self.app_state.process_selector_pane_state.is_opening_process = false;
+    }
+
+    fn refresh_project_list(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_list_response
+        {
+            self.app_state.project_explorer_pane_state.status_message = "Project list request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project queries.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .project_explorer_pane_state
+            .has_loaded_project_list_once = true;
+        self.app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_list_response = true;
+        self.app_state.project_explorer_pane_state.status_message = "Refreshing project list.".to_string();
+
+        let project_list_request = ProjectListRequest {};
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_list_request.send(engine_unprivileged_state, move |project_list_response| {
+            let _ = response_sender.send(project_list_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_list_response) => {
+                let project_count = project_list_response.projects_info.len();
+                self.app_state
+                    .project_explorer_pane_state
+                    .apply_project_list(project_list_response.projects_info);
+                self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} projects.", project_count);
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project list response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .project_explorer_pane_state
+            .is_awaiting_project_list_response = false;
+    }
+
+    fn create_project_from_pending_name(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.project_explorer_pane_state.is_creating_project {
+            self.app_state.project_explorer_pane_state.status_message = "Project create request already in progress.".to_string();
+            return;
+        }
+
+        let new_project_name = match self
+            .app_state
+            .project_explorer_pane_state
+            .pending_project_name_trimmed()
+        {
+            Some(new_project_name) => new_project_name,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "Project name is empty.".to_string();
+                return;
+            }
+        };
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project creation.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.project_explorer_pane_state.is_creating_project = true;
+        self.app_state.project_explorer_pane_state.status_message = format!("Creating project '{}'.", new_project_name);
+
+        let project_create_request = ProjectCreateRequest {
+            project_directory_path: None,
+            project_name: Some(new_project_name.clone()),
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_create_request.send(engine_unprivileged_state, move |project_create_response| {
+            let _ = response_sender.send(project_create_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_create_response) => {
+                if project_create_response.success {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .cancel_project_name_input();
+                    self.app_state.project_explorer_pane_state.status_message = format!(
+                        "Created project '{}' at {}.",
+                        new_project_name,
+                        project_create_response.new_project_path.display()
+                    );
+                    self.refresh_project_list(squalr_engine);
+                    let _ = self
+                        .app_state
+                        .project_explorer_pane_state
+                        .select_project_by_directory_path(&project_create_response.new_project_path);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project create request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project create response: {}", receive_error);
+            }
+        }
+
+        self.app_state.project_explorer_pane_state.is_creating_project = false;
+    }
+
+    fn open_selected_project(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.project_explorer_pane_state.is_opening_project {
+            self.app_state.project_explorer_pane_state.status_message = "Project open request already in progress.".to_string();
+            return;
+        }
+
+        let selected_project_directory_path = match self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_directory_path()
+        {
+            Some(selected_project_directory_path) => selected_project_directory_path,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No project is selected.".to_string();
+                return;
+            }
+        };
+
+        let selected_project_name = self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_name()
+            .unwrap_or_else(|| "<unknown>".to_string());
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project opening.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.project_explorer_pane_state.is_opening_project = true;
+        self.app_state.project_explorer_pane_state.status_message = format!("Opening project '{}'.", selected_project_name);
+
+        let project_open_request = ProjectOpenRequest {
+            open_file_browser: false,
+            project_directory_path: Some(selected_project_directory_path.clone()),
+            project_name: None,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_open_request.send(engine_unprivileged_state, move |project_open_response| {
+            let _ = response_sender.send(project_open_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_open_response) => {
+                if project_open_response.success {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .set_active_project(Some(selected_project_name.clone()), Some(selected_project_directory_path.clone()));
+                    self.app_state.project_explorer_pane_state.status_message = format!("Opened project '{}'.", selected_project_name);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project open request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project open response: {}", receive_error);
+            }
+        }
+
+        self.app_state.project_explorer_pane_state.is_opening_project = false;
+    }
+
+    fn rename_selected_project_from_pending_name(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.project_explorer_pane_state.is_renaming_project {
+            self.app_state.project_explorer_pane_state.status_message = "Project rename request already in progress.".to_string();
+            return;
+        }
+
+        let selected_project_directory_path = match self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_directory_path()
+        {
+            Some(selected_project_directory_path) => selected_project_directory_path,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No project is selected for rename.".to_string();
+                return;
+            }
+        };
+        let selected_project_directory_path_for_active_check = selected_project_directory_path.clone();
+
+        let new_project_name = match self
+            .app_state
+            .project_explorer_pane_state
+            .pending_project_name_trimmed()
+        {
+            Some(new_project_name) => new_project_name,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "Project name is empty.".to_string();
+                return;
+            }
+        };
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project renaming.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.project_explorer_pane_state.is_renaming_project = true;
+        self.app_state.project_explorer_pane_state.status_message = format!("Renaming project to '{}'.", new_project_name);
+
+        let project_rename_request = ProjectRenameRequest {
+            project_directory_path: selected_project_directory_path,
+            new_project_name: new_project_name.clone(),
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_rename_request.send(engine_unprivileged_state, move |project_rename_response| {
+            let _ = response_sender.send(project_rename_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_rename_response) => {
+                if project_rename_response.success {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .cancel_project_name_input();
+                    self.app_state.project_explorer_pane_state.status_message = format!("Renamed project to '{}'.", new_project_name);
+                    self.refresh_project_list(squalr_engine);
+                    let _ = self
+                        .app_state
+                        .project_explorer_pane_state
+                        .select_project_by_directory_path(&project_rename_response.new_project_path);
+                    if self
+                        .app_state
+                        .project_explorer_pane_state
+                        .active_project_directory_path
+                        .as_ref()
+                        .is_some_and(|active_project_directory_path| *active_project_directory_path == selected_project_directory_path_for_active_check)
+                    {
+                        self.app_state
+                            .project_explorer_pane_state
+                            .set_active_project(Some(new_project_name), Some(project_rename_response.new_project_path));
+                    }
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project rename request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project rename response: {}", receive_error);
+            }
+        }
+
+        self.app_state.project_explorer_pane_state.is_renaming_project = false;
+    }
+
+    fn delete_selected_project(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.project_explorer_pane_state.is_deleting_project {
+            self.app_state.project_explorer_pane_state.status_message = "Project delete request already in progress.".to_string();
+            return;
+        }
+
+        let selected_project_directory_path = match self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_directory_path()
+        {
+            Some(selected_project_directory_path) => selected_project_directory_path,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No project is selected for delete.".to_string();
+                return;
+            }
+        };
+
+        let selected_project_name = self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_name()
+            .unwrap_or_else(|| "<unknown>".to_string());
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project deletion.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.project_explorer_pane_state.is_deleting_project = true;
+        self.app_state.project_explorer_pane_state.status_message = format!("Deleting project '{}'.", selected_project_name);
+
+        let project_delete_request = ProjectDeleteRequest {
+            project_directory_path: Some(selected_project_directory_path.clone()),
+            project_name: None,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_delete_request.send(engine_unprivileged_state, move |project_delete_response| {
+            let _ = response_sender.send(project_delete_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_delete_response) => {
+                if project_delete_response.success {
+                    if self
+                        .app_state
+                        .project_explorer_pane_state
+                        .active_project_directory_path
+                        .as_ref()
+                        .is_some_and(|active_project_directory_path| *active_project_directory_path == selected_project_directory_path)
+                    {
+                        self.app_state
+                            .project_explorer_pane_state
+                            .set_active_project(None, None);
+                    }
+                    self.app_state.project_explorer_pane_state.status_message = format!("Deleted project '{}'.", selected_project_name);
+                    self.refresh_project_list(squalr_engine);
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project delete request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project delete response: {}", receive_error);
+            }
+        }
+
+        self.app_state.project_explorer_pane_state.is_deleting_project = false;
+    }
+
+    fn close_active_project(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.project_explorer_pane_state.is_closing_project {
+            self.app_state.project_explorer_pane_state.status_message = "Project close request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project close.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.project_explorer_pane_state.is_closing_project = true;
+        self.app_state.project_explorer_pane_state.status_message = "Closing active project.".to_string();
+
+        let project_close_request = ProjectCloseRequest {};
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        project_close_request.send(engine_unprivileged_state, move |project_close_response| {
+            let _ = response_sender.send(project_close_response);
+        });
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(project_close_response) => {
+                if project_close_response.success {
+                    self.app_state
+                        .project_explorer_pane_state
+                        .set_active_project(None, None);
+                    self.app_state.project_explorer_pane_state.status_message = "Closed active project.".to_string();
+                } else {
+                    self.app_state.project_explorer_pane_state.status_message = "Project close request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project close response: {}", receive_error);
+            }
+        }
+
+        self.app_state.project_explorer_pane_state.is_closing_project = false;
     }
 
     fn draw_pane_layout(
