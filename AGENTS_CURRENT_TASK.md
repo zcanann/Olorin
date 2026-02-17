@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Audit GUI vs TUI for remaining parity gaps and define the next concrete `pr/tui` implementation task.
+- [ ] Implement scan-results synchronization parity in `squalr-tui`: subscribe to `ScanResultsUpdatedEvent` to requery current page and add a bounded periodic refresh loop for visible/selected scan results.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -51,5 +51,8 @@ Information discovered during iteration:
 - TUI output pane now reads log history from `EngineUnprivilegedState` on tick, supports periodic redraw/preview, and adds keyboard actions for refresh (`r`), clear (`x`), and max-line bounds (`+`/`-`).
 - Added focused tests for settings and output reducers plus app-level focused-pane keyboard routing in `squalr-tui`; validated with `cargo test -p squalr-tui` (25 passed).
 - Checkpoint commit for settings/output/test parity: `468acfcb` (`Implement TUI settings/output parity and routing tests`).
+- GUI vs TUI parity audit (this pass): command request surface in `squalr/src/views` and `squalr-tui/src` is now matched for all high-value panes (process, element scanner, scan results, project selector/hierarchy, struct viewer, settings).
+- Remaining high-value parity gap is behavior-level, not command-level: GUI wires `ScanResultsUpdatedEvent` and periodic `ScanResultsRefreshRequest` in `element_scanner_results_view_data`, while TUI currently relies on manual refresh triggers and selected-only refresh actions.
+- Next concrete `pr/tui` implementation target is to add event-driven and periodic scan-results synchronization in `squalr-tui` with keyboard-first status visibility and reducer/app-shell tests for throttling and requery behavior.
 
 
