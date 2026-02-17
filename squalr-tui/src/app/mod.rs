@@ -358,7 +358,7 @@ impl AppShell {
         }
 
         self.consumed_scan_results_update_counter = latest_scan_results_update_counter;
-        self.query_scan_results_current_page(squalr_engine);
+        let _ = self.query_scan_results_current_page_with_feedback(squalr_engine, false);
         true
     }
 
@@ -1915,22 +1915,36 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        let _ = self.query_scan_results_current_page_with_feedback(squalr_engine, true);
+    }
+
+    fn query_scan_results_current_page_with_feedback(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
+    ) -> bool {
         if self.app_state.scan_results_pane_state.is_querying_scan_results {
-            self.app_state.scan_results_pane_state.status_message = "Scan results query already in progress.".to_string();
-            return;
+            if should_update_status_message {
+                self.app_state.scan_results_pane_state.status_message = "Scan results query already in progress.".to_string();
+            }
+            return false;
         }
 
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,
             None => {
-                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for scan results query.".to_string();
-                return;
+                if should_update_status_message {
+                    self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for scan results query.".to_string();
+                }
+                return false;
             }
         };
 
         self.app_state.scan_results_pane_state.is_querying_scan_results = true;
-        self.app_state.scan_results_pane_state.status_message =
-            format!("Querying scan results page {}.", self.app_state.scan_results_pane_state.current_page_index);
+        if should_update_status_message {
+            self.app_state.scan_results_pane_state.status_message =
+                format!("Querying scan results page {}.", self.app_state.scan_results_pane_state.current_page_index);
+        }
 
         let page_index = self.app_state.scan_results_pane_state.current_page_index;
         let scan_results_query_request = ScanResultsQueryRequest { page_index };
@@ -1941,20 +1955,25 @@ impl AppShell {
 
         if !request_dispatched {
             self.app_state.scan_results_pane_state.is_querying_scan_results = false;
-            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results query request.".to_string();
-            return;
+            if should_update_status_message {
+                self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results query request.".to_string();
+            }
+            return false;
         }
 
         match response_receiver.recv_timeout(Duration::from_secs(3)) {
             Ok(scan_results_query_response) => {
-                self.apply_scan_results_query_response(scan_results_query_response);
+                self.apply_scan_results_query_response(scan_results_query_response, should_update_status_message);
             }
             Err(receive_error) => {
-                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results query response: {}", receive_error);
+                if should_update_status_message {
+                    self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results query response: {}", receive_error);
+                }
             }
         }
 
         self.app_state.scan_results_pane_state.is_querying_scan_results = false;
+        true
     }
 
     fn query_next_scan_results_page(
@@ -2359,13 +2378,16 @@ impl AppShell {
     fn apply_scan_results_query_response(
         &mut self,
         scan_results_query_response: squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse,
+        should_update_status_message: bool,
     ) {
         let result_count = scan_results_query_response.result_count;
         let page_index = scan_results_query_response.page_index;
         self.app_state
             .scan_results_pane_state
             .apply_query_response(scan_results_query_response);
-        self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
+        if should_update_status_message {
+            self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
+        }
         self.sync_struct_viewer_focus_from_scan_results();
     }
 
@@ -3708,6 +3730,39 @@ mod tests {
 
         assert!(!did_dispatch_query);
         assert_eq!(app_shell.consumed_scan_results_update_counter, 0);
+    }
+
+    #[test]
+    fn scan_results_engine_update_requery_preserves_existing_status_message() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for scan-results engine-update status test");
+        app_shell.app_state.scan_results_pane_state.status_message = "Manual scan-results status.".to_string();
+        app_shell
+            .scan_results_update_counter
+            .store(1, std::sync::atomic::Ordering::Relaxed);
+
+        let did_dispatch_query = app_shell.query_scan_results_page_if_engine_event_pending(&mut squalr_engine);
+
+        assert!(did_dispatch_query);
+        assert_eq!(app_shell.app_state.scan_results_pane_state.status_message, "Manual scan-results status.");
+        assert_eq!(app_shell.consumed_scan_results_update_counter, 1);
+    }
+
+    #[test]
+    fn scan_results_manual_query_updates_status_message() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for scan-results manual query status test");
+        app_shell.app_state.scan_results_pane_state.status_message = "Manual scan-results status.".to_string();
+
+        app_shell.query_scan_results_current_page(&mut squalr_engine);
+
+        assert!(
+            app_shell
+                .app_state
+                .scan_results_pane_state
+                .status_message
+                .starts_with("Loaded page ")
+        );
     }
 
     #[test]

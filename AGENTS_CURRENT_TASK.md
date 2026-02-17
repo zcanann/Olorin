@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior for scan-results background sync paths (`ScanResultsUpdatedEvent` requery + periodic refresh) vs explicit user-action status feedback.
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer to identify the next behavior-level gap after scan-results background status-feedback parity.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -87,5 +87,8 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): background process/project/project-item auto-refresh retries in TUI were still overwriting pane status text (`Refreshing...`, `Loaded...`, timeout) and could hide explicit user-command feedback.
 - TUI process/project/project-item refresh handlers now have explicit feedback gating (`*_with_feedback`), with tick-driven retries using no-status mode while user actions keep status updates.
 - Added app-shell tests for background refresh status preservation across process/project/project-item paths; validated with `cargo test -p squalr-tui` (52 passed).
+- GUI vs TUI parity audit (this pass): engine-event-driven scan-results requery (`ScanResultsUpdatedEvent`) in TUI was still routed through a status-updating query path, causing background sync to overwrite manual scan-results status messages unlike other auto-refresh flows.
+- TUI scan-results querying now has explicit feedback gating (`query_scan_results_current_page_with_feedback`), with event-driven requery using no-status mode while explicit user actions retain status updates.
+- Added app-shell tests for scan-results status behavior split: engine-event requery preserves existing manual status and user-triggered query updates status; validated with `cargo test -p squalr-tui` (54 passed).
 
 
