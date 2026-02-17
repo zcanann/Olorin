@@ -1,4 +1,4 @@
-use crate::views::element_scanner::summary::build_element_scanner_summary_lines;
+use crate::views::element_scanner::summary::build_element_scanner_summary_lines_with_capacity;
 use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
 use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
@@ -201,8 +201,11 @@ impl ElementScannerPaneState {
             .collect()
     }
 
-    pub fn summary_lines(&self) -> Vec<String> {
-        build_element_scanner_summary_lines(self)
+    pub fn summary_lines_with_capacity(
+        &self,
+        line_capacity: usize,
+    ) -> Vec<String> {
+        build_element_scanner_summary_lines_with_capacity(self, line_capacity)
     }
 
     fn is_supported_value_character(value_character: char) -> bool {

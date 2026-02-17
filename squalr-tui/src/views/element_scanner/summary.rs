@@ -1,44 +1,90 @@
-use crate::views::element_scanner::pane_state::ElementScannerPaneState;
+use crate::views::element_scanner::pane_state::{ElementScannerConstraintState, ElementScannerPaneState};
+use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_delta::ScanCompareTypeDelta;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 
 pub fn build_element_scanner_summary_lines(element_scanner_pane_state: &ElementScannerPaneState) -> Vec<String> {
-    let mut summary_lines = vec![
+    build_element_scanner_summary_lines_with_capacity(element_scanner_pane_state, usize::MAX)
+}
+
+pub fn build_element_scanner_summary_lines_with_capacity(
+    element_scanner_pane_state: &ElementScannerPaneState,
+    line_capacity: usize,
+) -> Vec<String> {
+    if line_capacity == 0 {
+        return Vec::new();
+    }
+
+    let constraint_row_lines = build_constraint_row_lines(element_scanner_pane_state);
+    let selected_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, 1);
+    let additional_constraint_capacity = line_capacity.saturating_sub(8);
+    let additional_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, additional_constraint_capacity);
+
+    let mut prioritized_lines = vec![
         "[ACT] s scan | n new/reset | c collect | a add | x remove.".to_string(),
         "[TYPE] t next | T prev data type.".to_string(),
         "[EDIT] j/k row | m/M compare | digits - . append | Backspace | Ctrl+u clear.".to_string(),
-        format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()),
-        format!(
-            "[META] constraints={} | selected_row={} | pending_scan={} | has_results={}.",
-            element_scanner_pane_state.active_constraint_count(),
-            element_scanner_pane_state.selected_constraint_row_index + 1,
-            element_scanner_pane_state.has_pending_scan_request,
-            element_scanner_pane_state.has_scan_results
-        ),
-        format!(
-            "[LAST] result_count={} | total_bytes={}.",
-            element_scanner_pane_state.last_result_count, element_scanner_pane_state.last_total_size_in_bytes
-        ),
-        format!("[STAT] {}.", element_scanner_pane_state.status_message),
     ];
+    prioritized_lines.extend(selected_constraint_lines);
+    prioritized_lines.push(format!("[STAT] {}.", element_scanner_pane_state.status_message));
+    prioritized_lines.push(format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()));
+    prioritized_lines.push(format!(
+        "[META] constraints={} | selected_row={} | pending_scan={} | has_results={}.",
+        element_scanner_pane_state.active_constraint_count(),
+        element_scanner_pane_state.selected_constraint_row_index + 1,
+        element_scanner_pane_state.has_pending_scan_request,
+        element_scanner_pane_state.has_scan_results
+    ));
+    prioritized_lines.push(format!(
+        "[LAST] result_count={} | total_bytes={}.",
+        element_scanner_pane_state.last_result_count, element_scanner_pane_state.last_total_size_in_bytes
+    ));
+    prioritized_lines.extend(additional_constraint_lines);
 
-    for (constraint_row_index, constraint_row) in element_scanner_pane_state.constraint_rows.iter().enumerate() {
-        let selected_marker = if element_scanner_pane_state.selected_constraint_row_index == constraint_row_index {
-            ">"
-        } else {
-            " "
-        };
-        summary_lines.push(format!(
-            "{} [ROW] {} {}.",
-            selected_marker,
-            scan_compare_type_label(constraint_row.scan_compare_type),
-            constraint_row.scan_value_text
-        ));
+    prioritized_lines.into_iter().take(line_capacity).collect()
+}
+
+fn build_constraint_row_lines(element_scanner_pane_state: &ElementScannerPaneState) -> Vec<String> {
+    element_scanner_pane_state
+        .constraint_rows
+        .iter()
+        .enumerate()
+        .map(|(constraint_row_index, constraint_row)| {
+            build_constraint_row_line(constraint_row, element_scanner_pane_state.selected_constraint_row_index == constraint_row_index)
+        })
+        .collect()
+}
+
+fn build_constraint_row_line(
+    constraint_row: &ElementScannerConstraintState,
+    is_selected: bool,
+) -> String {
+    let selected_marker = if is_selected { ">" } else { " " };
+    format!(
+        "{} [ROW] {} {}.",
+        selected_marker,
+        scan_compare_type_label(constraint_row.scan_compare_type),
+        constraint_row.scan_value_text
+    )
+}
+
+fn selected_constraint_window_lines(
+    element_scanner_pane_state: &ElementScannerPaneState,
+    constraint_row_lines: &[String],
+    line_capacity: usize,
+) -> Vec<String> {
+    if line_capacity == 0 {
+        return Vec::new();
     }
 
-    summary_lines
+    let selection_window_range = build_selection_relative_viewport_range(
+        constraint_row_lines.len(),
+        Some(element_scanner_pane_state.selected_constraint_row_index),
+        line_capacity,
+    );
+    constraint_row_lines[selection_window_range].to_vec()
 }
 
 fn scan_compare_type_label(scan_compare_type: ScanCompareType) -> &'static str {
@@ -68,8 +114,10 @@ fn scan_compare_type_label(scan_compare_type: ScanCompareType) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::build_element_scanner_summary_lines;
-    use crate::views::element_scanner::pane_state::ElementScannerPaneState;
+    use super::{build_element_scanner_summary_lines, build_element_scanner_summary_lines_with_capacity};
+    use crate::views::element_scanner::pane_state::{ElementScannerConstraintState, ElementScannerPaneState};
+    use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
+    use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 
     #[test]
     fn summary_uses_condensed_marker_group_lead_lines() {
@@ -79,5 +127,40 @@ mod tests {
         assert!(summary_lines[0].starts_with("[ACT]"));
         assert!(summary_lines[1].starts_with("[TYPE]"));
         assert!(summary_lines[2].starts_with("[EDIT]"));
+    }
+
+    #[test]
+    fn tiny_capacity_keeps_selected_constraint_visible() {
+        let mut element_scanner_pane_state = ElementScannerPaneState::default();
+        element_scanner_pane_state.constraint_rows = vec![
+            ElementScannerConstraintState {
+                scan_compare_type: ScanCompareType::Immediate(ScanCompareTypeImmediate::Equal),
+                scan_value_text: "11".to_string(),
+            },
+            ElementScannerConstraintState {
+                scan_compare_type: ScanCompareType::Immediate(ScanCompareTypeImmediate::GreaterThan),
+                scan_value_text: "22".to_string(),
+            },
+            ElementScannerConstraintState {
+                scan_compare_type: ScanCompareType::Immediate(ScanCompareTypeImmediate::LessThan),
+                scan_value_text: "33".to_string(),
+            },
+        ];
+        element_scanner_pane_state.selected_constraint_row_index = 2;
+        element_scanner_pane_state.status_message = "Scanning".to_string();
+
+        let summary_lines = build_element_scanner_summary_lines_with_capacity(&element_scanner_pane_state, 5);
+
+        assert_eq!(summary_lines.len(), 5);
+        assert!(
+            summary_lines
+                .iter()
+                .any(|summary_line| summary_line.contains("> [ROW] < 33"))
+        );
+        assert!(
+            summary_lines
+                .iter()
+                .any(|summary_line| summary_line.starts_with("[STAT] Scanning"))
+        );
     }
 }

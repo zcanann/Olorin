@@ -81,7 +81,9 @@ impl TuiAppState {
     ) -> Vec<String> {
         match pane {
             TuiPane::ProcessSelector => self.process_selector_pane_state.summary_lines(),
-            TuiPane::ElementScanner => self.element_scanner_pane_state.summary_lines(),
+            TuiPane::ElementScanner => self
+                .element_scanner_pane_state
+                .summary_lines_with_capacity(pane_content_height),
             TuiPane::ScanResults => self.scan_results_pane_state.summary_lines(),
             TuiPane::ProjectExplorer => self.project_explorer_pane_state.summary_lines(),
             TuiPane::StructViewer => self
@@ -90,7 +92,9 @@ impl TuiAppState {
             TuiPane::Output => self
                 .output_pane_state
                 .summary_lines(pane_content_height.saturating_sub(OUTPUT_FIXED_SUMMARY_LINE_COUNT)),
-            TuiPane::Settings => self.settings_pane_state.summary_lines(),
+            TuiPane::Settings => self
+                .settings_pane_state
+                .summary_lines_with_capacity(pane_content_height),
         }
     }
 

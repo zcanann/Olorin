@@ -13,8 +13,9 @@ Our current task, from `README.md`, is:
     - This means you arent being aggressive enough with folder structure. views/* is the wrong place to dump panes. Sub folders.
     - Again, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
+    - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit summary-line density behavior for non-entry panes (`settings`, `element_scanner`) under tiny pane heights and decide whether to introduce per-pane priority truncation before entry rows.
+- Concrete next subtask: audit tiny-height behavior for entry-heavy panes (`process_selector`, `scan_results`, `project_explorer`) to ensure summary-line density never starves entry rows, and add per-pane minimum-entry safeguards where needed.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -185,3 +186,6 @@ Information discovered during iteration:
 - TUI non-entry summary preview sizing update: `app_render` now passes measured pane content height into `TuiAppState::pane_summary_lines`, which computes dynamic preview budgets for `struct_viewer` and `output` (`fixed summary lines` + height-derived remainder); summary builders now consume explicit preview capacities instead of fixed caps.
 - Added focused summary tests for zero-preview-capacity behavior in `struct_viewer` and `output`, and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (88 passed).
 - Checkpoint commit for non-entry summary preview scaling: `4771c4c6` (`Scale TUI non-entry summary previews with pane height`).
+- GUI vs TUI parity audit (this pass): `settings` and `element_scanner` summaries could clip selected field/constraint context under tiny pane heights because full summaries were rendered without per-pane priority.
+- TUI non-entry tiny-height priority pass: `settings` and `element_scanner` now build capacity-aware summaries that prioritize controls, selected field/constraint row, and status before lower-priority metadata/context lines; `TuiAppState::pane_summary_lines` now routes pane height into these capacity-aware builders.
+- Added focused summary tests for tiny-capacity selected-line visibility in both panes and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (90 passed).

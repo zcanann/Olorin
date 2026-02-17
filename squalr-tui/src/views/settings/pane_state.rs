@@ -1,4 +1,4 @@
-use crate::views::settings::summary::build_settings_summary_lines;
+use crate::views::settings::summary::build_settings_summary_lines_with_capacity;
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
@@ -282,8 +282,11 @@ impl SettingsPaneState {
         self.has_pending_changes = false;
     }
 
-    pub fn summary_lines(&self) -> Vec<String> {
-        build_settings_summary_lines(self)
+    pub fn summary_lines_with_capacity(
+        &self,
+        line_capacity: usize,
+    ) -> Vec<String> {
+        build_settings_summary_lines_with_capacity(self, line_capacity)
     }
 
     fn field_count_for_selected_category(&self) -> usize {

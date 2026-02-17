@@ -1,30 +1,61 @@
+use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use crate::views::settings::pane_state::{SettingsCategory, SettingsPaneState};
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
 
 pub fn build_settings_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
-    let mut summary_lines = vec![
+    build_settings_summary_lines_with_capacity(settings_pane_state, usize::MAX)
+}
+
+pub fn build_settings_summary_lines_with_capacity(
+    settings_pane_state: &SettingsPaneState,
+    line_capacity: usize,
+) -> Vec<String> {
+    if line_capacity == 0 {
+        return Vec::new();
+    }
+
+    let category_lines = selected_category_lines(settings_pane_state);
+    let selected_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, 1);
+    let additional_field_capacity = line_capacity.saturating_sub(7);
+    let additional_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, additional_field_capacity);
+
+    let mut prioritized_lines = vec![
         "[CAT] ] next | [ prev | r refresh-all.".to_string(),
         "[NAV] j/k field.".to_string(),
         "[ACT] Space toggle | +/- step | </> cycle enum | Enter apply category.".to_string(),
-        format!(
-            "[META] category={} | selected_field={}.",
-            settings_pane_state.selected_category.title(),
-            settings_pane_state.selected_field_index
-        ),
-        format!(
-            "[LOAD] pending_changes={} | loaded_once={} | refreshing={} | applying={}.",
-            settings_pane_state.has_pending_changes,
-            settings_pane_state.has_loaded_settings_once,
-            settings_pane_state.is_refreshing_settings,
-            settings_pane_state.is_applying_settings
-        ),
-        format!("[STAT] {}.", settings_pane_state.status_message),
     ];
+    prioritized_lines.extend(selected_field_lines);
+    prioritized_lines.push(format!("[STAT] {}.", settings_pane_state.status_message));
+    prioritized_lines.push(format!(
+        "[META] category={} | selected_field={}.",
+        settings_pane_state.selected_category.title(),
+        settings_pane_state.selected_field_index
+    ));
+    prioritized_lines.push(format!(
+        "[LOAD] pending_changes={} | loaded_once={} | refreshing={} | applying={}.",
+        settings_pane_state.has_pending_changes,
+        settings_pane_state.has_loaded_settings_once,
+        settings_pane_state.is_refreshing_settings,
+        settings_pane_state.is_applying_settings
+    ));
+    prioritized_lines.extend(additional_field_lines);
 
-    summary_lines.extend(selected_category_lines(settings_pane_state));
-    summary_lines
+    prioritized_lines.into_iter().take(line_capacity).collect()
+}
+
+fn selected_field_window_lines(
+    settings_pane_state: &SettingsPaneState,
+    category_lines: &[String],
+    line_capacity: usize,
+) -> Vec<String> {
+    if line_capacity == 0 {
+        return Vec::new();
+    }
+
+    let selection_window_range = build_selection_relative_viewport_range(category_lines.len(), Some(settings_pane_state.selected_field_index), line_capacity);
+    category_lines[selection_window_range].to_vec()
 }
 
 fn selected_category_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
@@ -36,10 +67,10 @@ fn selected_category_lines(settings_pane_state: &SettingsPaneState) -> Vec<Strin
 }
 
 fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
-    let selected_marker = selection_marker(settings_pane_state.selected_field_index, 0);
     vec![format!(
         "{} [FLD] engine_request_delay_ms={}.",
-        selected_marker, settings_pane_state.general_settings.engine_request_delay_ms
+        selection_marker(settings_pane_state.selected_field_index, 0),
+        settings_pane_state.general_settings.engine_request_delay_ms
     )]
 }
 
@@ -201,8 +232,8 @@ fn floating_point_tolerance_label(floating_point_tolerance: FloatingPointToleran
 
 #[cfg(test)]
 mod tests {
-    use super::build_settings_summary_lines;
-    use crate::views::settings::pane_state::SettingsPaneState;
+    use super::{build_settings_summary_lines, build_settings_summary_lines_with_capacity};
+    use crate::views::settings::pane_state::{SettingsCategory, SettingsPaneState};
 
     #[test]
     fn summary_uses_condensed_marker_group_lead_lines() {
@@ -212,5 +243,27 @@ mod tests {
         assert!(summary_lines[0].starts_with("[CAT]"));
         assert!(summary_lines[1].starts_with("[NAV]"));
         assert!(summary_lines[2].starts_with("[ACT]"));
+    }
+
+    #[test]
+    fn tiny_capacity_keeps_selected_field_visible() {
+        let mut settings_pane_state = SettingsPaneState::default();
+        settings_pane_state.selected_category = SettingsCategory::Memory;
+        settings_pane_state.selected_field_index = 11;
+        settings_pane_state.status_message = "Busy".to_string();
+
+        let summary_lines = build_settings_summary_lines_with_capacity(&settings_pane_state, 5);
+
+        assert_eq!(summary_lines.len(), 5);
+        assert!(
+            summary_lines
+                .iter()
+                .any(|summary_line| summary_line.contains("end_address"))
+        );
+        assert!(
+            summary_lines
+                .iter()
+                .any(|summary_line| summary_line.starts_with("[STAT] Busy"))
+        );
     }
 }
