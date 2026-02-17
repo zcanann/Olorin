@@ -8,21 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [x] Audit the GUI project and produce a ratatui-first TUI parity plan.
-- [x] Implement ratatui app shell in `squalr-tui` (terminal init/restore, tick loop, input loop, graceful shutdown).
-- [x] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
-- [x] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
-- [x] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
-- [x] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
-- [x] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
-- [x] Implement project selector parity: list/create/open/rename/delete/close project.
-- [x] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
-- [x] Implement struct viewer parity for selected scan results/project items, including edit commit callback routing.
-- [ ] Implement settings panes parity (general/memory/scan list+set requests).
-- [ ] Implement output pane parity using log history stream + periodic redraw.
-- [ ] Add focused unit tests in `squalr-tui` for pure state reducers and keyboard command routing.
-- [x] Run `cargo fmt` and targeted tests (`cargo test -p squalr-tui` + selected engine/view-model tests as needed).
-- [x] Checkpoint commit and keep this task file compact as milestones complete.
+- [ ] Audit GUI vs TUI for remaining parity gaps and define the next concrete `pr/tui` implementation task.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -61,5 +47,8 @@ Information discovered during iteration:
 - TUI project hierarchy now dispatches `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, and `ProjectItemsReorderRequest` with keyboard-first controls (`i` hierarchy mode, `h` refresh, `j`/`k` select, `l`/`Left` expand-collapse, `Space` activate, `n` create folder, `x` confirm-delete, `m` stage move, `b` move here, `[`/`]` reorder).
 - Checkpoint commit for project hierarchy parity: `7d69407d` (`Implement TUI project hierarchy keyboard command parity`).
 - TUI struct viewer now tracks focused source (`scan results` or `project items`), supports keyboard-first field navigation/edit buffering (`j`/`k`, `Enter`, text input), and routes commits through scan-result/property commands (`ScanResultsSetPropertyRequest`, `ScanResultsFreezeRequest`) and project-item edit routing (`ProjectSaveRequest`, `ProjectItemsRenameRequest`, `MemoryWriteRequest`) with selection sync from scan-results/project-hierarchy reducers.
+- TUI settings pane now has keyboard-first category/field reducers and command parity for general/memory/scan list+set requests, including in-pane state summaries and per-category apply actions.
+- TUI output pane now reads log history from `EngineUnprivilegedState` on tick, supports periodic redraw/preview, and adds keyboard actions for refresh (`r`), clear (`x`), and max-line bounds (`+`/`-`).
+- Added focused tests for settings and output reducers plus app-level focused-pane keyboard routing in `squalr-tui`; validated with `cargo test -p squalr-tui` (25 passed).
 
 

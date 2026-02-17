@@ -1,6 +1,7 @@
 use crate::state::TuiAppState;
 use crate::state::pane::TuiPane;
 use crate::state::project_explorer_pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
+use crate::state::settings_pane_state::SettingsCategory;
 use crate::state::struct_viewer_pane_state::StructViewerSource;
 use anyhow::{Context, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -42,6 +43,12 @@ use squalr_engine_api::commands::scan_results::freeze::scan_results_freeze_reque
 use squalr_engine_api::commands::scan_results::query::scan_results_query_request::ScanResultsQueryRequest;
 use squalr_engine_api::commands::scan_results::refresh::scan_results_refresh_request::ScanResultsRefreshRequest;
 use squalr_engine_api::commands::scan_results::set_property::scan_results_set_property_request::ScanResultsSetPropertyRequest;
+use squalr_engine_api::commands::settings::general::list::general_settings_list_request::GeneralSettingsListRequest;
+use squalr_engine_api::commands::settings::general::set::general_settings_set_request::GeneralSettingsSetRequest;
+use squalr_engine_api::commands::settings::memory::list::memory_settings_list_request::MemorySettingsListRequest;
+use squalr_engine_api::commands::settings::memory::set::memory_settings_set_request::MemorySettingsSetRequest;
+use squalr_engine_api::commands::settings::scan::list::scan_settings_list_request::ScanSettingsListRequest;
+use squalr_engine_api::commands::settings::scan::set::scan_settings_set_request::ScanSettingsSetRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
@@ -205,6 +212,8 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        self.refresh_output_log_history(squalr_engine);
+
         if self
             .app_state
             .process_selector_pane_state
@@ -246,6 +255,10 @@ impl AppShell {
         {
             self.refresh_project_items_list(squalr_engine);
         }
+
+        if !self.app_state.settings_pane_state.is_refreshing_settings && self.app_state.settings_pane_state.status_message == "Ready." {
+            self.refresh_all_settings_categories(squalr_engine);
+        }
     }
 
     fn handle_focused_pane_event(
@@ -259,6 +272,82 @@ impl AppShell {
             TuiPane::ScanResults => self.handle_scan_results_key_event(key_event, squalr_engine),
             TuiPane::ProjectExplorer => self.handle_project_explorer_key_event(key_event, squalr_engine),
             TuiPane::StructViewer => self.handle_struct_viewer_key_event(key_event, squalr_engine),
+            TuiPane::Output => self.handle_output_key_event(key_event.code, squalr_engine),
+            TuiPane::Settings => self.handle_settings_key_event(key_event.code, squalr_engine),
+        }
+    }
+
+    fn handle_output_key_event(
+        &mut self,
+        key_code: KeyCode,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_code {
+            KeyCode::Char('r') => self.refresh_output_log_history(squalr_engine),
+            KeyCode::Char('x') | KeyCode::Delete => self.app_state.output_pane_state.clear_log_lines(),
+            KeyCode::Char('+') | KeyCode::Char('=') => self.app_state.output_pane_state.increase_max_line_count(),
+            KeyCode::Char('-') => self.app_state.output_pane_state.decrease_max_line_count(),
+            _ => {}
+        }
+    }
+
+    fn handle_settings_key_event(
+        &mut self,
+        key_code: KeyCode,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_code {
+            KeyCode::Char('r') => self.refresh_all_settings_categories(squalr_engine),
+            KeyCode::Char(']') => self.app_state.settings_pane_state.cycle_category_forward(),
+            KeyCode::Char('[') => self.app_state.settings_pane_state.cycle_category_backward(),
+            KeyCode::Down | KeyCode::Char('j') => self.app_state.settings_pane_state.select_next_field(),
+            KeyCode::Up | KeyCode::Char('k') => self.app_state.settings_pane_state.select_previous_field(),
+            KeyCode::Char(' ') => {
+                if self
+                    .app_state
+                    .settings_pane_state
+                    .toggle_selected_boolean_field()
+                {
+                    self.apply_selected_settings_category(squalr_engine);
+                }
+            }
+            KeyCode::Char('+') | KeyCode::Char('=') => {
+                if self
+                    .app_state
+                    .settings_pane_state
+                    .step_selected_numeric_field(true)
+                {
+                    self.apply_selected_settings_category(squalr_engine);
+                }
+            }
+            KeyCode::Char('-') => {
+                if self
+                    .app_state
+                    .settings_pane_state
+                    .step_selected_numeric_field(false)
+                {
+                    self.apply_selected_settings_category(squalr_engine);
+                }
+            }
+            KeyCode::Char('>') | KeyCode::Char('.') => {
+                if self
+                    .app_state
+                    .settings_pane_state
+                    .cycle_selected_enum_field(true)
+                {
+                    self.apply_selected_settings_category(squalr_engine);
+                }
+            }
+            KeyCode::Char('<') | KeyCode::Char(',') => {
+                if self
+                    .app_state
+                    .settings_pane_state
+                    .cycle_selected_enum_field(false)
+                {
+                    self.apply_selected_settings_category(squalr_engine);
+                }
+            }
+            KeyCode::Enter => self.apply_selected_settings_category(squalr_engine),
             _ => {}
         }
     }
@@ -663,6 +752,227 @@ impl AppShell {
                 .append_pending_edit_character(pending_character),
             _ => {}
         }
+    }
+
+    fn refresh_output_log_history(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.output_pane_state.status_message = "No unprivileged engine state is available for output logs.".to_string();
+                return;
+            }
+        };
+
+        let log_history_guard = match engine_unprivileged_state.get_logger().get_log_history().read() {
+            Ok(log_history_guard) => log_history_guard,
+            Err(lock_error) => {
+                self.app_state.output_pane_state.status_message = format!("Failed to lock output log history: {}", lock_error);
+                return;
+            }
+        };
+        let log_history_snapshot = log_history_guard.iter().cloned().collect();
+        self.app_state
+            .output_pane_state
+            .apply_log_history(log_history_snapshot);
+    }
+
+    fn refresh_all_settings_categories(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.settings_pane_state.is_refreshing_settings {
+            self.app_state.settings_pane_state.status_message = "Settings refresh is already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.settings_pane_state.status_message = "No unprivileged engine state is available for settings refresh.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.settings_pane_state.is_refreshing_settings = true;
+
+        let general_settings_list_request = GeneralSettingsListRequest {};
+        let (general_response_sender, general_response_receiver) = mpsc::sync_channel(1);
+        general_settings_list_request.send(engine_unprivileged_state, move |general_settings_list_response| {
+            let _ = general_response_sender.send(general_settings_list_response);
+        });
+
+        match general_response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(general_settings_list_response) => {
+                if let Ok(general_settings) = general_settings_list_response.general_settings {
+                    self.app_state
+                        .settings_pane_state
+                        .apply_general_settings(general_settings);
+                } else {
+                    self.app_state.settings_pane_state.status_message = "Failed to read general settings.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.settings_pane_state.status_message = format!("Timed out waiting for general settings response: {}", receive_error);
+            }
+        }
+
+        let memory_settings_list_request = MemorySettingsListRequest {};
+        let (memory_response_sender, memory_response_receiver) = mpsc::sync_channel(1);
+        memory_settings_list_request.send(engine_unprivileged_state, move |memory_settings_list_response| {
+            let _ = memory_response_sender.send(memory_settings_list_response);
+        });
+
+        match memory_response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(memory_settings_list_response) => {
+                if let Ok(memory_settings) = memory_settings_list_response.memory_settings {
+                    self.app_state
+                        .settings_pane_state
+                        .apply_memory_settings(memory_settings);
+                } else {
+                    self.app_state.settings_pane_state.status_message = "Failed to read memory settings.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.settings_pane_state.status_message = format!("Timed out waiting for memory settings response: {}", receive_error);
+            }
+        }
+
+        let scan_settings_list_request = ScanSettingsListRequest {};
+        let (scan_response_sender, scan_response_receiver) = mpsc::sync_channel(1);
+        scan_settings_list_request.send(engine_unprivileged_state, move |scan_settings_list_response| {
+            let _ = scan_response_sender.send(scan_settings_list_response);
+        });
+
+        match scan_response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(scan_settings_list_response) => {
+                if let Ok(scan_settings) = scan_settings_list_response.scan_settings {
+                    self.app_state
+                        .settings_pane_state
+                        .apply_scan_settings(scan_settings);
+                    self.app_state.settings_pane_state.status_message = "Settings refreshed.".to_string();
+                } else {
+                    self.app_state.settings_pane_state.status_message = "Failed to read scan settings.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.settings_pane_state.status_message = format!("Timed out waiting for scan settings response: {}", receive_error);
+            }
+        }
+
+        self.app_state.settings_pane_state.is_refreshing_settings = false;
+    }
+
+    fn apply_selected_settings_category(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.settings_pane_state.is_applying_settings {
+            self.app_state.settings_pane_state.status_message = "Settings update is already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.settings_pane_state.status_message = "No unprivileged engine state is available for settings update.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.settings_pane_state.is_applying_settings = true;
+        let selected_settings_category = self.app_state.settings_pane_state.selected_category;
+
+        match selected_settings_category {
+            SettingsCategory::General => {
+                let general_settings_set_request = GeneralSettingsSetRequest {
+                    engine_request_delay: Some(
+                        self.app_state
+                            .settings_pane_state
+                            .general_settings
+                            .engine_request_delay_ms,
+                    ),
+                };
+                let (response_sender, response_receiver) = mpsc::sync_channel(1);
+                general_settings_set_request.send(engine_unprivileged_state, move |general_settings_set_response| {
+                    let _ = response_sender.send(general_settings_set_response);
+                });
+
+                match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                    Ok(_general_settings_set_response) => {
+                        self.app_state.settings_pane_state.has_pending_changes = false;
+                        self.app_state.settings_pane_state.status_message = "Applied general settings.".to_string();
+                    }
+                    Err(receive_error) => {
+                        self.app_state.settings_pane_state.status_message = format!("Timed out waiting for general settings set response: {}", receive_error);
+                    }
+                }
+            }
+            SettingsCategory::Memory => {
+                let memory_settings = self.app_state.settings_pane_state.memory_settings;
+                let memory_settings_set_request = MemorySettingsSetRequest {
+                    memory_type_none: Some(memory_settings.memory_type_none),
+                    memory_type_private: Some(memory_settings.memory_type_private),
+                    memory_type_image: Some(memory_settings.memory_type_image),
+                    memory_type_mapped: Some(memory_settings.memory_type_mapped),
+                    required_write: Some(memory_settings.required_write),
+                    required_execute: Some(memory_settings.required_execute),
+                    required_copy_on_write: Some(memory_settings.required_copy_on_write),
+                    excluded_write: Some(memory_settings.excluded_write),
+                    excluded_execute: Some(memory_settings.excluded_execute),
+                    excluded_copy_on_write: Some(memory_settings.excluded_copy_on_write),
+                    start_address: Some(memory_settings.start_address),
+                    end_address: Some(memory_settings.end_address),
+                    only_query_usermode: Some(memory_settings.only_query_usermode),
+                };
+                let (response_sender, response_receiver) = mpsc::sync_channel(1);
+                memory_settings_set_request.send(engine_unprivileged_state, move |memory_settings_set_response| {
+                    let _ = response_sender.send(memory_settings_set_response);
+                });
+
+                match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                    Ok(_memory_settings_set_response) => {
+                        self.app_state.settings_pane_state.has_pending_changes = false;
+                        self.app_state.settings_pane_state.status_message = "Applied memory settings.".to_string();
+                    }
+                    Err(receive_error) => {
+                        self.app_state.settings_pane_state.status_message = format!("Timed out waiting for memory settings set response: {}", receive_error);
+                    }
+                }
+            }
+            SettingsCategory::Scan => {
+                let scan_settings = self.app_state.settings_pane_state.scan_settings;
+                let scan_settings_set_request = ScanSettingsSetRequest {
+                    results_page_size: Some(scan_settings.results_page_size),
+                    results_read_interval_ms: Some(scan_settings.results_read_interval_ms),
+                    project_read_interval_ms: Some(scan_settings.project_read_interval_ms),
+                    freeze_interval_ms: Some(scan_settings.freeze_interval_ms),
+                    memory_alignment: scan_settings.memory_alignment,
+                    memory_read_mode: Some(scan_settings.memory_read_mode),
+                    floating_point_tolerance: Some(scan_settings.floating_point_tolerance),
+                    is_single_threaded_scan: Some(scan_settings.is_single_threaded_scan),
+                    debug_perform_validation_scan: Some(scan_settings.debug_perform_validation_scan),
+                };
+                let (response_sender, response_receiver) = mpsc::sync_channel(1);
+                scan_settings_set_request.send(engine_unprivileged_state, move |scan_settings_set_response| {
+                    let _ = response_sender.send(scan_settings_set_response);
+                });
+
+                match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                    Ok(_scan_settings_set_response) => {
+                        self.app_state.settings_pane_state.has_pending_changes = false;
+                        self.app_state.settings_pane_state.status_message = "Applied scan settings.".to_string();
+                    }
+                    Err(receive_error) => {
+                        self.app_state.settings_pane_state.status_message = format!("Timed out waiting for scan settings set response: {}", receive_error);
+                    }
+                }
+            }
+        }
+
+        self.app_state.settings_pane_state.is_applying_settings = false;
     }
 
     fn refresh_struct_viewer_focus_from_source(&mut self) {
@@ -2838,5 +3148,39 @@ impl AppShell {
 
         let pane_widget = Paragraph::new(pane_lines).block(Block::default().borders(Borders::ALL).title(title));
         frame.render_widget(pane_widget, pane_area);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::app::AppShell;
+    use crate::state::pane::TuiPane;
+    use crate::state::settings_pane_state::SettingsCategory;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use squalr_engine::engine_mode::EngineMode;
+    use squalr_engine::squalr_engine::SqualrEngine;
+    use std::time::Duration;
+
+    #[test]
+    fn focused_settings_pane_routes_category_cycle_key() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.set_focus_to_pane(TuiPane::Settings);
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for routing test");
+
+        app_shell.handle_focused_pane_event(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE), &mut squalr_engine);
+
+        assert_eq!(app_shell.app_state.settings_pane_state.selected_category, SettingsCategory::Memory);
+    }
+
+    #[test]
+    fn focused_output_pane_routes_clear_key() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.set_focus_to_pane(TuiPane::Output);
+        app_shell.app_state.output_pane_state.log_lines = vec!["existing log".to_string()];
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for routing test");
+
+        app_shell.handle_focused_pane_event(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE), &mut squalr_engine);
+
+        assert!(app_shell.app_state.output_pane_state.log_lines.is_empty());
     }
 }

@@ -91,19 +91,8 @@ impl TuiAppState {
             TuiPane::ScanResults => self.scan_results_pane_state.summary_lines(),
             TuiPane::ProjectExplorer => self.project_explorer_pane_state.summary_lines(),
             TuiPane::StructViewer => self.struct_viewer_pane_state.summary_lines(),
-            TuiPane::Output => {
-                vec![
-                    format!("log_line_count={}", self.output_pane_state.log_lines.len()),
-                    format!("max_log_lines={}", self.output_pane_state.max_log_line_count),
-                ]
-            }
-            TuiPane::Settings => {
-                vec![
-                    format!("category={:?}", self.settings_pane_state.selected_category),
-                    format!("pending_changes={}", self.settings_pane_state.has_pending_changes),
-                    format!("category_count={}", crate::state::settings_pane_state::SettingsCategory::all_categories().len()),
-                ]
-            }
+            TuiPane::Output => self.output_pane_state.summary_lines(),
+            TuiPane::Settings => self.settings_pane_state.summary_lines(),
         }
     }
 
