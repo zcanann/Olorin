@@ -91,6 +91,7 @@ Information discovered during iteration:
 - TUI scan-results querying now has explicit feedback gating (`query_scan_results_current_page_with_feedback`), with event-driven requery using no-status mode while explicit user actions retain status updates.
 - Added app-shell tests for scan-results status behavior split: engine-event requery preserves existing manual status and user-triggered query updates status; validated with `cargo test -p squalr-tui` (54 passed).
 - VS Code launch parity fix: `squalr-tui` launch configs now set CodeLLDB `terminal` to `external` so debugging spawns an interactive terminal window instead of relying on a non-interactive debug console pipe.
+- VS Code TUI launch ergonomics update: moved `squalr-tui` debug/release launch entries to the top of `.vscode/launch.json` and switched their CodeLLDB `terminal` target to `integrated` so default F5/debug dropdown behavior opens the ratatui surface directly inside VS Code.
 - TUI startup robustness fix: `TerminalGuard::new` now performs an explicit `stdin/stdout/stderr` TTY preflight and returns a clear actionable error when no interactive terminal is attached (`set terminal to external or integrated` in VS Code).
 - Output pane cleanup: removed unused `apply_log_history` helper and updated reducer tests to call `apply_log_history_with_feedback(..., true)` directly; validated with `cargo test -p squalr-tui` (54 passed).
 
