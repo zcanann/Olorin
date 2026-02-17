@@ -8,8 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Implement struct viewer display-format parity in TUI (field-level cycling across supported `AnonymousValueString` formats, keyboard-first controls, and visible status/state feedback).
-- [ ] Add reducer/app-shell tests that validate struct viewer format cycling behavior and verify edit commit continues to route correct command payloads.
+- [ ] Audit GUI struct viewer behavior against TUI for any remaining non-command parity gaps after display-format cycling (for example nested-field UX, edit affordances, and field-level status semantics).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -61,5 +60,8 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): GUI refreshes values for the entire queried scan-results page on its loop; TUI previously refreshed only selected rows. TUI now refreshes all current-page rows for periodic/manual refresh paths and no longer requires an active selection for periodic refresh gating.
 - Updated scan-results periodic refresh tests to validate pane-visibility + non-empty-page gating and bounded interval behavior against the page-level refresh model; validated with `cargo test -p squalr-tui` (28 passed).
 - Next behavior-level parity target identified: GUI struct viewer exposes multiple display representations per field (`anonymize_value_to_supported_formats`), while TUI currently surfaces/edits only a single default-format representation.
+- TUI struct viewer now materializes supported per-field display representations via `SymbolRegistry::anonymize_value_to_supported_formats`, tracks active format per field, and supports keyboard-first format cycling (`[` previous, `]` next) with in-pane status and summary feedback.
+- Added struct-viewer reducer tests for format cycling and uncommitted-edit guard behavior, plus app-shell tests for focused `]` key routing and struct-edit payload formatting via a request-builder helper (`build_scan_results_set_property_request_for_struct_edit`).
+- Validation pass: `cargo test -p squalr-tui` (32 passed).
 
 

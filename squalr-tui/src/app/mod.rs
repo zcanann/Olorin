@@ -62,6 +62,7 @@ use squalr_engine_api::structures::projects::project_items::built_in_types::proj
 use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
 use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
+use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
 use std::io::{self, Stdout};
 use std::path::Path;
@@ -851,6 +852,48 @@ impl AppShell {
             KeyCode::Char('r') => self.refresh_struct_viewer_focus_from_source(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.struct_viewer_pane_state.select_next_field(),
             KeyCode::Up | KeyCode::Char('k') => self.app_state.struct_viewer_pane_state.select_previous_field(),
+            KeyCode::Char('[') => {
+                let selected_field_name = self
+                    .app_state
+                    .struct_viewer_pane_state
+                    .selected_field_name
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string());
+                match self
+                    .app_state
+                    .struct_viewer_pane_state
+                    .cycle_selected_field_display_format_backward()
+                {
+                    Ok(active_display_format) => {
+                        self.app_state.struct_viewer_pane_state.status_message =
+                            format!("Set display format for field '{}' to {}.", selected_field_name, active_display_format);
+                    }
+                    Err(error) => {
+                        self.app_state.struct_viewer_pane_state.status_message = error;
+                    }
+                }
+            }
+            KeyCode::Char(']') => {
+                let selected_field_name = self
+                    .app_state
+                    .struct_viewer_pane_state
+                    .selected_field_name
+                    .clone()
+                    .unwrap_or_else(|| "unknown".to_string());
+                match self
+                    .app_state
+                    .struct_viewer_pane_state
+                    .cycle_selected_field_display_format_forward()
+                {
+                    Ok(active_display_format) => {
+                        self.app_state.struct_viewer_pane_state.status_message =
+                            format!("Set display format for field '{}' to {}.", selected_field_name, active_display_format);
+                    }
+                    Err(error) => {
+                        self.app_state.struct_viewer_pane_state.status_message = error;
+                    }
+                }
+            }
             KeyCode::Enter => self.commit_struct_viewer_field_edit(squalr_engine),
             KeyCode::Backspace => self.app_state.struct_viewer_pane_state.backspace_pending_edit(),
             KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -1228,27 +1271,12 @@ impl AppShell {
             return;
         }
 
-        let edited_data_value = match edited_field.get_data_value() {
-            Some(edited_data_value) => edited_data_value,
-            None => {
-                self.app_state.struct_viewer_pane_state.status_message = "Nested struct scan result edits are not supported in the TUI yet.".to_string();
-                return;
-            }
-        };
-        let symbol_registry = SymbolRegistry::get_instance();
-        let default_edit_format = symbol_registry.get_default_anonymous_value_string_format(edited_data_value.get_data_type_ref());
-        let edited_anonymous_value = match symbol_registry.anonymize_value(edited_data_value, default_edit_format) {
-            Ok(edited_anonymous_value) => edited_anonymous_value,
+        let scan_results_set_property_request = match Self::build_scan_results_set_property_request_for_struct_edit(selected_scan_result_refs, &edited_field) {
+            Ok(scan_results_set_property_request) => scan_results_set_property_request,
             Err(error) => {
-                self.app_state.struct_viewer_pane_state.status_message = format!("Failed to format edited scan result value: {}", error);
+                self.app_state.struct_viewer_pane_state.status_message = error;
                 return;
             }
-        };
-
-        let scan_results_set_property_request = ScanResultsSetPropertyRequest {
-            scan_result_refs: selected_scan_result_refs,
-            field_namespace: edited_field.get_name().to_string(),
-            anonymous_value_string: edited_anonymous_value,
         };
         let (response_sender, response_receiver) = mpsc::sync_channel(1);
         let request_dispatched = scan_results_set_property_request.send(engine_unprivileged_state, move |scan_results_set_property_response| {
@@ -3196,6 +3224,26 @@ impl AppShell {
         })
     }
 
+    fn build_scan_results_set_property_request_for_struct_edit(
+        scan_result_refs: Vec<ScanResultRef>,
+        edited_field: &ValuedStructField,
+    ) -> Result<ScanResultsSetPropertyRequest, String> {
+        let edited_data_value = edited_field
+            .get_data_value()
+            .ok_or_else(|| "Nested struct scan result edits are not supported in the TUI yet.".to_string())?;
+        let symbol_registry = SymbolRegistry::get_instance();
+        let default_edit_format = symbol_registry.get_default_anonymous_value_string_format(edited_data_value.get_data_type_ref());
+        let edited_anonymous_value = symbol_registry
+            .anonymize_value(edited_data_value, default_edit_format)
+            .map_err(|error| format!("Failed to format edited scan result value: {}", error))?;
+
+        Ok(ScanResultsSetPropertyRequest {
+            scan_result_refs,
+            field_namespace: edited_field.get_name().to_string(),
+            anonymous_value_string: edited_anonymous_value,
+        })
+    }
+
     fn should_apply_struct_field_edit_to_project_item(
         project_item_type_id: &str,
         edited_field_name: &str,
@@ -3294,13 +3342,17 @@ mod tests {
     use crate::app::AppShell;
     use crate::state::pane::TuiPane;
     use crate::state::settings_pane_state::SettingsCategory;
+    use crate::state::struct_viewer_pane_state::StructViewerSource;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use squalr_engine::engine_mode::EngineMode;
     use squalr_engine::squalr_engine::SqualrEngine;
+    use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
+    use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
     use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
     use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
     use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
+    use squalr_engine_api::structures::structs::valued_struct_field::{ValuedStructField, ValuedStructFieldData};
     use std::time::{Duration, Instant};
 
     fn create_scan_result(scan_result_global_index: u64) -> ScanResult {
@@ -3308,7 +3360,7 @@ mod tests {
             0x1000 + scan_result_global_index,
             DataTypeRef::new("u8"),
             String::new(),
-            None,
+            Some(DataTypeU8::get_value_from_primitive(42)),
             Vec::new(),
             None,
             Vec::new(),
@@ -3412,5 +3464,65 @@ mod tests {
 
         app_shell.last_scan_results_periodic_refresh_time = Some(current_tick_time - Duration::from_millis(1_100));
         assert!(app_shell.should_refresh_scan_results_page_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn focused_struct_viewer_routes_format_cycle_key() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.set_focus_to_pane(TuiPane::StructViewer);
+        app_shell.app_state.struct_viewer_pane_state.source = StructViewerSource::ScanResults;
+        let selected_scan_results = vec![create_scan_result(3)];
+        let selected_scan_result_refs = vec![ScanResultRef::new(3)];
+        app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .focus_scan_results(&selected_scan_results, selected_scan_result_refs);
+        let previous_pending_edit_text = app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .pending_edit_text
+            .clone();
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for routing test");
+
+        app_shell.handle_focused_pane_event(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE), &mut squalr_engine);
+
+        assert_ne!(app_shell.app_state.struct_viewer_pane_state.pending_edit_text, previous_pending_edit_text);
+    }
+
+    #[test]
+    fn build_scan_results_set_property_request_for_struct_edit_uses_default_value_format() {
+        let edited_data_value = DataTypeU8::get_value_from_primitive(42);
+        let edited_field = ValuedStructField::new(
+            ScanResult::PROPERTY_NAME_VALUE.to_string(),
+            ValuedStructFieldData::Value(edited_data_value),
+            false,
+        );
+        let scan_result_refs = vec![ScanResultRef::new(55)];
+        let scan_results_set_property_request =
+            AppShell::build_scan_results_set_property_request_for_struct_edit(scan_result_refs.clone(), &edited_field).expect("request should be created");
+
+        assert_eq!(scan_results_set_property_request.field_namespace, ScanResult::PROPERTY_NAME_VALUE);
+        let request_scan_result_global_indices = scan_results_set_property_request
+            .scan_result_refs
+            .iter()
+            .map(|scan_result_ref| scan_result_ref.get_scan_result_global_index())
+            .collect::<Vec<_>>();
+        let expected_scan_result_global_indices = scan_result_refs
+            .iter()
+            .map(|scan_result_ref| scan_result_ref.get_scan_result_global_index())
+            .collect::<Vec<_>>();
+        assert_eq!(request_scan_result_global_indices, expected_scan_result_global_indices);
+        assert_eq!(
+            scan_results_set_property_request
+                .anonymous_value_string
+                .get_anonymous_value_string_format(),
+            AnonymousValueStringFormat::Decimal
+        );
+        assert_eq!(
+            scan_results_set_property_request
+                .anonymous_value_string
+                .get_anonymous_value_string(),
+            "42"
+        );
     }
 }

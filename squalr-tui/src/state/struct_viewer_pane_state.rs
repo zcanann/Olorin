@@ -1,11 +1,13 @@
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
+use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
 use squalr_engine_api::structures::data_values::container_type::ContainerType;
 use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::structures::structs::valued_struct::ValuedStruct;
 use squalr_engine_api::structures::structs::valued_struct_field::{ValuedStructField, ValuedStructFieldData};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Tracks where the struct currently being viewed originated from.
@@ -31,6 +33,8 @@ pub struct StructViewerPaneState {
     pub selected_project_item_paths: Vec<PathBuf>,
     pub is_committing_edit: bool,
     pub status_message: String,
+    pub field_display_values: HashMap<String, Vec<AnonymousValueString>>,
+    pub field_active_display_value_indices: HashMap<String, usize>,
 }
 
 impl StructViewerPaneState {
@@ -49,6 +53,8 @@ impl StructViewerPaneState {
         self.selected_project_item_paths.clear();
         self.is_committing_edit = false;
         self.status_message = status_message.to_string();
+        self.field_display_values.clear();
+        self.field_active_display_value_indices.clear();
     }
 
     pub fn focus_scan_results(
@@ -214,14 +220,37 @@ impl StructViewerPaneState {
         self.sync_selected_field_metadata();
     }
 
+    pub fn cycle_selected_field_display_format_forward(&mut self) -> Result<AnonymousValueStringFormat, String> {
+        self.cycle_selected_field_display_format(true)
+    }
+
+    pub fn cycle_selected_field_display_format_backward(&mut self) -> Result<AnonymousValueStringFormat, String> {
+        self.cycle_selected_field_display_format(false)
+    }
+
     pub fn summary_lines(&self) -> Vec<String> {
+        let selected_field_display_format = self.selected_field_active_display_format();
+        let selected_field_display_format_progress = self.selected_field_display_format_progress();
         let mut summary_lines = vec![
             "Actions: r refresh source, Up/Down or j/k select field, Enter commit field edit.".to_string(),
+            "Display format: [ previous, ] next. Disabled while an uncommitted edit exists.".to_string(),
             "Edit mode: type, Backspace, Ctrl+u clear. Editable fields only.".to_string(),
             format!("source={:?}", self.source),
             format!("selected_struct={:?}", self.selected_struct_name),
             format!("field_count={}", self.focused_field_count()),
             format!("selected_field={:?}", self.selected_field_name),
+            format!(
+                "selected_field_format={}",
+                selected_field_display_format
+                    .map(|active_display_format| active_display_format.to_string())
+                    .unwrap_or_else(|| "none".to_string())
+            ),
+            format!(
+                "selected_field_format_index={}",
+                selected_field_display_format_progress
+                    .map(|(active_display_value_index, display_value_count)| format!("{}/{}", active_display_value_index + 1, display_value_count))
+                    .unwrap_or_else(|| "0/0".to_string())
+            ),
             format!("pending_edit={}", self.pending_edit_text),
             format!("uncommitted_edit={}", self.has_uncommitted_edit),
             format!("selected_scan_results={}", self.selected_scan_result_refs.len()),
@@ -239,7 +268,19 @@ impl StructViewerPaneState {
             {
                 let selected_marker = if self.selected_field_position == Some(field_position) { ">" } else { " " };
                 let writable_marker = if focused_field.get_is_read_only() { "R" } else { "W" };
-                summary_lines.push(format!("{} [{}] {}", selected_marker, writable_marker, focused_field.get_name()));
+                let field_name = focused_field.get_name();
+                let format_suffix = self
+                    .active_display_value_for_field(field_name)
+                    .map(|active_display_value| format!(" ({})", active_display_value.get_anonymous_value_string_format()))
+                    .unwrap_or_else(String::new);
+                let value_preview = self
+                    .active_display_value_for_field(field_name)
+                    .map(|active_display_value| active_display_value.get_anonymous_value_string().to_string())
+                    .unwrap_or_else(|| "?".to_string());
+                summary_lines.push(format!(
+                    "{} [{}] {}{} = {}",
+                    selected_marker, writable_marker, field_name, format_suffix, value_preview
+                ));
             }
         }
 
@@ -274,7 +315,11 @@ impl StructViewerPaneState {
             self.has_uncommitted_edit = false;
             return;
         };
-        let Some(selected_field) = focused_struct.get_fields().get(selected_field_position) else {
+        let Some(selected_field) = focused_struct
+            .get_fields()
+            .get(selected_field_position)
+            .cloned()
+        else {
             self.selected_field_name = None;
             self.pending_edit_text.clear();
             self.has_uncommitted_edit = false;
@@ -283,7 +328,13 @@ impl StructViewerPaneState {
 
         let selected_field_name = selected_field.get_name().to_string();
         self.selected_field_name = Some(selected_field_name);
+        self.sync_selected_field_display_values(&selected_field);
         if self.has_uncommitted_edit {
+            return;
+        }
+
+        if let Some(active_display_value) = self.selected_field_active_display_value() {
+            self.pending_edit_text = active_display_value.get_anonymous_value_string().to_string();
             return;
         }
 
@@ -301,6 +352,136 @@ impl StructViewerPaneState {
             .unwrap_or_default();
         self.pending_edit_text = default_edit_value;
     }
+
+    fn cycle_selected_field_display_format(
+        &mut self,
+        is_forward_direction: bool,
+    ) -> Result<AnonymousValueStringFormat, String> {
+        if self.has_uncommitted_edit {
+            return Err("Cannot cycle display format while an uncommitted edit exists.".to_string());
+        }
+
+        let selected_field_name = self
+            .selected_field_name
+            .clone()
+            .ok_or_else(|| "No struct field is selected.".to_string())?;
+        let field_display_values = self
+            .field_display_values
+            .get(&selected_field_name)
+            .ok_or_else(|| format!("No display formats are available for field '{}'.", selected_field_name))?;
+        if field_display_values.is_empty() {
+            return Err(format!("No display formats are available for field '{}'.", selected_field_name));
+        }
+
+        let current_display_value_index = self
+            .field_active_display_value_indices
+            .get(&selected_field_name)
+            .copied()
+            .unwrap_or(0)
+            .min(field_display_values.len() - 1);
+        let next_display_value_index = if is_forward_direction {
+            (current_display_value_index + 1) % field_display_values.len()
+        } else if current_display_value_index == 0 {
+            field_display_values.len() - 1
+        } else {
+            current_display_value_index - 1
+        };
+        let next_display_value = field_display_values[next_display_value_index].clone();
+
+        self.field_active_display_value_indices
+            .insert(selected_field_name, next_display_value_index);
+        self.pending_edit_text = next_display_value.get_anonymous_value_string().to_string();
+        self.has_uncommitted_edit = false;
+
+        Ok(next_display_value.get_anonymous_value_string_format())
+    }
+
+    fn sync_selected_field_display_values(
+        &mut self,
+        selected_field: &ValuedStructField,
+    ) {
+        let selected_field_name = selected_field.get_name().to_string();
+        let Some(selected_field_data_value) = selected_field.get_data_value() else {
+            self.field_display_values.remove(&selected_field_name);
+            self.field_active_display_value_indices
+                .remove(&selected_field_name);
+            return;
+        };
+
+        let symbol_registry = SymbolRegistry::get_instance();
+        let display_values = symbol_registry
+            .anonymize_value_to_supported_formats(selected_field_data_value)
+            .unwrap_or_else(|_| {
+                let selected_data_type_ref = selected_field_data_value.get_data_type_ref();
+                let default_edit_format = symbol_registry.get_default_anonymous_value_string_format(selected_data_type_ref);
+                vec![
+                    symbol_registry
+                        .anonymize_value(selected_field_data_value, default_edit_format)
+                        .unwrap_or_else(|_| AnonymousValueString::new(String::new(), default_edit_format, ContainerType::None)),
+                ]
+            });
+        let default_display_format = symbol_registry.get_default_anonymous_value_string_format(selected_field_data_value.get_data_type_ref());
+        let default_display_value_index = display_values
+            .iter()
+            .position(|display_value| display_value.get_anonymous_value_string_format() == default_display_format)
+            .unwrap_or(0);
+        let previous_display_value_index = self
+            .field_active_display_value_indices
+            .get(&selected_field_name)
+            .copied()
+            .unwrap_or(default_display_value_index);
+        let clamped_display_value_index = previous_display_value_index.min(display_values.len().saturating_sub(1));
+
+        self.field_display_values
+            .insert(selected_field_name.clone(), display_values);
+        self.field_active_display_value_indices
+            .insert(selected_field_name, clamped_display_value_index);
+    }
+
+    fn active_display_value_for_field(
+        &self,
+        field_name: &str,
+    ) -> Option<&AnonymousValueString> {
+        let field_display_values = self.field_display_values.get(field_name)?;
+        if field_display_values.is_empty() {
+            return None;
+        }
+
+        let active_display_value_index = self
+            .field_active_display_value_indices
+            .get(field_name)
+            .copied()
+            .unwrap_or(0)
+            .min(field_display_values.len() - 1);
+
+        field_display_values.get(active_display_value_index)
+    }
+
+    fn selected_field_active_display_value(&self) -> Option<&AnonymousValueString> {
+        let selected_field_name = self.selected_field_name.as_ref()?;
+        self.active_display_value_for_field(selected_field_name)
+    }
+
+    fn selected_field_active_display_format(&self) -> Option<AnonymousValueStringFormat> {
+        self.selected_field_active_display_value()
+            .map(AnonymousValueString::get_anonymous_value_string_format)
+    }
+
+    fn selected_field_display_format_progress(&self) -> Option<(usize, usize)> {
+        let selected_field_name = self.selected_field_name.as_ref()?;
+        let field_display_values = self.field_display_values.get(selected_field_name)?;
+        if field_display_values.is_empty() {
+            return None;
+        }
+
+        let active_display_value_index = self
+            .field_active_display_value_indices
+            .get(selected_field_name)
+            .copied()
+            .unwrap_or(0)
+            .min(field_display_values.len() - 1);
+        Some((active_display_value_index, field_display_values.len()))
+    }
 }
 
 impl Default for StructViewerPaneState {
@@ -317,6 +498,8 @@ impl Default for StructViewerPaneState {
             selected_project_item_paths: Vec::new(),
             is_committing_edit: false,
             status_message: "Ready.".to_string(),
+            field_display_values: HashMap::new(),
+            field_active_display_value_indices: HashMap::new(),
         }
     }
 }
@@ -324,6 +507,7 @@ impl Default for StructViewerPaneState {
 #[cfg(test)]
 mod tests {
     use crate::state::struct_viewer_pane_state::{StructViewerPaneState, StructViewerSource};
+    use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
     use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
     use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
@@ -334,7 +518,7 @@ mod tests {
             0x1000 + scan_result_global_index,
             DataTypeRef::new("u8"),
             String::new(),
-            None,
+            Some(DataTypeU8::get_value_from_primitive(42)),
             Vec::new(),
             None,
             Vec::new(),
@@ -384,5 +568,35 @@ mod tests {
 
         assert!(struct_viewer_pane_state.has_uncommitted_edit);
         assert_eq!(struct_viewer_pane_state.pending_edit_text, "5");
+    }
+
+    #[test]
+    fn cycle_selected_field_display_format_updates_active_format_and_pending_edit_text() {
+        let mut struct_viewer_pane_state = StructViewerPaneState::default();
+        let selected_scan_results = vec![create_scan_result(10)];
+        let selected_scan_result_refs = vec![ScanResultRef::new(10)];
+        struct_viewer_pane_state.focus_scan_results(&selected_scan_results, selected_scan_result_refs);
+
+        let initial_pending_edit_text = struct_viewer_pane_state.pending_edit_text.clone();
+        let cycled_format = struct_viewer_pane_state
+            .cycle_selected_field_display_format_forward()
+            .expect("selected field should support display format cycling");
+
+        assert_ne!(struct_viewer_pane_state.pending_edit_text, initial_pending_edit_text);
+        assert!(!struct_viewer_pane_state.has_uncommitted_edit);
+        assert_ne!(cycled_format.to_string(), "decimal");
+    }
+
+    #[test]
+    fn cycle_selected_field_display_format_rejects_uncommitted_edits() {
+        let mut struct_viewer_pane_state = StructViewerPaneState::default();
+        let selected_scan_results = vec![create_scan_result(11)];
+        let selected_scan_result_refs = vec![ScanResultRef::new(11)];
+        struct_viewer_pane_state.focus_scan_results(&selected_scan_results, selected_scan_result_refs);
+        struct_viewer_pane_state.append_pending_edit_character('7');
+
+        let cycle_result = struct_viewer_pane_state.cycle_selected_field_display_format_forward();
+
+        assert!(cycle_result.is_err());
     }
 }
