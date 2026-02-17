@@ -5,9 +5,9 @@ use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
 
 pub fn build_settings_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     let mut summary_lines = vec![
-        "Category: ]/[ cycle, r refresh all.".to_string(),
-        "Field nav: j/k select row.".to_string(),
-        "Mutate: Space toggle bool, +/- step numeric, </> cycle enum, Enter apply category.".to_string(),
+        "[CAT] ] next | [ prev | r refresh-all.".to_string(),
+        "[NAV] j/k field.".to_string(),
+        "[ACT] Space toggle | +/- step | </> cycle enum | Enter apply category.".to_string(),
         format!("category={}", settings_pane_state.selected_category.title()),
         format!("selected_field={}", settings_pane_state.selected_field_index),
         format!("pending_changes={}", settings_pane_state.has_pending_changes),
@@ -190,5 +190,21 @@ fn floating_point_tolerance_label(floating_point_tolerance: FloatingPointToleran
         FloatingPointTolerance::Tolerance10E4 => "0.0001",
         FloatingPointTolerance::Tolerance10E5 => "0.00001",
         FloatingPointTolerance::ToleranceEpsilon => "epsilon",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_settings_summary_lines;
+    use crate::views::settings::pane_state::SettingsPaneState;
+
+    #[test]
+    fn summary_uses_condensed_marker_group_lead_lines() {
+        let settings_pane_state = SettingsPaneState::default();
+        let summary_lines = build_settings_summary_lines(&settings_pane_state);
+
+        assert!(summary_lines[0].starts_with("[CAT]"));
+        assert!(summary_lines[1].starts_with("[NAV]"));
+        assert!(summary_lines[2].starts_with("[ACT]"));
     }
 }

@@ -6,8 +6,9 @@ use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_rela
 
 pub fn build_element_scanner_summary_lines(element_scanner_pane_state: &ElementScannerPaneState) -> Vec<String> {
     let mut summary_lines = vec![
-        "Actions: s start, n reset/new, c collect, t/T data type, a add, x remove.".to_string(),
-        "Constraint edit: j/k select, m/M compare type, digits/-/. append, Backspace, Ctrl+u clear.".to_string(),
+        "[ACT] s scan | n new/reset | c collect | a add | x remove.".to_string(),
+        "[TYPE] t next | T prev data type.".to_string(),
+        "[EDIT] j/k row | m/M compare | digits - . append | Backspace | Ctrl+u clear.".to_string(),
         format!("data_type={}", element_scanner_pane_state.selected_data_type_name()),
         format!("constraints={}", element_scanner_pane_state.active_constraint_count()),
         format!("selected_constraint={}", element_scanner_pane_state.selected_constraint_row_index + 1),
@@ -57,5 +58,21 @@ fn scan_compare_type_label(scan_compare_type: ScanCompareType) -> &'static str {
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalAndByX) => "&x",
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalOrByX) => "|x",
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalXorByX) => "^x",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_element_scanner_summary_lines;
+    use crate::views::element_scanner::pane_state::ElementScannerPaneState;
+
+    #[test]
+    fn summary_uses_condensed_marker_group_lead_lines() {
+        let element_scanner_pane_state = ElementScannerPaneState::default();
+        let summary_lines = build_element_scanner_summary_lines(&element_scanner_pane_state);
+
+        assert!(summary_lines[0].starts_with("[ACT]"));
+        assert!(summary_lines[1].starts_with("[TYPE]"));
+        assert!(summary_lines[2].starts_with("[EDIT]"));
     }
 }

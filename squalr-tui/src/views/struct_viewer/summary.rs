@@ -5,9 +5,10 @@ pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewer
     let selected_field_display_format_progress = struct_viewer_pane_state.selected_field_display_format_progress();
     let selected_field_edit_state = struct_viewer_pane_state.selected_field_edit_state_label();
     let mut summary_lines = vec![
-        "Actions: r refresh source, Up/Down or j/k select field, Enter commit field edit.".to_string(),
-        "Display format: [ previous, ] next. Disabled while an uncommitted edit exists.".to_string(),
-        "Edit mode: type, Backspace, Ctrl+u clear. Value fields only.".to_string(),
+        "[ACT] r refresh-source | Enter commit edit.".to_string(),
+        "[NAV] Up/Down or j/k select field.".to_string(),
+        "[FMT] [ prev | ] next display format (blocked on uncommitted edit).".to_string(),
+        "[EDIT] type | Backspace | Ctrl+u clear (value fields only).".to_string(),
         format!("source={:?}", struct_viewer_pane_state.source),
         format!("selected_struct={:?}", struct_viewer_pane_state.selected_struct_name),
         format!("field_count={}", struct_viewer_pane_state.focused_field_count()),
@@ -64,4 +65,21 @@ pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewer
     }
 
     summary_lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_struct_viewer_summary_lines;
+    use crate::views::struct_viewer::pane_state::StructViewerPaneState;
+
+    #[test]
+    fn summary_uses_condensed_marker_group_lead_lines() {
+        let struct_viewer_pane_state = StructViewerPaneState::default();
+        let summary_lines = build_struct_viewer_summary_lines(&struct_viewer_pane_state);
+
+        assert!(summary_lines[0].starts_with("[ACT]"));
+        assert!(summary_lines[1].starts_with("[NAV]"));
+        assert!(summary_lines[2].starts_with("[FMT]"));
+        assert!(summary_lines[3].starts_with("[EDIT]"));
+    }
 }

@@ -2,11 +2,11 @@ use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
 
 pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<String> {
     vec![
-        "Mode: p project list, i project hierarchy.".to_string(),
-        "Project list: r refresh, n create, Enter/o open, e rename, x delete, c close active.".to_string(),
-        "Hierarchy: h refresh, j/k select, l expand, Left collapse, Space activate.".to_string(),
-        "Hierarchy cont: n new folder, x delete(confirm), m stage move, b move here, [/] reorder, u cancel move.".to_string(),
-        "Input mode: type, Backspace, Ctrl+u clear, Enter commit, Esc cancel.".to_string(),
+        "[MODE] p project-list | i hierarchy.".to_string(),
+        "[LIST] r refresh | n create | Enter/o open | e rename | x delete | c close.".to_string(),
+        "[TREE] h refresh | j/k select | l/Right expand | Left collapse | Space activate.".to_string(),
+        "[MOVE] n folder | x delete(confirm) | m stage | b move | [/] reorder | u clear-stage.".to_string(),
+        "[INPUT] type | Backspace | Ctrl+u clear | Enter commit | Esc cancel.".to_string(),
         format!("focus_target={:?}", project_explorer_pane_state.focus_target),
         format!("list_count={}", project_explorer_pane_state.project_entries.len()),
         format!("selected_name={:?}", project_explorer_pane_state.selected_project_name),
@@ -37,6 +37,24 @@ pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &Projec
         format!("reordering_item={}", project_explorer_pane_state.is_reordering_project_item),
         format!("activating_item={}", project_explorer_pane_state.is_toggling_project_item_activation),
         format!("status={}", project_explorer_pane_state.status_message),
-        "Projects (top 5) + Hierarchy (top 10).".to_string(),
+        "[ROWS] projects=5 | hierarchy=10.".to_string(),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_project_explorer_summary_lines;
+    use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
+
+    #[test]
+    fn summary_uses_condensed_marker_group_lead_lines() {
+        let project_explorer_pane_state = ProjectExplorerPaneState::default();
+        let summary_lines = build_project_explorer_summary_lines(&project_explorer_pane_state);
+
+        assert!(summary_lines[0].starts_with("[MODE]"));
+        assert!(summary_lines[1].starts_with("[LIST]"));
+        assert!(summary_lines[2].starts_with("[TREE]"));
+        assert!(summary_lines[3].starts_with("[MOVE]"));
+        assert!(summary_lines[4].starts_with("[INPUT]"));
+    }
 }

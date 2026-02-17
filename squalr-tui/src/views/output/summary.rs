@@ -2,7 +2,7 @@ use crate::views::output::pane_state::OutputPaneState;
 
 pub fn build_output_summary_lines(output_pane_state: &OutputPaneState) -> Vec<String> {
     let mut summary_lines = vec![
-        "Actions: r refresh log history, x clear, +/- max lines.".to_string(),
+        "[ACT] r refresh-log | x clear | +/- max-lines.".to_string(),
         format!("log_line_count={}", output_pane_state.log_lines.len()),
         format!("max_log_lines={}", output_pane_state.max_log_line_count),
         format!("auto_scroll_latest={}", output_pane_state.did_auto_scroll_to_latest),
@@ -11,7 +11,7 @@ pub fn build_output_summary_lines(output_pane_state: &OutputPaneState) -> Vec<St
 
     let preview_line_count = output_pane_state.log_lines.len().min(8);
     if preview_line_count > 0 {
-        summary_lines.push("Recent:".to_string());
+        summary_lines.push("[RECENT]".to_string());
         let start_line_index = output_pane_state
             .log_lines
             .len()
@@ -22,4 +22,18 @@ pub fn build_output_summary_lines(output_pane_state: &OutputPaneState) -> Vec<St
     }
 
     summary_lines
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_output_summary_lines;
+    use crate::views::output::pane_state::OutputPaneState;
+
+    #[test]
+    fn summary_uses_condensed_marker_group_lead_lines() {
+        let output_pane_state = OutputPaneState::default();
+        let summary_lines = build_output_summary_lines(&output_pane_state);
+
+        assert!(summary_lines[0].starts_with("[ACT]"));
+    }
 }
