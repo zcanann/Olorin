@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit project-explorer dual-list ultra-small height summary priority so `[MARK]` legend context remains visible when summary lines are heavily clamped.
+- Concrete next subtask: audit condensed legend priority ordering for other entry-heavy panes under ultra-small height clamps so state-critical marker context is preserved.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -213,3 +213,6 @@ Information discovered during iteration:
 - TUI ultra-small marker readability fix: `app_render` now resolves single-column marker prefixes from the first visible marker character (fallback space), preserving meaningful hierarchy markers (`*`, `+`, `-`) at width=1 instead of `.`.
 - TUI project-explorer legend clarity update: added explicit `[MARK]` summary line documenting project/hierarchy marker semantics to balance dual-list marker readability tradeoffs.
 - Added focused `app_render` test coverage for width=1 two-character marker behavior and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (104 passed).
+- GUI vs TUI parity audit (this pass): project-explorer ultra-small height clamping could still drop `[MARK]` when only one summary line survived because `[MODE]` preceded `[MARK]` in summary ordering.
+- TUI project-explorer summary priority update: moved `[MARK]` legend line to the first summary slot so heavy clamp paths preserve marker semantics before mode metadata.
+- Added focused `app_render` regression test (`project_explorer_clamp_preserves_mark_legend_at_tiny_height`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (105 passed).

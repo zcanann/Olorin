@@ -496,6 +496,19 @@ mod tests {
     }
 
     #[test]
+    fn project_explorer_clamp_preserves_mark_legend_at_tiny_height() {
+        let summary_lines = vec![
+            "[MARK] project=* active.".to_string(),
+            "[MODE] p project-list.".to_string(),
+            "[LIST] r refresh.".to_string(),
+        ];
+
+        let clamped_summary_lines = AppShell::clamp_summary_lines_for_entry_safeguard(TuiPane::ProjectExplorer, summary_lines, 3);
+
+        assert_eq!(clamped_summary_lines, vec!["[MARK] project=* active.".to_string()]);
+    }
+
+    #[test]
     fn entry_heavy_panes_allow_row_without_separator_when_summary_omitted() {
         let entry_row_capacity = AppShell::pane_entry_row_capacity(TuiPane::ScanResults, 1, 0);
 
