@@ -171,3 +171,4 @@ Information discovered during iteration:
 - TUI non-legend summary density pass: state/metrics/status body lines in all pane summary builders now use condensed marker groups (for example `[MODE]`, `[LIST]`, `[META]`, `[OPS]`, `[STAT]`, `[FLD]`) instead of raw `key=value` rows.
 - TUI narrow-terminal readability pass: pane summary rendering now applies width-aware truncation with ellipsis in `app_render` before paragraph composition, reducing hard clipping/wrap churn in narrow pane widths.
 - Added `app_render` unit coverage for truncation behavior (`unchanged short`, `ellipsis narrow`, `single-width fallback`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (72 passed).
+- Checkpoint commit for summary density + narrow-width truncation pass: `1c006ca7` (`Densify TUI summary body markers and clamp narrow-width lines`).
