@@ -1,5 +1,6 @@
 mod app;
 mod state;
+mod theme;
 mod views;
 
 use crate::app::{AppShell, TerminalGuard};

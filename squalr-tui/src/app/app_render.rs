@@ -1,8 +1,9 @@
 use crate::app::AppShell;
 use crate::state::pane::TuiPane;
+use crate::theme::TuiTheme;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::widgets::Paragraph;
 
 impl AppShell {
     pub(super) fn draw_pane_layout(
@@ -86,7 +87,9 @@ impl AppShell {
             .map(Line::from)
             .collect();
 
-        let pane_widget = Paragraph::new(pane_lines).block(Block::default().borders(Borders::ALL).title(title));
+        let pane_widget = Paragraph::new(pane_lines)
+            .style(TuiTheme::panel_text_style())
+            .block(TuiTheme::pane_block(&title, pane, is_focused));
         frame.render_widget(pane_widget, pane_area);
     }
 }

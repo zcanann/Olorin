@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: introduce a dedicated TUI theme module (color tokens + panel border/background styles) and apply it consistently across the 7 core panes to establish non-default visual hierarchy before deeper pane UX expansion.
+- Concrete next subtask: implement reusable pane-entry row rendering primitives (selected/normal/disabled variants) and migrate Process Selector, Scan Results, and Project Explorer summaries to use them so list-heavy panes read like real structured UIs rather than plain text dumps.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -126,3 +126,6 @@ Information discovered during iteration:
 - Added unit coverage for repeated `LogDispatcher` initialization sharing history without reinit errors (`logging::log_dispatcher::tests::repeated_initialization_uses_shared_log_history`).
 - Validation pass for logger idempotency + TUI regression: `cargo test -p squalr-engine-session` (1 passed), `cargo test -p squalr-tui` (57 passed).
 - Checkpoint commit for logger idempotency fix: `c8cfa01b` (`Make engine-session logger initialization singleton-safe`).
+- TUI visual hierarchy theming pass: added `squalr-tui/src/theme/mod.rs` with shared color tokens and reusable themed block builders for session/footer/panes, including per-pane accent colors and focused-pane emphasis.
+- Applied theme styles consistently across app background, header/footer containers, and all 7 core pane blocks in `app_shell` + `app_render`; pane content now uses shared text/status style tokens instead of default ratatui styles.
+- Validation pass for theme module integration: `cargo test -p squalr-tui` (57 passed).

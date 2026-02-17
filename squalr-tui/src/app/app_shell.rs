@@ -1,5 +1,6 @@
 use crate::state::TuiAppState;
 use crate::state::pane::TuiPane;
+use crate::theme::TuiTheme;
 use anyhow::{Context, Result, bail};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
@@ -7,9 +8,8 @@ use crossterm::{cursor, execute};
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Paragraph};
+use ratatui::widgets::{Block, Paragraph};
 use squalr_engine::engine_mode::EngineMode;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
@@ -128,6 +128,8 @@ impl AppShell {
         frame: &mut ratatui::Frame<'_>,
         engine_mode: EngineMode,
     ) {
+        frame.render_widget(Block::default().style(TuiTheme::app_background_style()), frame.area());
+
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
@@ -143,8 +145,8 @@ impl AppShell {
             Line::from(header_text),
             Line::from("Focus: Tab / Shift+Tab. Focus pane: 1-7. Toggle pane: Ctrl+1-7 or v. Show all: 0."),
         ])
-        .style(Style::default().add_modifier(Modifier::BOLD))
-        .block(Block::default().borders(Borders::ALL).title("Session"));
+        .style(TuiTheme::panel_text_style())
+        .block(TuiTheme::session_block("Session"));
         frame.render_widget(header, vertical_chunks[0]);
 
         self.draw_pane_layout(frame, vertical_chunks[1]);
@@ -152,7 +154,8 @@ impl AppShell {
         let footer = Paragraph::new(vec![Line::from(
             "Global: q / Esc / Ctrl+C to exit. Non-mouse workflow enabled for pane navigation and visibility.",
         )])
-        .block(Block::default().borders(Borders::ALL).title("Controls"));
+        .style(TuiTheme::status_text_style())
+        .block(TuiTheme::controls_block("Controls"));
         frame.render_widget(footer, vertical_chunks[2]);
     }
 
