@@ -1,4 +1,7 @@
 use super::app_shell::AppShell;
+use crate::state::pane::TuiPane;
+use crate::state::workspace_page::TuiWorkspacePage;
+use crate::views::project_explorer::pane_state::ProjectExplorerFocusTarget;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
@@ -868,6 +871,7 @@ impl AppShell {
                     .process_selector_pane_state
                     .set_opened_process(opened_process.clone());
                 self.app_state.process_selector_pane_state.status_message = if let Some(opened_process_info) = opened_process {
+                    self.apply_project_workspace_process_context(squalr_engine, opened_process_info.get_name());
                     format!(
                         "Opened process {} ({}).",
                         opened_process_info.get_name(),
@@ -883,5 +887,32 @@ impl AppShell {
         }
 
         self.app_state.process_selector_pane_state.is_opening_process = false;
+    }
+
+    fn apply_project_workspace_process_context(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        opened_process_name: &str,
+    ) {
+        self.app_state
+            .set_active_workspace_page(TuiWorkspacePage::ProjectWorkspace);
+        self.app_state.set_focused_pane(TuiPane::ProjectExplorer);
+
+        let has_active_project = self
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path
+            .is_some();
+
+        if has_active_project {
+            self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectHierarchy;
+            self.app_state.project_explorer_pane_state.status_message =
+                format!("Process '{}' opened. Project hierarchy is active for item workflows.", opened_process_name);
+            self.refresh_project_items_list_with_feedback(squalr_engine, false);
+        } else {
+            self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectList;
+            self.app_state.project_explorer_pane_state.status_message =
+                format!("Process '{}' opened. Open or create a project to persist addresses.", opened_process_name);
+        }
     }
 }

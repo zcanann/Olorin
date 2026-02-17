@@ -8,7 +8,6 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Integrate process opening into the new Project workspace flow so selecting/opening process does not feel like a detached utility.
 - Remove Struct Viewer command-path coupling from scan/project actions and route edits through dedicated scan-results/project-item interactions.
 - Audit command dispatch structure against CLI patterns and align naming/routing where practical without regressing TUI UX.
 - Add focused behavior checks for page switching + pane focus loops (Project, Scanner, Settings) and document keybindings.
@@ -23,3 +22,4 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - `Tab`/`Shift+Tab` now cycles focus within active page only.
 - Struct Viewer was removed from active navigation/layout (no page includes it), but backend/state coupling still exists and needs follow-up cleanup.
 - Theme implementation moved from `theme/mod.rs` into dedicated `theme/tui_theme.rs` and re-exported by `theme/mod.rs`.
+- Process open is now integrated into Project workspace flow: opening a process shifts focus to Project Explorer, updates Project Explorer status with process context, and refreshes hierarchy when an active project exists.

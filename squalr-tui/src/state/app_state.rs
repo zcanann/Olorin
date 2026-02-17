@@ -42,6 +42,15 @@ impl TuiAppState {
         self.pane_layout_state.focused_pane
     }
 
+    pub fn set_focused_pane(
+        &mut self,
+        focused_pane: TuiPane,
+    ) {
+        if self.is_pane_visible(focused_pane) {
+            self.pane_layout_state.focused_pane = focused_pane;
+        }
+    }
+
     pub fn is_pane_visible(
         &self,
         pane: TuiPane,
