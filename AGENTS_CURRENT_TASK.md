@@ -106,3 +106,4 @@ Information discovered during iteration:
 - Validation pass after tick-orchestration extraction: `cargo test -p squalr-tui` (54 passed).
 - TUI app-shell de-bloat pass: extracted pane layout rendering helpers from `squalr-tui/src/app/app_shell.rs` into `squalr-tui/src/app/app_render.rs`; `squalr-tui/src/app/mod.rs` now composes `app_render` alongside shell/tick/dispatch/key-handler modules.
 - Validation pass after pane-layout rendering extraction: `cargo test -p squalr-tui` (54 passed).
+- Checkpoint commit for pane-layout rendering extraction: `8fd1299c` (`Extract TUI pane layout rendering into app_render module`).
