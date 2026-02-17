@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior for background process/project list retries (auto-refresh status churn vs explicit user-action status feedback).
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior for scan-results background sync paths (`ScanResultsUpdatedEvent` requery + periodic refresh) vs explicit user-action status feedback.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -84,5 +84,8 @@ Information discovered during iteration:
 - TUI app-shell tick flow now synchronizes active project identity from `ProjectManager::get_opened_project()` each tick; when active project directory changes, TUI clears project hierarchy + struct viewer focus and resets project-item auto-refresh timing for immediate requery.
 - Added app-shell tests for project-state synchronization behavior (directory-change reset path, same-directory preserve path, and immediate project-item auto-refresh eligibility after directory change); validated with `cargo test -p squalr-tui` (49 passed).
 - Checkpoint commit for project-state synchronization parity: `085f006c` (`Sync TUI active project state with engine on tick`).
+- GUI vs TUI parity audit (this pass): background process/project/project-item auto-refresh retries in TUI were still overwriting pane status text (`Refreshing...`, `Loaded...`, timeout) and could hide explicit user-command feedback.
+- TUI process/project/project-item refresh handlers now have explicit feedback gating (`*_with_feedback`), with tick-driven retries using no-status mode while user actions keep status updates.
+- Added app-shell tests for background refresh status preservation across process/project/project-item paths; validated with `cargo test -p squalr-tui` (52 passed).
 
 

@@ -248,17 +248,17 @@ impl AppShell {
 
         if self.should_refresh_process_list_on_tick(current_tick_time) {
             self.last_process_list_auto_refresh_attempt_time = Some(current_tick_time);
-            self.refresh_process_list(squalr_engine);
+            self.refresh_process_list_with_feedback(squalr_engine, false);
         }
 
         if self.should_refresh_project_list_on_tick(current_tick_time) {
             self.last_project_list_auto_refresh_attempt_time = Some(current_tick_time);
-            self.refresh_project_list(squalr_engine);
+            self.refresh_project_list_with_feedback(squalr_engine, false);
         }
 
         if self.should_refresh_project_items_list_on_tick(current_tick_time) {
             self.last_project_items_auto_refresh_attempt_time = Some(current_tick_time);
-            self.refresh_project_items_list(squalr_engine);
+            self.refresh_project_items_list_with_feedback(squalr_engine, false);
         }
 
         self.refresh_settings_on_tick_if_eligible(squalr_engine);
@@ -2373,19 +2373,31 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        self.refresh_process_list_with_feedback(squalr_engine, true);
+    }
+
+    fn refresh_process_list_with_feedback(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
+    ) {
         if self
             .app_state
             .process_selector_pane_state
             .is_awaiting_process_list_response
         {
-            self.app_state.process_selector_pane_state.status_message = "Process list request already in progress.".to_string();
+            if should_update_status_message {
+                self.app_state.process_selector_pane_state.status_message = "Process list request already in progress.".to_string();
+            }
             return;
         }
 
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,
             None => {
-                self.app_state.process_selector_pane_state.status_message = "No unprivileged engine state is available for process queries.".to_string();
+                if should_update_status_message {
+                    self.app_state.process_selector_pane_state.status_message = "No unprivileged engine state is available for process queries.".to_string();
+                }
                 return;
             }
         };
@@ -2393,7 +2405,9 @@ impl AppShell {
         self.app_state
             .process_selector_pane_state
             .is_awaiting_process_list_response = true;
-        self.app_state.process_selector_pane_state.status_message = "Refreshing process list.".to_string();
+        if should_update_status_message {
+            self.app_state.process_selector_pane_state.status_message = "Refreshing process list.".to_string();
+        }
 
         let process_list_request = ProcessListRequest {
             require_windowed: self
@@ -2415,7 +2429,9 @@ impl AppShell {
             self.app_state
                 .process_selector_pane_state
                 .is_awaiting_process_list_response = false;
-            self.app_state.process_selector_pane_state.status_message = "Failed to dispatch process list request.".to_string();
+            if should_update_status_message {
+                self.app_state.process_selector_pane_state.status_message = "Failed to dispatch process list request.".to_string();
+            }
             return;
         }
 
@@ -2428,10 +2444,14 @@ impl AppShell {
                 self.app_state
                     .process_selector_pane_state
                     .has_loaded_process_list_once = true;
-                self.app_state.process_selector_pane_state.status_message = format!("Loaded {} processes.", process_count);
+                if should_update_status_message {
+                    self.app_state.process_selector_pane_state.status_message = format!("Loaded {} processes.", process_count);
+                }
             }
             Err(receive_error) => {
-                self.app_state.process_selector_pane_state.status_message = format!("Timed out waiting for process list response: {}", receive_error);
+                if should_update_status_message {
+                    self.app_state.process_selector_pane_state.status_message = format!("Timed out waiting for process list response: {}", receive_error);
+                }
             }
         }
 
@@ -2513,19 +2533,31 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        self.refresh_project_list_with_feedback(squalr_engine, true);
+    }
+
+    fn refresh_project_list_with_feedback(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
+    ) {
         if self
             .app_state
             .project_explorer_pane_state
             .is_awaiting_project_list_response
         {
-            self.app_state.project_explorer_pane_state.status_message = "Project list request already in progress.".to_string();
+            if should_update_status_message {
+                self.app_state.project_explorer_pane_state.status_message = "Project list request already in progress.".to_string();
+            }
             return;
         }
 
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,
             None => {
-                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project queries.".to_string();
+                if should_update_status_message {
+                    self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project queries.".to_string();
+                }
                 return;
             }
         };
@@ -2533,7 +2565,9 @@ impl AppShell {
         self.app_state
             .project_explorer_pane_state
             .is_awaiting_project_list_response = true;
-        self.app_state.project_explorer_pane_state.status_message = "Refreshing project list.".to_string();
+        if should_update_status_message {
+            self.app_state.project_explorer_pane_state.status_message = "Refreshing project list.".to_string();
+        }
 
         let project_list_request = ProjectListRequest {};
         let (response_sender, response_receiver) = mpsc::sync_channel(1);
@@ -2550,10 +2584,14 @@ impl AppShell {
                 self.app_state
                     .project_explorer_pane_state
                     .has_loaded_project_list_once = true;
-                self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} projects.", project_count);
+                if should_update_status_message {
+                    self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} projects.", project_count);
+                }
             }
             Err(receive_error) => {
-                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project list response: {}", receive_error);
+                if should_update_status_message {
+                    self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project list response: {}", receive_error);
+                }
             }
         }
 
@@ -2566,19 +2604,32 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        self.refresh_project_items_list_with_feedback(squalr_engine, true);
+    }
+
+    fn refresh_project_items_list_with_feedback(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
+    ) {
         if self
             .app_state
             .project_explorer_pane_state
             .is_awaiting_project_item_list_response
         {
-            self.app_state.project_explorer_pane_state.status_message = "Project item list request already in progress.".to_string();
+            if should_update_status_message {
+                self.app_state.project_explorer_pane_state.status_message = "Project item list request already in progress.".to_string();
+            }
             return;
         }
 
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,
             None => {
-                self.app_state.project_explorer_pane_state.status_message = "No unprivileged engine state is available for project item listing.".to_string();
+                if should_update_status_message {
+                    self.app_state.project_explorer_pane_state.status_message =
+                        "No unprivileged engine state is available for project item listing.".to_string();
+                }
                 return;
             }
         };
@@ -2586,7 +2637,9 @@ impl AppShell {
         self.app_state
             .project_explorer_pane_state
             .is_awaiting_project_item_list_response = true;
-        self.app_state.project_explorer_pane_state.status_message = "Refreshing project item hierarchy.".to_string();
+        if should_update_status_message {
+            self.app_state.project_explorer_pane_state.status_message = "Refreshing project item hierarchy.".to_string();
+        }
 
         let project_items_list_request = ProjectItemsListRequest {};
         let (response_sender, response_receiver) = mpsc::sync_channel(1);
@@ -2600,11 +2653,15 @@ impl AppShell {
                 self.app_state
                     .project_explorer_pane_state
                     .apply_project_items_list(project_items_list_response.opened_project_items);
-                self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} project items.", project_item_count);
+                if should_update_status_message {
+                    self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} project items.", project_item_count);
+                }
                 self.sync_struct_viewer_focus_from_project_items();
             }
             Err(receive_error) => {
-                self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item list response: {}", receive_error);
+                if should_update_status_message {
+                    self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item list response: {}", receive_error);
+                }
             }
         }
 
@@ -3599,6 +3656,39 @@ mod tests {
         app_shell.refresh_output_log_history(&mut squalr_engine);
 
         assert_eq!(app_shell.app_state.output_pane_state.status_message, "Manual output status.");
+    }
+
+    #[test]
+    fn process_auto_refresh_preserves_existing_status_message() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.process_selector_pane_state.status_message = "Manual process status.".to_string();
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for process auto-refresh status test");
+
+        app_shell.refresh_process_list_with_feedback(&mut squalr_engine, false);
+
+        assert_eq!(app_shell.app_state.process_selector_pane_state.status_message, "Manual process status.");
+    }
+
+    #[test]
+    fn project_auto_refresh_preserves_existing_status_message() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.project_explorer_pane_state.status_message = "Manual project status.".to_string();
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for project auto-refresh status test");
+
+        app_shell.refresh_project_list_with_feedback(&mut squalr_engine, false);
+
+        assert_eq!(app_shell.app_state.project_explorer_pane_state.status_message, "Manual project status.");
+    }
+
+    #[test]
+    fn project_items_auto_refresh_preserves_existing_status_message() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.project_explorer_pane_state.status_message = "Manual project item status.".to_string();
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for project-item auto-refresh status test");
+
+        app_shell.refresh_project_items_list_with_feedback(&mut squalr_engine, false);
+
+        assert_eq!(app_shell.app_state.project_explorer_pane_state.status_message, "Manual project item status.");
     }
 
     #[test]
