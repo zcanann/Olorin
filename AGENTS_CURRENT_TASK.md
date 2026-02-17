@@ -144,3 +144,4 @@ Information discovered during iteration:
 - Validation pass after project-explorer pane-state relocation: `cargo test -p squalr-tui` (57 passed).
 - TUI process-selector pane-state folderization pass: relocated `squalr-tui/src/views/process_selector_pane_state.rs` to `squalr-tui/src/views/process_selector/pane_state.rs`, rewired view/app/state imports to `crate::views::process_selector::pane_state::*`, and updated module exports (`views/process_selector/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
 - Validation pass after process-selector pane-state relocation: `cargo test -p squalr-tui` (57 passed).
+- Checkpoint commit for process-selector pane-state folderization: `bffc7af5` (`Relocate process selector pane state into feature folder`).
