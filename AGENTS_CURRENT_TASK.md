@@ -66,5 +66,6 @@ Information discovered during iteration:
 - GUI vs TUI struct-viewer behavior audit (this pass): GUI only presents value edit affordances for editable value fields; nested/read-only fields remain non-committable. TUI now mirrors this by blocking text-edit mutations for non-editable selections and emitting explicit status feedback (`read-only` / nested unsupported) before commit.
 - TUI struct-viewer summary semantics now expose field-kind and editability markers (`VAL|RW`, `VAL|RO`, `NEST|RW|RO`) and render `<nested>` preview when no direct display value exists, closing the remaining field-level status visibility gap from the prior task.
 - Added reducer and app-shell tests for read-only edit guarding/status messaging and validated with `cargo test -p squalr-tui` (34 passed).
+- Checkpoint commit for struct-viewer affordance parity: `f99a826e` (`Align TUI struct-viewer edit affordances with GUI behavior`).
 
 
