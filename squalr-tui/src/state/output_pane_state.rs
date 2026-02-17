@@ -10,13 +10,6 @@ pub struct OutputPaneState {
 }
 
 impl OutputPaneState {
-    pub fn apply_log_history(
-        &mut self,
-        log_history: Vec<LogEvent>,
-    ) {
-        self.apply_log_history_with_feedback(log_history, true);
-    }
-
     pub fn apply_log_history_with_feedback(
         &mut self,
         log_history: Vec<LogEvent>,
@@ -104,20 +97,23 @@ mod tests {
             ..OutputPaneState::default()
         };
 
-        output_pane_state.apply_log_history(vec![
-            LogEvent {
-                level: Level::Info,
-                message: "line1".to_string(),
-            },
-            LogEvent {
-                level: Level::Warn,
-                message: "line2".to_string(),
-            },
-            LogEvent {
-                level: Level::Error,
-                message: "line3".to_string(),
-            },
-        ]);
+        output_pane_state.apply_log_history_with_feedback(
+            vec![
+                LogEvent {
+                    level: Level::Info,
+                    message: "line1".to_string(),
+                },
+                LogEvent {
+                    level: Level::Warn,
+                    message: "line2".to_string(),
+                },
+                LogEvent {
+                    level: Level::Error,
+                    message: "line3".to_string(),
+                },
+            ],
+            true,
+        );
 
         assert_eq!(output_pane_state.log_lines.len(), 2);
         assert!(output_pane_state.log_lines[0].contains("line2"));

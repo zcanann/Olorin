@@ -79,7 +79,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "terminal": "external"
         },
         {
             "type": "lldb",
@@ -98,7 +99,8 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "terminal": "external"
         },
         {
             "type": "lldb",
@@ -118,6 +120,7 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}",
+            "terminal": "external",
             "env": {
                 "RUSTFLAGS": "-g"
             }

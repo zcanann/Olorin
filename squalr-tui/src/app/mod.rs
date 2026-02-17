@@ -3,7 +3,7 @@ use crate::state::pane::TuiPane;
 use crate::state::project_explorer_pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
 use crate::state::settings_pane_state::SettingsCategory;
 use crate::state::struct_viewer_pane_state::StructViewerSource;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 use crossterm::{cursor, execute};
@@ -64,7 +64,7 @@ use squalr_engine_api::structures::projects::project_items::project_item_ref::Pr
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
 use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
-use std::io::{self, Stdout};
+use std::io::{self, IsTerminal, Stdout};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, mpsc};
@@ -76,6 +76,12 @@ pub struct TerminalGuard {
 
 impl TerminalGuard {
     pub fn new() -> Result<Self> {
+        if !io::stdin().is_terminal() || !io::stdout().is_terminal() || !io::stderr().is_terminal() {
+            bail!(
+                "Squalr TUI requires an interactive terminal. In VS Code CodeLLDB launch configs, set `terminal` to `external` or `integrated` for the squalr-tui target."
+            );
+        }
+
         let mut stdout = io::stdout();
 
         enable_raw_mode().context("Failed to enable terminal raw mode.")?;
