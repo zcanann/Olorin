@@ -821,7 +821,7 @@ impl Default for ProjectExplorerPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::project_explorer_pane_state::{ProjectExplorerPaneState, ProjectSelectorInputMode};
+    use crate::views::project_explorer_pane_state::{ProjectExplorerPaneState, ProjectSelectorInputMode};
     use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
     use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
     use squalr_engine_api::structures::projects::{project_info::ProjectInfo, project_manifest::ProjectManifest};

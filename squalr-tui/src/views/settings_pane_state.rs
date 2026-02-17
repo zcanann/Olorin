@@ -608,7 +608,7 @@ impl Default for SettingsPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::settings_pane_state::{SettingsCategory, SettingsPaneState};
+    use crate::views::settings_pane_state::{SettingsCategory, SettingsPaneState};
     use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 
     #[test]

@@ -8,7 +8,8 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer to identify the next behavior-level gap after scan-results background status-feedback parity.
+- The TUI build for vscode should not be inside the vscode terminal, it should launch standalone.
+- [ ] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting pane-specific handlers/command dispatch into focused app submodules (maintain behavior parity + tests).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -94,5 +95,6 @@ Information discovered during iteration:
 - VS Code TUI launch ergonomics update: moved `squalr-tui` debug/release launch entries to the top of `.vscode/launch.json` and switched their CodeLLDB `terminal` target to `integrated` so default F5/debug dropdown behavior opens the ratatui surface directly inside VS Code.
 - TUI startup robustness fix: `TerminalGuard::new` now performs an explicit `stdin/stdout/stderr` TTY preflight and returns a clear actionable error when no interactive terminal is attached (`set terminal to external or integrated` in VS Code).
 - Output pane cleanup: removed unused `apply_log_history` helper and updated reducer tests to call `apply_log_history_with_feedback(..., true)` directly; validated with `cargo test -p squalr-tui` (54 passed).
-
+- TUI architecture cleanup pass: pane modules moved from `squalr-tui/src/state/` to `squalr-tui/src/views/` to better mirror GUI layering; `squalr-tui/src/app/mod.rs` and `squalr-tui/src/state/mod.rs` are now include-only module files with re-exports; `TuiAppState` moved to `squalr-tui/src/state/app_state.rs`.
+- Validation pass after module relocation/refactor: `cargo test -p squalr-tui` (54 passed).
 

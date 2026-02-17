@@ -144,7 +144,7 @@ impl ProcessSelectorPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::process_selector_pane_state::ProcessSelectorPaneState;
+    use crate::views::process_selector_pane_state::ProcessSelectorPaneState;
     use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 
     #[test]

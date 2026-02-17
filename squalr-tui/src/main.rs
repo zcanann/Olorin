@@ -1,5 +1,6 @@
 mod app;
 mod state;
+mod views;
 
 use crate::app::{AppShell, TerminalGuard};
 use anyhow::{Context, Result, bail};
