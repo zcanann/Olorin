@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: run a focused GUI-vs-TUI parity audit for non-pane-state module layout and identify the next high-value `pr/tui` behavior/layout gap now that pane-state folderization is complete across core panes.
+- Concrete next subtask: mirror GUI top-surface affordances in TUI header/footer by surfacing opened process + active project context as first-class session metadata (not only inside pane summaries) with focused app-shell tests.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -156,3 +156,6 @@ Information discovered during iteration:
 - Validation pass after settings pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
 - TUI struct-viewer pane-state folderization pass: relocated `squalr-tui/src/views/struct_viewer_pane_state.rs` to `squalr-tui/src/views/struct_viewer/pane_state.rs`, rewired view/app/state imports to `crate::views::struct_viewer::pane_state::*`, and updated module exports (`views/struct_viewer/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
 - Validation pass after struct-viewer pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
+- GUI vs TUI parity audit (this pass): non-pane-state module layout is now aligned (feature folders + app-shell composition modules), but layout behavior still diverged because TUI split each column into equal heights while GUI default docking intentionally prioritizes scanner/results-heavy regions.
+- TUI layout behavior update: added `squalr-tui/src/app/pane_layout.rs` to encode deliberate per-pane vertical weights with focused-pane boost, and wired `app_render` to use ratio constraints derived from these weights instead of equal-split row allocation.
+- Added unit tests for pane-layout weight behavior (`focused` boost and `unlisted focus` no-op) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (59 passed).

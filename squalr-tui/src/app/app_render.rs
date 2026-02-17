@@ -1,4 +1,5 @@
 use crate::app::AppShell;
+use crate::app::pane_layout::pane_layout_weights;
 use crate::state::pane::TuiPane;
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::theme::TuiTheme;
@@ -55,9 +56,11 @@ impl AppShell {
             return;
         }
 
-        let row_constraints: Vec<Constraint> = panes
-            .iter()
-            .map(|_| Constraint::Ratio(1, panes.len() as u32))
+        let pane_weights = pane_layout_weights(panes, self.app_state.focused_pane());
+        let total_pane_weight = pane_weights.iter().copied().sum::<u16>().max(1) as u32;
+        let row_constraints: Vec<Constraint> = pane_weights
+            .into_iter()
+            .map(|pane_weight| Constraint::Ratio(pane_weight as u32, total_pane_weight))
             .collect();
         let row_areas = Layout::default()
             .direction(Direction::Vertical)
