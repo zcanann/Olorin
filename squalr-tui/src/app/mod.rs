@@ -51,6 +51,7 @@ use squalr_engine_api::commands::settings::scan::list::scan_settings_list_reques
 use squalr_engine_api::commands::settings::scan::set::scan_settings_set_request::ScanSettingsSetRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
+use squalr_engine_api::events::scan_results::updated::scan_results_updated_event::ScanResultsUpdatedEvent;
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
@@ -64,7 +65,8 @@ use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
 use std::io::{self, Stdout};
 use std::path::Path;
-use std::sync::mpsc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant};
 
 pub struct TerminalGuard {
@@ -98,15 +100,26 @@ pub struct AppShell {
     pub tick_rate: Duration,
     pub last_tick_time: Instant,
     pub app_state: TuiAppState,
+    pub scan_results_update_counter: Arc<AtomicU64>,
+    pub consumed_scan_results_update_counter: u64,
+    pub has_registered_scan_results_updated_listener: bool,
+    pub last_scan_results_periodic_refresh_time: Option<Instant>,
 }
 
 impl AppShell {
+    const MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 50;
+    const MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 5_000;
+
     pub fn new(tick_rate: Duration) -> Self {
         Self {
             should_exit: false,
             tick_rate,
             last_tick_time: Instant::now(),
             app_state: TuiAppState::default(),
+            scan_results_update_counter: Arc::new(AtomicU64::new(0)),
+            consumed_scan_results_update_counter: 0,
+            has_registered_scan_results_updated_listener: false,
+            last_scan_results_periodic_refresh_time: None,
         }
     }
 
@@ -212,6 +225,12 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        self.register_scan_results_updated_listener_if_needed(squalr_engine);
+        let did_requery_after_scan_results_update = self.query_scan_results_page_if_engine_event_pending(squalr_engine);
+        if !did_requery_after_scan_results_update {
+            self.refresh_scan_results_on_interval_if_eligible(squalr_engine);
+        }
+
         self.refresh_output_log_history(squalr_engine);
 
         if self
@@ -259,6 +278,97 @@ impl AppShell {
         if !self.app_state.settings_pane_state.is_refreshing_settings && self.app_state.settings_pane_state.status_message == "Ready." {
             self.refresh_all_settings_categories(squalr_engine);
         }
+    }
+
+    fn register_scan_results_updated_listener_if_needed(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.has_registered_scan_results_updated_listener {
+            return;
+        }
+
+        let Some(engine_unprivileged_state) = squalr_engine.get_engine_unprivileged_state().as_ref() else {
+            return;
+        };
+        let scan_results_update_counter = self.scan_results_update_counter.clone();
+        engine_unprivileged_state.listen_for_engine_event::<ScanResultsUpdatedEvent>(move |_scan_results_updated_event| {
+            scan_results_update_counter.fetch_add(1, Ordering::Relaxed);
+        });
+
+        self.has_registered_scan_results_updated_listener = true;
+    }
+
+    fn query_scan_results_page_if_engine_event_pending(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) -> bool {
+        let latest_scan_results_update_counter = self.scan_results_update_counter.load(Ordering::Relaxed);
+        if latest_scan_results_update_counter == self.consumed_scan_results_update_counter {
+            return false;
+        }
+        if self.app_state.scan_results_pane_state.is_querying_scan_results {
+            return false;
+        }
+
+        self.consumed_scan_results_update_counter = latest_scan_results_update_counter;
+        self.query_scan_results_current_page(squalr_engine);
+        true
+    }
+
+    fn refresh_scan_results_on_interval_if_eligible(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let current_tick_time = Instant::now();
+        if !self.should_refresh_selected_scan_results_on_tick(current_tick_time) {
+            return;
+        }
+
+        if self.refresh_selected_scan_results_with_feedback(squalr_engine, false) {
+            self.last_scan_results_periodic_refresh_time = Some(Instant::now());
+        }
+    }
+
+    fn should_refresh_selected_scan_results_on_tick(
+        &self,
+        current_tick_time: Instant,
+    ) -> bool {
+        if !self.app_state.is_pane_visible(TuiPane::ScanResults) {
+            return false;
+        }
+        if self.app_state.scan_results_pane_state.selected_result_count() == 0 {
+            return false;
+        }
+        if self.app_state.scan_results_pane_state.is_querying_scan_results
+            || self
+                .app_state
+                .scan_results_pane_state
+                .is_refreshing_scan_results
+            || self.app_state.scan_results_pane_state.is_freezing_scan_results
+            || self.app_state.scan_results_pane_state.is_deleting_scan_results
+            || self.app_state.scan_results_pane_state.is_committing_value_edit
+        {
+            return false;
+        }
+
+        let refresh_interval = self.scan_results_periodic_refresh_interval();
+        match self.last_scan_results_periodic_refresh_time {
+            Some(last_scan_results_periodic_refresh_time) => current_tick_time.duration_since(last_scan_results_periodic_refresh_time) >= refresh_interval,
+            None => true,
+        }
+    }
+
+    fn scan_results_periodic_refresh_interval(&self) -> Duration {
+        let configured_results_read_interval_ms = self
+            .app_state
+            .settings_pane_state
+            .scan_settings
+            .results_read_interval_ms;
+        let bounded_results_read_interval_ms =
+            configured_results_read_interval_ms.clamp(Self::MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS, Self::MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS);
+
+        Duration::from_millis(bounded_results_read_interval_ms)
     }
 
     fn handle_focused_pane_event(
@@ -1663,13 +1773,23 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        let _ = self.refresh_selected_scan_results_with_feedback(squalr_engine, true);
+    }
+
+    fn refresh_selected_scan_results_with_feedback(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
+    ) -> bool {
         if self
             .app_state
             .scan_results_pane_state
             .is_refreshing_scan_results
         {
-            self.app_state.scan_results_pane_state.status_message = "Scan results refresh already in progress.".to_string();
-            return;
+            if should_update_status_message {
+                self.app_state.scan_results_pane_state.status_message = "Scan results refresh already in progress.".to_string();
+            }
+            return false;
         }
 
         let selected_scan_result_refs = self
@@ -1677,22 +1797,28 @@ impl AppShell {
             .scan_results_pane_state
             .selected_scan_result_refs();
         if selected_scan_result_refs.is_empty() {
-            self.app_state.scan_results_pane_state.status_message = "No scan results are selected to refresh.".to_string();
-            return;
+            if should_update_status_message {
+                self.app_state.scan_results_pane_state.status_message = "No scan results are selected to refresh.".to_string();
+            }
+            return false;
         }
 
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,
             None => {
-                self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for scan results refresh.".to_string();
-                return;
+                if should_update_status_message {
+                    self.app_state.scan_results_pane_state.status_message = "No unprivileged engine state is available for scan results refresh.".to_string();
+                }
+                return false;
             }
         };
 
         self.app_state
             .scan_results_pane_state
             .is_refreshing_scan_results = true;
-        self.app_state.scan_results_pane_state.status_message = format!("Refreshing {} selected scan results.", selected_scan_result_refs.len());
+        if should_update_status_message {
+            self.app_state.scan_results_pane_state.status_message = format!("Refreshing {} selected scan results.", selected_scan_result_refs.len());
+        }
 
         let scan_results_refresh_request = ScanResultsRefreshRequest {
             scan_result_refs: selected_scan_result_refs,
@@ -1706,8 +1832,10 @@ impl AppShell {
             self.app_state
                 .scan_results_pane_state
                 .is_refreshing_scan_results = false;
-            self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results refresh request.".to_string();
-            return;
+            if should_update_status_message {
+                self.app_state.scan_results_pane_state.status_message = "Failed to dispatch scan results refresh request.".to_string();
+            }
+            return false;
         }
 
         match response_receiver.recv_timeout(Duration::from_secs(3)) {
@@ -1716,16 +1844,22 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .apply_refreshed_results(scan_results_refresh_response.scan_results);
-                self.app_state.scan_results_pane_state.status_message = format!("Refreshed {} scan results.", refreshed_result_count);
+                if should_update_status_message {
+                    self.app_state.scan_results_pane_state.status_message = format!("Refreshed {} scan results.", refreshed_result_count);
+                }
+                self.last_scan_results_periodic_refresh_time = Some(Instant::now());
             }
             Err(receive_error) => {
-                self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results refresh response: {}", receive_error);
+                if should_update_status_message {
+                    self.app_state.scan_results_pane_state.status_message = format!("Timed out waiting for scan results refresh response: {}", receive_error);
+                }
             }
         }
 
         self.app_state
             .scan_results_pane_state
             .is_refreshing_scan_results = false;
+        true
     }
 
     fn toggle_selected_scan_results_frozen_state(
@@ -3159,7 +3293,26 @@ mod tests {
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use squalr_engine::engine_mode::EngineMode;
     use squalr_engine::squalr_engine::SqualrEngine;
-    use std::time::Duration;
+    use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
+    use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
+    use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
+    use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
+    use std::time::{Duration, Instant};
+
+    fn create_scan_result(scan_result_global_index: u64) -> ScanResult {
+        let scan_result_valued = ScanResultValued::new(
+            0x1000 + scan_result_global_index,
+            DataTypeRef::new("u8"),
+            String::new(),
+            None,
+            Vec::new(),
+            None,
+            Vec::new(),
+            ScanResultRef::new(scan_result_global_index),
+        );
+
+        ScanResult::new(scan_result_valued, String::new(), 0, None, Vec::new(), false)
+    }
 
     #[test]
     fn focused_settings_pane_routes_category_cycle_key() {
@@ -3182,5 +3335,86 @@ mod tests {
         app_shell.handle_focused_pane_event(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::NONE), &mut squalr_engine);
 
         assert!(app_shell.app_state.output_pane_state.log_lines.is_empty());
+    }
+
+    #[test]
+    fn scan_results_engine_update_waits_while_query_is_active() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for signal routing test");
+
+        app_shell
+            .scan_results_update_counter
+            .store(1, std::sync::atomic::Ordering::Relaxed);
+        app_shell
+            .app_state
+            .scan_results_pane_state
+            .is_querying_scan_results = true;
+
+        let did_dispatch_query = app_shell.query_scan_results_page_if_engine_event_pending(&mut squalr_engine);
+
+        assert!(!did_dispatch_query);
+        assert_eq!(app_shell.consumed_scan_results_update_counter, 0);
+    }
+
+    #[test]
+    fn scan_results_periodic_refresh_requires_visible_pane_and_selection() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell.app_state.scan_results_pane_state.scan_results = vec![create_scan_result(1)];
+        app_shell
+            .app_state
+            .scan_results_pane_state
+            .selected_result_index = Some(0);
+
+        let _hide_succeeded = app_shell.app_state.toggle_pane_visibility(TuiPane::ScanResults);
+        assert!(!app_shell.app_state.is_pane_visible(TuiPane::ScanResults));
+
+        assert!(!app_shell.should_refresh_selected_scan_results_on_tick(current_tick_time));
+
+        app_shell.app_state.set_focus_to_pane(TuiPane::ScanResults);
+
+        assert!(app_shell.should_refresh_selected_scan_results_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn scan_results_periodic_refresh_respects_bounded_interval() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell.app_state.scan_results_pane_state.scan_results = vec![create_scan_result(7)];
+        app_shell
+            .app_state
+            .scan_results_pane_state
+            .selected_result_index = Some(0);
+
+        app_shell
+            .app_state
+            .settings_pane_state
+            .scan_settings
+            .results_read_interval_ms = 1;
+        assert_eq!(
+            app_shell.scan_results_periodic_refresh_interval(),
+            Duration::from_millis(AppShell::MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS)
+        );
+
+        app_shell
+            .app_state
+            .settings_pane_state
+            .scan_settings
+            .results_read_interval_ms = 100_000;
+        assert_eq!(
+            app_shell.scan_results_periodic_refresh_interval(),
+            Duration::from_millis(AppShell::MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS)
+        );
+
+        app_shell
+            .app_state
+            .settings_pane_state
+            .scan_settings
+            .results_read_interval_ms = 1_000;
+        app_shell.last_scan_results_periodic_refresh_time = Some(current_tick_time - Duration::from_millis(500));
+        assert!(!app_shell.should_refresh_selected_scan_results_on_tick(current_tick_time));
+
+        app_shell.last_scan_results_periodic_refresh_time = Some(current_tick_time - Duration::from_millis(1_100));
+        assert!(app_shell.should_refresh_selected_scan_results_on_tick(current_tick_time));
     }
 }
