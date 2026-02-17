@@ -5,6 +5,5 @@ mod command_dispatch;
 mod command_dispatch_project;
 mod command_dispatch_scan;
 mod pane_key_handlers;
-mod pane_layout;
 
 pub use app_shell::{AppShell, TerminalGuard};

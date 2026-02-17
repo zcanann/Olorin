@@ -4,10 +4,6 @@ use squalr_engine_api::structures::data_types::floating_point_tolerance::Floatin
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
 
-pub fn build_settings_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
-    build_settings_summary_lines_with_capacity(settings_pane_state, usize::MAX)
-}
-
 pub fn build_settings_summary_lines_with_capacity(
     settings_pane_state: &SettingsPaneState,
     line_capacity: usize,

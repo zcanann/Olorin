@@ -1,5 +1,5 @@
 use crate::state::TuiAppState;
-use crate::state::pane::TuiPane;
+use crate::state::workspace_page::TuiWorkspacePage;
 use crate::theme::TuiTheme;
 use anyhow::{Context, Result, bail};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
@@ -133,13 +133,14 @@ impl AppShell {
 
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(5), Constraint::Min(0), Constraint::Length(5)])
+            .constraints([Constraint::Length(6), Constraint::Min(0), Constraint::Length(5)])
             .split(frame.area());
 
         let header = Paragraph::new(vec![
             Line::from(Self::engine_mode_header_text(engine_mode)),
             Line::from(self.session_opened_process_metadata_line()),
             Line::from(self.session_active_project_metadata_line()),
+            Line::from(self.session_active_workspace_metadata_line()),
         ])
         .style(TuiTheme::panel_text_style())
         .block(TuiTheme::session_block("Session"));
@@ -165,7 +166,7 @@ impl AppShell {
     }
 
     fn footer_navigation_controls_line() -> &'static str {
-        "[NAV] Tab/Shift+Tab focus | 1-7 jump | Ctrl+1-7 or v toggle | 0 show-all."
+        "[NAV] 1 Project | 2 Scanner | 3 Settings | Tab/Shift+Tab focus in page."
     }
 
     fn footer_exit_controls_line() -> &'static str {
@@ -217,6 +218,10 @@ impl AppShell {
         }
     }
 
+    fn session_active_workspace_metadata_line(&self) -> String {
+        format!("[PAGE] {}.", self.app_state.active_workspace_page().title())
+    }
+
     fn condense_path_for_session(path: &Path) -> String {
         let normalized_path = path.to_string_lossy().replace('\\', "/");
         let path_segments: Vec<&str> = normalized_path
@@ -249,17 +254,9 @@ impl AppShell {
                 KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => self.should_exit = true,
                 KeyCode::Tab => self.app_state.cycle_focus_forward(),
                 KeyCode::BackTab => self.app_state.cycle_focus_backward(),
-                KeyCode::Char('v') => {
-                    let _toggle_succeeded = self.app_state.toggle_focused_pane_visibility();
-                }
-                KeyCode::Char('0') => self.app_state.show_all_panes(),
                 KeyCode::Char(shortcut_digit) => {
-                    if let Some(target_pane) = TuiPane::from_shortcut_digit(shortcut_digit) {
-                        if key_event.modifiers.contains(KeyModifiers::CONTROL) {
-                            let _toggle_succeeded = self.app_state.toggle_pane_visibility(target_pane);
-                        } else {
-                            self.app_state.set_focus_to_pane(target_pane);
-                        }
+                    if let Some(target_workspace_page) = TuiWorkspacePage::from_shortcut_digit(shortcut_digit) {
+                        self.app_state.set_active_workspace_page(target_workspace_page);
                     }
                 }
                 _ => was_handled_by_global_shortcut = false,

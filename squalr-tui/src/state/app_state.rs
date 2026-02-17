@@ -1,6 +1,7 @@
 use crate::state::pane::TuiPane;
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::state::pane_layout_state::PaneLayoutState;
+use crate::state::workspace_page::TuiWorkspacePage;
 use crate::views::element_scanner::pane_state::ElementScannerPaneState;
 use crate::views::output::pane_state::OutputPaneState;
 use crate::views::output::summary::OUTPUT_FIXED_SUMMARY_LINE_COUNT;
@@ -25,6 +26,18 @@ pub struct TuiAppState {
 }
 
 impl TuiAppState {
+    pub fn active_workspace_page(&self) -> TuiWorkspacePage {
+        self.pane_layout_state.active_workspace_page
+    }
+
+    pub fn set_active_workspace_page(
+        &mut self,
+        active_workspace_page: TuiWorkspacePage,
+    ) {
+        self.pane_layout_state
+            .set_active_workspace_page(active_workspace_page);
+    }
+
     pub fn focused_pane(&self) -> TuiPane {
         self.pane_layout_state.focused_pane
     }
@@ -40,38 +53,12 @@ impl TuiAppState {
         self.pane_layout_state.visible_panes_in_order()
     }
 
-    pub fn set_focus_to_pane(
-        &mut self,
-        pane: TuiPane,
-    ) {
-        let pane_was_made_visible = self.pane_layout_state.set_pane_visibility(pane, true);
-        if pane_was_made_visible {
-            self.pane_layout_state.focused_pane = pane;
-        }
-    }
-
     pub fn cycle_focus_forward(&mut self) {
         self.cycle_focus(true);
     }
 
     pub fn cycle_focus_backward(&mut self) {
         self.cycle_focus(false);
-    }
-
-    pub fn toggle_focused_pane_visibility(&mut self) -> bool {
-        self.pane_layout_state
-            .toggle_pane_visibility(self.focused_pane())
-    }
-
-    pub fn toggle_pane_visibility(
-        &mut self,
-        pane: TuiPane,
-    ) -> bool {
-        self.pane_layout_state.toggle_pane_visibility(pane)
-    }
-
-    pub fn show_all_panes(&mut self) {
-        self.pane_layout_state.show_all_panes();
     }
 
     pub fn pane_summary_lines(

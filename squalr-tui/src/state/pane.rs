@@ -35,31 +35,6 @@ impl TuiPane {
         }
     }
 
-    pub fn shortcut_digit(self) -> char {
-        match self {
-            TuiPane::ProcessSelector => '1',
-            TuiPane::ElementScanner => '2',
-            TuiPane::ScanResults => '3',
-            TuiPane::ProjectExplorer => '4',
-            TuiPane::StructViewer => '5',
-            TuiPane::Output => '6',
-            TuiPane::Settings => '7',
-        }
-    }
-
-    pub fn from_shortcut_digit(shortcut_digit: char) -> Option<TuiPane> {
-        match shortcut_digit {
-            '1' => Some(TuiPane::ProcessSelector),
-            '2' => Some(TuiPane::ElementScanner),
-            '3' => Some(TuiPane::ScanResults),
-            '4' => Some(TuiPane::ProjectExplorer),
-            '5' => Some(TuiPane::StructViewer),
-            '6' => Some(TuiPane::Output),
-            '7' => Some(TuiPane::Settings),
-            _ => None,
-        }
-    }
-
     pub fn to_index(self) -> usize {
         match self {
             TuiPane::ProcessSelector => 0,

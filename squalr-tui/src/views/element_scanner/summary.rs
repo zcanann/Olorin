@@ -5,10 +5,6 @@ use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_delt
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 
-pub fn build_element_scanner_summary_lines(element_scanner_pane_state: &ElementScannerPaneState) -> Vec<String> {
-    build_element_scanner_summary_lines_with_capacity(element_scanner_pane_state, usize::MAX)
-}
-
 pub fn build_element_scanner_summary_lines_with_capacity(
     element_scanner_pane_state: &ElementScannerPaneState,
     line_capacity: usize,

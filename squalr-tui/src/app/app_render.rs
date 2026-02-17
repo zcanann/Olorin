@@ -1,7 +1,7 @@
 use crate::app::AppShell;
-use crate::app::pane_layout::pane_layout_weights;
 use crate::state::pane::TuiPane;
 use crate::state::pane_entry_row::PaneEntryRow;
+use crate::state::workspace_page::TuiWorkspacePage;
 use crate::theme::TuiTheme;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::text::{Line, Span};
@@ -13,63 +13,63 @@ impl AppShell {
         frame: &mut ratatui::Frame<'_>,
         body_area: Rect,
     ) {
-        let left_column_panes: Vec<TuiPane> = [
-            TuiPane::ProcessSelector,
-            TuiPane::ProjectExplorer,
-            TuiPane::Settings,
-        ]
-        .into_iter()
-        .filter(|pane| self.app_state.is_pane_visible(*pane))
-        .collect();
-        let right_column_panes: Vec<TuiPane> = [
-            TuiPane::ElementScanner,
-            TuiPane::ScanResults,
-            TuiPane::StructViewer,
-            TuiPane::Output,
-        ]
-        .into_iter()
-        .filter(|pane| self.app_state.is_pane_visible(*pane))
-        .collect();
-
-        match (left_column_panes.is_empty(), right_column_panes.is_empty()) {
-            (false, false) => {
-                let columns = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([Constraint::Percentage(30), Constraint::Percentage(70)])
-                    .split(body_area);
-                self.draw_pane_column(frame, columns[0], &left_column_panes);
-                self.draw_pane_column(frame, columns[1], &right_column_panes);
-            }
-            (false, true) => self.draw_pane_column(frame, body_area, &left_column_panes),
-            (true, false) => self.draw_pane_column(frame, body_area, &right_column_panes),
-            (true, true) => {}
+        match self.app_state.active_workspace_page() {
+            TuiWorkspacePage::ProjectWorkspace => self.draw_project_workspace_layout(frame, body_area),
+            TuiWorkspacePage::ScannerWorkspace => self.draw_scanner_workspace_layout(frame, body_area),
+            TuiWorkspacePage::SettingsWorkspace => self.draw_settings_workspace_layout(frame, body_area),
         }
     }
 
-    fn draw_pane_column(
+    fn draw_project_workspace_layout(
         &self,
         frame: &mut ratatui::Frame<'_>,
-        column_area: Rect,
-        panes: &[TuiPane],
+        body_area: Rect,
     ) {
-        if panes.is_empty() {
-            return;
-        }
-
-        let pane_weights = pane_layout_weights(panes, self.app_state.focused_pane());
-        let total_pane_weight = pane_weights.iter().copied().sum::<u16>().max(1) as u32;
-        let row_constraints: Vec<Constraint> = pane_weights
-            .into_iter()
-            .map(|pane_weight| Constraint::Ratio(pane_weight as u32, total_pane_weight))
-            .collect();
-        let row_areas = Layout::default()
+        let rows = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(row_constraints)
-            .split(column_area);
+            .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+            .split(body_area);
+        let workspace_columns = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(34), Constraint::Percentage(66)])
+            .split(rows[0]);
 
-        for (row_index, pane) in panes.iter().enumerate() {
-            self.draw_single_pane(frame, row_areas[row_index], *pane);
-        }
+        self.draw_single_pane(frame, workspace_columns[0], TuiPane::ProcessSelector);
+        self.draw_single_pane(frame, workspace_columns[1], TuiPane::ProjectExplorer);
+        self.draw_single_pane(frame, rows[1], TuiPane::Output);
+    }
+
+    fn draw_scanner_workspace_layout(
+        &self,
+        frame: &mut ratatui::Frame<'_>,
+        body_area: Rect,
+    ) {
+        let rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+            .split(body_area);
+        let workspace_columns = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+            .split(rows[0]);
+
+        self.draw_single_pane(frame, workspace_columns[0], TuiPane::ElementScanner);
+        self.draw_single_pane(frame, workspace_columns[1], TuiPane::ScanResults);
+        self.draw_single_pane(frame, rows[1], TuiPane::Output);
+    }
+
+    fn draw_settings_workspace_layout(
+        &self,
+        frame: &mut ratatui::Frame<'_>,
+        body_area: Rect,
+    ) {
+        let rows = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
+            .split(body_area);
+
+        self.draw_single_pane(frame, rows[0], TuiPane::Settings);
+        self.draw_single_pane(frame, rows[1], TuiPane::Output);
     }
 
     fn draw_single_pane(
@@ -79,7 +79,7 @@ impl AppShell {
         pane: TuiPane,
     ) {
         let is_focused = self.app_state.focused_pane() == pane;
-        let mut title = format!("{} [{}]", pane.title(), pane.shortcut_digit());
+        let mut title = pane.title().to_string();
         if is_focused {
             title.push_str(" *");
         }
