@@ -198,3 +198,4 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): ultra-small summary clamping could drop `[ROWS]` lines in entry-heavy panes, allowing rows to render without telemetry and creating stale capacity visibility.
 - TUI ultra-small telemetry visibility update: `app_render` now upserts `[ROWS]` telemetry for entry-heavy panes before final row-capacity calculation and recalculates capacity after insertion; this keeps telemetry synchronized whenever rows are rendered and avoids phantom minimum-row capacity when summary+separator already consume space.
 - Added focused `app_render` tests for telemetry upsert behavior (missing-marker replacement and empty-summary insertion) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (98 passed).
+- Checkpoint commit for ultra-small telemetry visibility parity: `cfffc8b0` (`Enforce TUI rows telemetry visibility under tiny pane heights`).
