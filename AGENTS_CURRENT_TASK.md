@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: align summary telemetry lines for entry-heavy panes (`[ROWS]` in `process_selector`, `scan_results`, `project_explorer`) with dynamic pane-height-driven capacities so displayed row guidance matches live rendering behavior.
+- Concrete next subtask: audit entry-heavy pane summaries under ultra-small heights and ensure `[ROWS]` telemetry remains visible whenever at least one entry row is rendered.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -192,3 +192,6 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): entry-heavy panes (`process_selector`, `scan_results`, `project_explorer`) could still starve entry rendering under tiny heights because summary lines consumed all content budget and a mandatory separator consumed the final line.
 - TUI tiny-height entry safeguard pass: `app_render` now clamps summary-line count for entry-heavy panes using per-pane minimum entry-row budgets, computes entry capacity with a conditional summary/entry separator, and preserves existing behavior for non-entry-heavy panes.
 - Added focused `app_render` tests for summary clamping, tiny-height single-row entry capacity without separator, and non-entry-heavy unchanged capacity behavior; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (93 passed).
+- GUI vs TUI parity audit (this pass): `[ROWS]` telemetry lines in entry-heavy pane summaries were hardcoded (`top=5`, `projects=5|hierarchy=10`) and diverged from dynamic pane-height-driven entry capacities.
+- TUI telemetry alignment update: `app_render` now computes final per-pane entry-row capacity first, then replaces the existing `[ROWS]` summary line in-place via `TuiAppState::pane_row_telemetry_line(...)` so telemetry matches the live render budget without changing summary line counts.
+- Added focused coverage for telemetry replacement and project-explorer split telemetry capacities (`app_render` + `state::app_state`), and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (96 passed).

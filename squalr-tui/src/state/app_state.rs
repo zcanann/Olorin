@@ -125,6 +125,24 @@ impl TuiAppState {
         }
     }
 
+    pub fn pane_row_telemetry_line(
+        &self,
+        pane: TuiPane,
+        pane_entry_row_capacity: usize,
+    ) -> Option<String> {
+        match pane {
+            TuiPane::ProcessSelector | TuiPane::ScanResults => Some(format!("[ROWS] visible={}.", pane_entry_row_capacity)),
+            TuiPane::ProjectExplorer => {
+                let (project_entry_row_capacity, project_item_entry_row_capacity) = self.project_explorer_entry_row_capacities(pane_entry_row_capacity);
+                Some(format!(
+                    "[ROWS] projects={} | hierarchy={}.",
+                    project_entry_row_capacity, project_item_entry_row_capacity
+                ))
+            }
+            _ => None,
+        }
+    }
+
     fn project_explorer_entry_row_capacities(
         &self,
         total_entry_row_capacity: usize,
@@ -310,5 +328,39 @@ mod tests {
 
         assert_eq!(entry_rows.len(), 1);
         assert_eq!(entry_rows[0].primary_text, "item-a");
+    }
+
+    #[test]
+    fn row_telemetry_uses_split_project_explorer_capacities() {
+        let mut app_state = TuiAppState::default();
+        app_state.project_explorer_pane_state.project_entries = vec![ProjectInfo::new(
+            PathBuf::from("C:/Projects/ProjectA/project/squalr-project.json"),
+            None,
+            ProjectManifest::new(Vec::new()),
+        )];
+        app_state
+            .project_explorer_pane_state
+            .project_item_visible_entries = vec![
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("root/item-a.json"),
+                display_name: "item-a".to_string(),
+                depth: 0,
+                is_directory: false,
+                is_expanded: false,
+                is_activated: false,
+            },
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("root/item-b.json"),
+                display_name: "item-b".to_string(),
+                depth: 0,
+                is_directory: false,
+                is_expanded: false,
+                is_activated: false,
+            },
+        ];
+
+        let row_telemetry_line = app_state.pane_row_telemetry_line(TuiPane::ProjectExplorer, 6);
+
+        assert_eq!(row_telemetry_line, Some("[ROWS] projects=2 | hierarchy=4.".to_string()));
     }
 }

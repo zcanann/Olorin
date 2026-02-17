@@ -92,6 +92,7 @@ impl AppShell {
             .collect::<Vec<String>>();
         let summary_lines = Self::clamp_summary_lines_for_entry_safeguard(pane, fitted_summary_lines, pane_content_height);
         let entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
+        let summary_lines = Self::replace_row_telemetry_line(summary_lines, self.app_state.pane_row_telemetry_line(pane, entry_row_capacity));
         let pane_lines: Vec<Line<'static>> = summary_lines.into_iter().map(Line::from).collect();
         let entry_rows = self.app_state.pane_entry_rows(pane, entry_row_capacity);
         let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows, pane_content_width);
@@ -154,6 +155,23 @@ impl AppShell {
             .into_iter()
             .map(|summary_line| Self::truncate_line_with_ellipsis(summary_line, content_width))
             .collect()
+    }
+
+    fn replace_row_telemetry_line(
+        mut summary_lines: Vec<String>,
+        row_telemetry_line: Option<String>,
+    ) -> Vec<String> {
+        let Some(row_telemetry_line) = row_telemetry_line else {
+            return summary_lines;
+        };
+        let Some(row_summary_line_index) = summary_lines
+            .iter()
+            .position(|summary_line| summary_line.starts_with("[ROWS]"))
+        else {
+            return summary_lines;
+        };
+        summary_lines[row_summary_line_index] = row_telemetry_line;
+        summary_lines
     }
 
     fn clamp_summary_lines_for_entry_safeguard(
@@ -356,5 +374,21 @@ mod tests {
         let entry_row_capacity = AppShell::pane_entry_row_capacity(TuiPane::Output, 4, 3);
 
         assert_eq!(entry_row_capacity, 0);
+    }
+
+    #[test]
+    fn replaces_rows_telemetry_line_when_present() {
+        let summary_lines = vec!["[STAT] ok.".to_string(), "[ROWS] top=5.".to_string()];
+        let updated_summary_lines = AppShell::replace_row_telemetry_line(summary_lines, Some("[ROWS] visible=3.".to_string()));
+
+        assert_eq!(updated_summary_lines[1], "[ROWS] visible=3.");
+    }
+
+    #[test]
+    fn leaves_summary_lines_unchanged_without_rows_marker() {
+        let summary_lines = vec!["[STAT] ok.".to_string()];
+        let updated_summary_lines = AppShell::replace_row_telemetry_line(summary_lines.clone(), Some("[ROWS] visible=3.".to_string()));
+
+        assert_eq!(updated_summary_lines, summary_lines);
     }
 }
