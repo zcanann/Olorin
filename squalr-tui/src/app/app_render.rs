@@ -29,13 +29,16 @@ impl AppShell {
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(68), Constraint::Percentage(32)])
             .split(body_area);
-        let workspace_columns = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(34), Constraint::Percentage(66)])
-            .split(rows[0]);
 
-        self.draw_single_pane(frame, workspace_columns[0], TuiPane::ProcessSelector);
-        self.draw_single_pane(frame, workspace_columns[1], TuiPane::ProjectExplorer);
+        if self
+            .app_state
+            .process_selector_pane_state
+            .is_process_selector_view_active
+        {
+            self.draw_single_pane(frame, rows[0], TuiPane::ProcessSelector);
+        } else {
+            self.draw_single_pane(frame, rows[0], TuiPane::ProjectExplorer);
+        }
         self.draw_single_pane(frame, rows[1], TuiPane::Output);
     }
 

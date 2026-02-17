@@ -14,16 +14,15 @@ pub fn build_element_scanner_summary_lines_with_capacity(
     }
 
     let constraint_row_lines = build_constraint_row_lines(element_scanner_pane_state);
-    let selected_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, 1);
-    let additional_constraint_capacity = line_capacity.saturating_sub(7);
-    let additional_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, additional_constraint_capacity);
+    let constraint_line_capacity = line_capacity.saturating_sub(6);
+    let visible_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, constraint_line_capacity);
 
     let mut prioritized_lines = vec![
         "[ACT] s scan | n reset | c collect | a add | x remove.".to_string(),
         "[CTRL] t/T type | m/M compare | j/k row | type value.".to_string(),
         format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()),
     ];
-    prioritized_lines.extend(selected_constraint_lines);
+    prioritized_lines.extend(visible_constraint_lines);
     prioritized_lines.push(format!(
         "[SCAN] constraints={} | selected_row={} | pending={} | has_results={}.",
         element_scanner_pane_state.active_constraint_count(),
@@ -36,7 +35,6 @@ pub fn build_element_scanner_summary_lines_with_capacity(
         "[LAST] result_count={} | total_bytes={}.",
         element_scanner_pane_state.last_result_count, element_scanner_pane_state.last_total_size_in_bytes
     ));
-    prioritized_lines.extend(additional_constraint_lines);
 
     prioritized_lines.into_iter().take(line_capacity).collect()
 }

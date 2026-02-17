@@ -1,5 +1,6 @@
 use super::app_shell::AppShell;
 use crate::state::pane::TuiPane;
+use crate::views::process_selector::pane_state::ProcessSelectorInputMode;
 use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use squalr_engine::squalr_engine::SqualrEngine;
@@ -11,7 +12,7 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         match self.app_state.focused_pane() {
-            TuiPane::ProcessSelector => self.handle_process_selector_key_event(key_event.code, squalr_engine),
+            TuiPane::ProcessSelector => self.handle_process_selector_key_event(key_event, squalr_engine),
             TuiPane::ElementScanner => self.handle_element_scanner_key_event(key_event, squalr_engine),
             TuiPane::ScanResults => self.handle_scan_results_key_event(key_event, squalr_engine),
             TuiPane::ProjectExplorer => self.handle_project_explorer_key_event(key_event, squalr_engine),
@@ -98,10 +99,43 @@ impl AppShell {
 
     pub(super) fn handle_process_selector_key_event(
         &mut self,
-        key_code: KeyCode,
+        key_event: KeyEvent,
         squalr_engine: &mut SqualrEngine,
     ) {
-        match key_code {
+        if self.app_state.process_selector_pane_state.input_mode == ProcessSelectorInputMode::Search {
+            match key_event.code {
+                KeyCode::Esc => {
+                    self.app_state.process_selector_pane_state.cancel_search_input();
+                    self.refresh_process_list(squalr_engine);
+                }
+                KeyCode::Enter => {
+                    self.app_state.process_selector_pane_state.commit_search_input();
+                }
+                KeyCode::Backspace => {
+                    self.app_state
+                        .process_selector_pane_state
+                        .backspace_pending_search_name();
+                    self.refresh_process_list(squalr_engine);
+                }
+                KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.app_state
+                        .process_selector_pane_state
+                        .clear_pending_search_name();
+                    self.refresh_process_list(squalr_engine);
+                }
+                KeyCode::Char(search_character) => {
+                    self.app_state
+                        .process_selector_pane_state
+                        .append_pending_search_character(search_character);
+                    self.refresh_process_list(squalr_engine);
+                }
+                _ => {}
+            }
+
+            return;
+        }
+
+        match key_event.code {
             KeyCode::Char('r') => self.refresh_process_list(squalr_engine),
             KeyCode::Char('w') => {
                 let updated_windowed_filter = !self
@@ -113,6 +147,7 @@ impl AppShell {
                     .set_windowed_filter(updated_windowed_filter);
                 self.refresh_process_list(squalr_engine);
             }
+            KeyCode::Char('/') => self.app_state.process_selector_pane_state.begin_search_input(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.process_selector_pane_state.select_next_process(),
             KeyCode::Up | KeyCode::Char('k') => self
                 .app_state

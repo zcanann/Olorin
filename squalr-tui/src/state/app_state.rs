@@ -36,6 +36,12 @@ impl TuiAppState {
     ) {
         self.pane_layout_state
             .set_active_workspace_page(active_workspace_page);
+
+        if !self.is_pane_visible(self.focused_pane()) {
+            if let Some(first_visible_pane) = self.visible_panes_in_order().first().copied() {
+                self.pane_layout_state.focused_pane = first_visible_pane;
+            }
+        }
     }
 
     pub fn focused_pane(&self) -> TuiPane {
@@ -55,11 +61,20 @@ impl TuiAppState {
         &self,
         pane: TuiPane,
     ) -> bool {
-        self.pane_layout_state.is_pane_visible(pane)
+        self.visible_panes_in_order().contains(&pane)
     }
 
     pub fn visible_panes_in_order(&self) -> Vec<TuiPane> {
-        self.pane_layout_state.visible_panes_in_order()
+        match self.active_workspace_page() {
+            TuiWorkspacePage::ProjectWorkspace => {
+                if self.process_selector_pane_state.is_process_selector_view_active {
+                    vec![TuiPane::ProcessSelector, TuiPane::Output]
+                } else {
+                    vec![TuiPane::ProjectExplorer, TuiPane::Output]
+                }
+            }
+            _ => self.pane_layout_state.visible_panes_in_order(),
+        }
     }
 
     pub fn cycle_focus_forward(&mut self) {
@@ -152,6 +167,10 @@ impl TuiAppState {
             .project_explorer_pane_state
             .project_item_visible_entries
             .len();
+        if self.project_explorer_pane_state.focus_target == ProjectExplorerFocusTarget::ProjectHierarchy {
+            return (0, total_entry_row_capacity);
+        }
+
         if project_entry_count == 0 {
             return (0, total_entry_row_capacity);
         }
@@ -161,10 +180,7 @@ impl TuiAppState {
         }
 
         if total_entry_row_capacity == 1 {
-            return match self.project_explorer_pane_state.focus_target {
-                ProjectExplorerFocusTarget::ProjectList => (1, 0),
-                ProjectExplorerFocusTarget::ProjectHierarchy => (0, 1),
-            };
+            return (1, 0);
         }
 
         let mut project_entry_row_capacity = ((total_entry_row_capacity as f32) * 0.33).round() as usize;
@@ -210,6 +226,9 @@ mod tests {
     #[test]
     fn switching_workspace_page_rehomes_focus_if_current_pane_is_hidden() {
         let mut tui_app_state = TuiAppState::default();
+        tui_app_state
+            .process_selector_pane_state
+            .is_process_selector_view_active = false;
         tui_app_state.set_focused_pane(TuiPane::ProjectExplorer);
 
         tui_app_state.set_active_workspace_page(TuiWorkspacePage::ScannerWorkspace);
@@ -230,16 +249,32 @@ mod tests {
     }
 
     #[test]
-    fn project_workspace_focus_cycle_loops_in_page_order() {
+    fn project_workspace_focus_cycle_loops_in_process_selector_view_order() {
         let mut tui_app_state = TuiAppState::default();
 
         assert_eq!(tui_app_state.focused_pane(), TuiPane::ProcessSelector);
         tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ProcessSelector);
+
+        tui_app_state.cycle_focus_backward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+    }
+
+    #[test]
+    fn project_workspace_focus_cycle_loops_in_project_explorer_view_order() {
+        let mut tui_app_state = TuiAppState::default();
+        tui_app_state
+            .process_selector_pane_state
+            .is_process_selector_view_active = false;
+        tui_app_state.set_focused_pane(TuiPane::ProjectExplorer);
+
         assert_eq!(tui_app_state.focused_pane(), TuiPane::ProjectExplorer);
         tui_app_state.cycle_focus_forward();
         assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
         tui_app_state.cycle_focus_forward();
-        assert_eq!(tui_app_state.focused_pane(), TuiPane::ProcessSelector);
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ProjectExplorer);
 
         tui_app_state.cycle_focus_backward();
         assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);

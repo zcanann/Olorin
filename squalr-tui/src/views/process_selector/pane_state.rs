@@ -4,8 +4,16 @@ use crate::views::process_selector::summary::build_process_selector_summary_line
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 
+/// Stores text input mode for process selector search workflows.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ProcessSelectorInputMode {
+    #[default]
+    None,
+    Search,
+}
+
 /// Stores UI state for process selection workflows.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ProcessSelectorPaneState {
     pub selected_process_identifier: Option<u32>,
     pub selected_process_name: Option<String>,
@@ -17,6 +25,9 @@ pub struct ProcessSelectorPaneState {
     pub has_loaded_process_list_once: bool,
     pub is_awaiting_process_list_response: bool,
     pub is_opening_process: bool,
+    pub is_process_selector_view_active: bool,
+    pub input_mode: ProcessSelectorInputMode,
+    pub pending_search_name_input: String,
     pub status_message: String,
 }
 
@@ -88,11 +99,58 @@ impl ProcessSelectorPaneState {
             Some(opened_process_info) => {
                 self.opened_process_identifier = Some(opened_process_info.get_process_id_raw());
                 self.opened_process_name = Some(opened_process_info.get_name().to_string());
+                self.is_process_selector_view_active = false;
             }
             None => {
                 self.opened_process_identifier = None;
                 self.opened_process_name = None;
+                self.is_process_selector_view_active = true;
             }
+        }
+    }
+
+    pub fn activate_process_selector_view(&mut self) {
+        self.is_process_selector_view_active = true;
+    }
+
+    pub fn begin_search_input(&mut self) {
+        self.input_mode = ProcessSelectorInputMode::Search;
+    }
+
+    pub fn commit_search_input(&mut self) {
+        self.input_mode = ProcessSelectorInputMode::None;
+    }
+
+    pub fn cancel_search_input(&mut self) {
+        self.input_mode = ProcessSelectorInputMode::None;
+        self.pending_search_name_input.clear();
+    }
+
+    pub fn append_pending_search_character(
+        &mut self,
+        pending_character: char,
+    ) {
+        if !Self::is_supported_search_character(pending_character) {
+            return;
+        }
+
+        self.pending_search_name_input.push(pending_character);
+    }
+
+    pub fn backspace_pending_search_name(&mut self) {
+        self.pending_search_name_input.pop();
+    }
+
+    pub fn clear_pending_search_name(&mut self) {
+        self.pending_search_name_input.clear();
+    }
+
+    pub fn pending_search_name_trimmed(&self) -> Option<String> {
+        let trimmed_search_name = self.pending_search_name_input.trim();
+        if trimmed_search_name.is_empty() {
+            None
+        } else {
+            Some(trimmed_search_name.to_string())
         }
     }
 
@@ -118,5 +176,30 @@ impl ProcessSelectorPaneState {
 
         self.selected_process_identifier = None;
         self.selected_process_name = None;
+    }
+
+    fn is_supported_search_character(pending_character: char) -> bool {
+        pending_character.is_ascii_graphic() || pending_character == ' '
+    }
+}
+
+impl Default for ProcessSelectorPaneState {
+    fn default() -> Self {
+        Self {
+            selected_process_identifier: None,
+            selected_process_name: None,
+            show_windowed_processes_only: false,
+            process_list_entries: Vec::new(),
+            selected_process_list_index: None,
+            opened_process_identifier: None,
+            opened_process_name: None,
+            has_loaded_process_list_once: false,
+            is_awaiting_process_list_response: false,
+            is_opening_process: false,
+            is_process_selector_view_active: true,
+            input_mode: ProcessSelectorInputMode::None,
+            pending_search_name_input: String::new(),
+            status_message: "Ready.".to_string(),
+        }
     }
 }

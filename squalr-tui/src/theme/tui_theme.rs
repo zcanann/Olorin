@@ -104,16 +104,8 @@ impl TuiTheme {
             )
     }
 
-    fn pane_accent_color(pane: TuiPane) -> Color {
-        match pane {
-            TuiPane::ProcessSelector => Color::Rgb(56, 189, 248),
-            TuiPane::ElementScanner => Color::Rgb(34, 197, 94),
-            TuiPane::ScanResults => Color::Rgb(245, 158, 11),
-            TuiPane::ProjectExplorer => Color::Rgb(99, 102, 241),
-            TuiPane::StructViewer => Color::Rgb(236, 72, 153),
-            TuiPane::Output => Color::Rgb(20, 184, 166),
-            TuiPane::Settings => Color::Rgb(168, 85, 247),
-        }
+    fn pane_accent_color(_pane: TuiPane) -> Color {
+        Color::Rgb(96, 165, 250)
     }
 
     fn mix_color(

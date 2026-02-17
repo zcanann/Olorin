@@ -166,7 +166,7 @@ impl AppShell {
     }
 
     fn footer_navigation_controls_line() -> &'static str {
-        "[NAV] 1 Project | 2 Scanner | 3 Settings | Tab/Shift+Tab focus."
+        "[NAV] F1 Project | F2 Scanner | F3 Settings | F4 Process Selector | Tab/Shift+Tab focus."
     }
 
     fn footer_exit_controls_line() -> &'static str {
@@ -220,11 +220,20 @@ impl AppShell {
 
     fn session_active_workspace_metadata_line(&self) -> String {
         let active_workspace_page = self.app_state.active_workspace_page();
-        format!(
-            "[PAGE] {} | [LOOP] {}.",
-            active_workspace_page.title(),
+        let focus_cycle_hint = if active_workspace_page == TuiWorkspacePage::ProjectWorkspace {
+            if self
+                .app_state
+                .process_selector_pane_state
+                .is_process_selector_view_active
+            {
+                "Process Selector -> Output"
+            } else {
+                "Project Explorer -> Output"
+            }
+        } else {
             active_workspace_page.focus_cycle_hint()
-        )
+        };
+        format!("[PAGE] {} | [LOOP] {}.", active_workspace_page.title(), focus_cycle_hint)
     }
 
     fn condense_path_for_session(path: &Path) -> String {
@@ -280,8 +289,17 @@ impl AppShell {
                 self.app_state.cycle_focus_backward();
                 true
             }
-            KeyCode::Char(shortcut_digit) => {
-                if let Some(target_workspace_page) = TuiWorkspacePage::from_shortcut_digit(shortcut_digit) {
+            KeyCode::F(function_key_index) => {
+                if function_key_index == 4 {
+                    self.app_state
+                        .set_active_workspace_page(TuiWorkspacePage::ProjectWorkspace);
+                    self.app_state
+                        .process_selector_pane_state
+                        .activate_process_selector_view();
+                    self.app_state
+                        .set_focused_pane(crate::state::pane::TuiPane::ProcessSelector);
+                    true
+                } else if let Some(target_workspace_page) = TuiWorkspacePage::from_function_key(function_key_index) {
                     self.app_state.set_active_workspace_page(target_workspace_page);
                     true
                 } else {

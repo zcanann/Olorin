@@ -62,15 +62,15 @@ pub fn build_visible_project_item_entry_rows(
             .get(visible_project_item_position)
         {
             let is_selected_project_item = project_explorer_pane_state.selected_project_item_visible_index == Some(visible_project_item_position);
-            let activation_marker = if project_item_entry.is_activated { "*" } else { " " };
+            let activation_marker = if project_item_entry.is_activated { "[x]" } else { "[ ]" };
             let directory_marker = if project_item_entry.is_directory {
                 if project_item_entry.is_expanded { "-" } else { "+" }
             } else {
                 " "
             };
             let indentation = " ".repeat(project_item_entry.depth.saturating_mul(2));
-            let marker_text = format!("{}{}", activation_marker, directory_marker);
-            let primary_text = format!("{}{}", indentation, project_item_entry.display_name);
+            let marker_text = directory_marker.to_string();
+            let primary_text = format!("{}{} {}", indentation, activation_marker, project_item_entry.display_name);
             let secondary_text = Some(project_item_entry.project_item_path.display().to_string());
 
             if project_explorer_pane_state.focus_target != ProjectExplorerFocusTarget::ProjectHierarchy {
