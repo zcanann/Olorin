@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit tiny-height behavior for entry-heavy panes (`process_selector`, `scan_results`, `project_explorer`) to ensure summary-line density never starves entry rows, and add per-pane minimum-entry safeguards where needed.
+- Concrete next subtask: align summary telemetry lines for entry-heavy panes (`[ROWS]` in `process_selector`, `scan_results`, `project_explorer`) with dynamic pane-height-driven capacities so displayed row guidance matches live rendering behavior.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -189,3 +189,6 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): `settings` and `element_scanner` summaries could clip selected field/constraint context under tiny pane heights because full summaries were rendered without per-pane priority.
 - TUI non-entry tiny-height priority pass: `settings` and `element_scanner` now build capacity-aware summaries that prioritize controls, selected field/constraint row, and status before lower-priority metadata/context lines; `TuiAppState::pane_summary_lines` now routes pane height into these capacity-aware builders.
 - Added focused summary tests for tiny-capacity selected-line visibility in both panes and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (90 passed).
+- GUI vs TUI parity audit (this pass): entry-heavy panes (`process_selector`, `scan_results`, `project_explorer`) could still starve entry rendering under tiny heights because summary lines consumed all content budget and a mandatory separator consumed the final line.
+- TUI tiny-height entry safeguard pass: `app_render` now clamps summary-line count for entry-heavy panes using per-pane minimum entry-row budgets, computes entry capacity with a conditional summary/entry separator, and preserves existing behavior for non-entry-heavy panes.
+- Added focused `app_render` tests for summary clamping, tiny-height single-row entry capacity without separator, and non-entry-heavy unchanged capacity behavior; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (93 passed).

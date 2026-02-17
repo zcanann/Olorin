@@ -86,12 +86,13 @@ impl AppShell {
 
         let pane_content_height = pane_area.height.saturating_sub(2) as usize;
         let pane_content_width = pane_area.width.saturating_sub(2) as usize;
-        let summary_lines = self
+        let fitted_summary_lines = self
             .fit_summary_lines_to_width(self.app_state.pane_summary_lines(pane, pane_content_height), pane_content_width)
-            .into_iter();
-        let summary_line_count = summary_lines.len();
-        let entry_row_capacity = pane_content_height.saturating_sub(summary_line_count.saturating_add(1));
-        let pane_lines: Vec<Line<'static>> = summary_lines.map(Line::from).collect();
+            .into_iter()
+            .collect::<Vec<String>>();
+        let summary_lines = Self::clamp_summary_lines_for_entry_safeguard(pane, fitted_summary_lines, pane_content_height);
+        let entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
+        let pane_lines: Vec<Line<'static>> = summary_lines.into_iter().map(Line::from).collect();
         let entry_rows = self.app_state.pane_entry_rows(pane, entry_row_capacity);
         let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows, pane_content_width);
 
@@ -111,7 +112,9 @@ impl AppShell {
             return pane_lines;
         }
 
-        pane_lines.push(Line::from(String::new()));
+        if !pane_lines.is_empty() {
+            pane_lines.push(Line::from(String::new()));
+        }
         for entry_row in entry_rows {
             pane_lines.push(Self::render_entry_row(entry_row, content_width));
         }
@@ -151,6 +154,50 @@ impl AppShell {
             .into_iter()
             .map(|summary_line| Self::truncate_line_with_ellipsis(summary_line, content_width))
             .collect()
+    }
+
+    fn clamp_summary_lines_for_entry_safeguard(
+        pane: TuiPane,
+        mut summary_lines: Vec<String>,
+        pane_content_height: usize,
+    ) -> Vec<String> {
+        let minimum_entry_row_count = Self::minimum_entry_row_count_for_pane(pane);
+        if minimum_entry_row_count == 0 {
+            return summary_lines;
+        }
+
+        let maximum_summary_line_count = pane_content_height.saturating_sub(minimum_entry_row_count.saturating_add(1));
+        if summary_lines.len() > maximum_summary_line_count {
+            summary_lines.truncate(maximum_summary_line_count);
+        }
+
+        summary_lines
+    }
+
+    fn pane_entry_row_capacity(
+        pane: TuiPane,
+        pane_content_height: usize,
+        summary_line_count: usize,
+    ) -> usize {
+        let separator_line_count = usize::from(summary_line_count > 0);
+        let computed_entry_row_capacity = pane_content_height.saturating_sub(summary_line_count.saturating_add(separator_line_count));
+        let minimum_entry_row_count = Self::minimum_entry_row_count_for_pane(pane);
+        if minimum_entry_row_count == 0 {
+            return computed_entry_row_capacity;
+        }
+
+        if pane_content_height < minimum_entry_row_count {
+            return computed_entry_row_capacity;
+        }
+
+        computed_entry_row_capacity.max(minimum_entry_row_count)
+    }
+
+    fn minimum_entry_row_count_for_pane(pane: TuiPane) -> usize {
+        match pane {
+            TuiPane::ProcessSelector | TuiPane::ScanResults | TuiPane::ProjectExplorer => 1,
+            _ => 0,
+        }
     }
 
     fn format_marker_prefix(marker_text: String) -> String {
@@ -228,6 +275,7 @@ impl AppShell {
 #[cfg(test)]
 mod tests {
     use crate::app::AppShell;
+    use crate::state::pane::TuiPane;
     use crate::state::pane_entry_row::PaneEntryRow;
 
     #[test]
@@ -280,5 +328,33 @@ mod tests {
             .collect();
 
         assert_eq!(rendered_text, " F primary");
+    }
+
+    #[test]
+    fn entry_heavy_panes_clamp_summary_lines_to_preserve_rows() {
+        let summary_lines = vec![
+            "[ACT] one".to_string(),
+            "[NAV] two".to_string(),
+            "[META] three".to_string(),
+            "[STAT] four".to_string(),
+        ];
+
+        let clamped_summary_lines = AppShell::clamp_summary_lines_for_entry_safeguard(TuiPane::ProcessSelector, summary_lines, 3);
+
+        assert_eq!(clamped_summary_lines.len(), 1);
+    }
+
+    #[test]
+    fn entry_heavy_panes_allow_row_without_separator_when_summary_omitted() {
+        let entry_row_capacity = AppShell::pane_entry_row_capacity(TuiPane::ScanResults, 1, 0);
+
+        assert_eq!(entry_row_capacity, 1);
+    }
+
+    #[test]
+    fn non_entry_heavy_panes_keep_existing_capacity_behavior() {
+        let entry_row_capacity = AppShell::pane_entry_row_capacity(TuiPane::Output, 4, 3);
+
+        assert_eq!(entry_row_capacity, 0);
     }
 }
