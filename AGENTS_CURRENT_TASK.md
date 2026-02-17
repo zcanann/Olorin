@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit entry-heavy pane summaries under ultra-small heights and ensure `[ROWS]` telemetry remains visible whenever at least one entry row is rendered.
+- Concrete next subtask: audit entry-heavy pane summaries under ultra-small heights for remaining UX tradeoffs now that `[ROWS]` telemetry is enforced when rows render.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -195,3 +195,6 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): `[ROWS]` telemetry lines in entry-heavy pane summaries were hardcoded (`top=5`, `projects=5|hierarchy=10`) and diverged from dynamic pane-height-driven entry capacities.
 - TUI telemetry alignment update: `app_render` now computes final per-pane entry-row capacity first, then replaces the existing `[ROWS]` summary line in-place via `TuiAppState::pane_row_telemetry_line(...)` so telemetry matches the live render budget without changing summary line counts.
 - Added focused coverage for telemetry replacement and project-explorer split telemetry capacities (`app_render` + `state::app_state`), and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (96 passed).
+- GUI vs TUI parity audit (this pass): ultra-small summary clamping could drop `[ROWS]` lines in entry-heavy panes, allowing rows to render without telemetry and creating stale capacity visibility.
+- TUI ultra-small telemetry visibility update: `app_render` now upserts `[ROWS]` telemetry for entry-heavy panes before final row-capacity calculation and recalculates capacity after insertion; this keeps telemetry synchronized whenever rows are rendered and avoids phantom minimum-row capacity when summary+separator already consume space.
+- Added focused `app_render` tests for telemetry upsert behavior (missing-marker replacement and empty-summary insertion) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (98 passed).

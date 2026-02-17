@@ -91,6 +91,14 @@ impl AppShell {
             .into_iter()
             .collect::<Vec<String>>();
         let summary_lines = Self::clamp_summary_lines_for_entry_safeguard(pane, fitted_summary_lines, pane_content_height);
+        let provisional_entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
+        let summary_lines = Self::upsert_row_telemetry_line(
+            pane,
+            summary_lines,
+            self.app_state
+                .pane_row_telemetry_line(pane, provisional_entry_row_capacity),
+            pane_content_height,
+        );
         let entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
         let summary_lines = Self::replace_row_telemetry_line(summary_lines, self.app_state.pane_row_telemetry_line(pane, entry_row_capacity));
         let pane_lines: Vec<Line<'static>> = summary_lines.into_iter().map(Line::from).collect();
@@ -174,6 +182,34 @@ impl AppShell {
         summary_lines
     }
 
+    fn upsert_row_telemetry_line(
+        pane: TuiPane,
+        mut summary_lines: Vec<String>,
+        row_telemetry_line: Option<String>,
+        pane_content_height: usize,
+    ) -> Vec<String> {
+        let Some(row_telemetry_line) = row_telemetry_line else {
+            return summary_lines;
+        };
+        let Some(row_summary_line_index) = summary_lines
+            .iter()
+            .position(|summary_line| summary_line.starts_with("[ROWS]"))
+        else {
+            if !Self::is_entry_heavy_pane(pane) || pane_content_height == 0 {
+                return summary_lines;
+            }
+            if summary_lines.is_empty() {
+                summary_lines.push(row_telemetry_line);
+            } else {
+                let last_summary_line_index = summary_lines.len() - 1;
+                summary_lines[last_summary_line_index] = row_telemetry_line;
+            }
+            return summary_lines;
+        };
+        summary_lines[row_summary_line_index] = row_telemetry_line;
+        summary_lines
+    }
+
     fn clamp_summary_lines_for_entry_safeguard(
         pane: TuiPane,
         mut summary_lines: Vec<String>,
@@ -208,14 +244,19 @@ impl AppShell {
             return computed_entry_row_capacity;
         }
 
+        if computed_entry_row_capacity == 0 {
+            return 0;
+        }
+
         computed_entry_row_capacity.max(minimum_entry_row_count)
     }
 
+    fn is_entry_heavy_pane(pane: TuiPane) -> bool {
+        matches!(pane, TuiPane::ProcessSelector | TuiPane::ScanResults | TuiPane::ProjectExplorer)
+    }
+
     fn minimum_entry_row_count_for_pane(pane: TuiPane) -> usize {
-        match pane {
-            TuiPane::ProcessSelector | TuiPane::ScanResults | TuiPane::ProjectExplorer => 1,
-            _ => 0,
-        }
+        usize::from(Self::is_entry_heavy_pane(pane))
     }
 
     fn format_marker_prefix(marker_text: String) -> String {
@@ -390,5 +431,22 @@ mod tests {
         let updated_summary_lines = AppShell::replace_row_telemetry_line(summary_lines.clone(), Some("[ROWS] visible=3.".to_string()));
 
         assert_eq!(updated_summary_lines, summary_lines);
+    }
+
+    #[test]
+    fn upsert_rows_telemetry_replaces_last_line_for_entry_heavy_panes() {
+        let summary_lines = vec!["[ACT] action.".to_string(), "[STAT] ok.".to_string()];
+        let updated_summary_lines = AppShell::upsert_row_telemetry_line(TuiPane::ProcessSelector, summary_lines, Some("[ROWS] visible=1.".to_string()), 3);
+
+        assert_eq!(updated_summary_lines[1], "[ROWS] visible=1.");
+    }
+
+    #[test]
+    fn upsert_rows_telemetry_inserts_single_line_when_summary_empty() {
+        let updated_summary_lines = AppShell::upsert_row_telemetry_line(TuiPane::ScanResults, Vec::new(), Some("[ROWS] visible=1.".to_string()), 1);
+        let entry_row_capacity = AppShell::pane_entry_row_capacity(TuiPane::ScanResults, 1, updated_summary_lines.len());
+
+        assert_eq!(updated_summary_lines, vec!["[ROWS] visible=1.".to_string()]);
+        assert_eq!(entry_row_capacity, 0);
     }
 }
