@@ -1,3 +1,4 @@
+use crate::views::settings::summary::build_settings_summary_lines;
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;
@@ -282,158 +283,7 @@ impl SettingsPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let mut summary_lines = vec![
-            "Category: ]/[ cycle, r refresh all.".to_string(),
-            "Field nav: j/k select row.".to_string(),
-            "Mutate: Space toggle bool, +/- step numeric, </> cycle enum, Enter apply category.".to_string(),
-            format!("category={}", self.selected_category.title()),
-            format!("selected_field={}", self.selected_field_index),
-            format!("pending_changes={}", self.has_pending_changes),
-            format!("loaded_once={}", self.has_loaded_settings_once),
-            format!("refreshing={}", self.is_refreshing_settings),
-            format!("applying={}", self.is_applying_settings),
-            format!("status={}", self.status_message),
-        ];
-
-        let selected_category_lines = self.selected_category_lines();
-        summary_lines.extend(selected_category_lines);
-        summary_lines
-    }
-
-    fn selected_category_lines(&self) -> Vec<String> {
-        match self.selected_category {
-            SettingsCategory::General => self.general_summary_lines(),
-            SettingsCategory::Memory => self.memory_summary_lines(),
-            SettingsCategory::Scan => self.scan_summary_lines(),
-        }
-    }
-
-    fn general_summary_lines(&self) -> Vec<String> {
-        let selected_marker = Self::selection_marker(self.selected_field_index, 0);
-        vec![format!(
-            "{} engine_request_delay_ms={}",
-            selected_marker, self.general_settings.engine_request_delay_ms
-        )]
-    }
-
-    fn memory_summary_lines(&self) -> Vec<String> {
-        vec![
-            format!(
-                "{} memory_type_none={}",
-                Self::selection_marker(self.selected_field_index, 0),
-                self.memory_settings.memory_type_none
-            ),
-            format!(
-                "{} memory_type_private={}",
-                Self::selection_marker(self.selected_field_index, 1),
-                self.memory_settings.memory_type_private
-            ),
-            format!(
-                "{} memory_type_image={}",
-                Self::selection_marker(self.selected_field_index, 2),
-                self.memory_settings.memory_type_image
-            ),
-            format!(
-                "{} memory_type_mapped={}",
-                Self::selection_marker(self.selected_field_index, 3),
-                self.memory_settings.memory_type_mapped
-            ),
-            format!(
-                "{} required_write={}",
-                Self::selection_marker(self.selected_field_index, 4),
-                self.memory_settings.required_write
-            ),
-            format!(
-                "{} required_execute={}",
-                Self::selection_marker(self.selected_field_index, 5),
-                self.memory_settings.required_execute
-            ),
-            format!(
-                "{} required_copy_on_write={}",
-                Self::selection_marker(self.selected_field_index, 6),
-                self.memory_settings.required_copy_on_write
-            ),
-            format!(
-                "{} excluded_write={}",
-                Self::selection_marker(self.selected_field_index, 7),
-                self.memory_settings.excluded_write
-            ),
-            format!(
-                "{} excluded_execute={}",
-                Self::selection_marker(self.selected_field_index, 8),
-                self.memory_settings.excluded_execute
-            ),
-            format!(
-                "{} excluded_copy_on_write={}",
-                Self::selection_marker(self.selected_field_index, 9),
-                self.memory_settings.excluded_copy_on_write
-            ),
-            format!(
-                "{} start_address=0x{:X}",
-                Self::selection_marker(self.selected_field_index, 10),
-                self.memory_settings.start_address
-            ),
-            format!(
-                "{} end_address=0x{:X}",
-                Self::selection_marker(self.selected_field_index, 11),
-                self.memory_settings.end_address
-            ),
-            format!(
-                "{} only_query_usermode={}",
-                Self::selection_marker(self.selected_field_index, 12),
-                self.memory_settings.only_query_usermode
-            ),
-        ]
-    }
-
-    fn scan_summary_lines(&self) -> Vec<String> {
-        vec![
-            format!(
-                "{} results_page_size={}",
-                Self::selection_marker(self.selected_field_index, 0),
-                self.scan_settings.results_page_size
-            ),
-            format!(
-                "{} freeze_interval_ms={}",
-                Self::selection_marker(self.selected_field_index, 1),
-                self.scan_settings.freeze_interval_ms
-            ),
-            format!(
-                "{} project_read_interval_ms={}",
-                Self::selection_marker(self.selected_field_index, 2),
-                self.scan_settings.project_read_interval_ms
-            ),
-            format!(
-                "{} results_read_interval_ms={}",
-                Self::selection_marker(self.selected_field_index, 3),
-                self.scan_settings.results_read_interval_ms
-            ),
-            format!(
-                "{} memory_alignment={}",
-                Self::selection_marker(self.selected_field_index, 4),
-                Self::memory_alignment_label(self.scan_settings.memory_alignment)
-            ),
-            format!(
-                "{} memory_read_mode={}",
-                Self::selection_marker(self.selected_field_index, 5),
-                Self::memory_read_mode_label(self.scan_settings.memory_read_mode)
-            ),
-            format!(
-                "{} floating_point_tolerance={}",
-                Self::selection_marker(self.selected_field_index, 6),
-                Self::floating_point_tolerance_label(self.scan_settings.floating_point_tolerance)
-            ),
-            format!(
-                "{} is_single_threaded_scan={}",
-                Self::selection_marker(self.selected_field_index, 7),
-                self.scan_settings.is_single_threaded_scan
-            ),
-            format!(
-                "{} debug_perform_validation_scan={}",
-                Self::selection_marker(self.selected_field_index, 8),
-                self.scan_settings.debug_perform_validation_scan
-            ),
-        ]
+        build_settings_summary_lines(self)
     }
 
     fn field_count_for_selected_category(&self) -> usize {
@@ -442,13 +292,6 @@ impl SettingsPaneState {
             SettingsCategory::Memory => 13,
             SettingsCategory::Scan => 9,
         }
-    }
-
-    fn selection_marker(
-        selected_field_index: usize,
-        field_position: usize,
-    ) -> &'static str {
-        if selected_field_index == field_position { ">" } else { " " }
     }
 
     fn step_u64_clamped(
@@ -557,35 +400,6 @@ impl SettingsPaneState {
         };
 
         all_tolerances[next_position]
-    }
-
-    fn memory_alignment_label(memory_alignment: Option<MemoryAlignment>) -> &'static str {
-        match memory_alignment {
-            Some(MemoryAlignment::Alignment1) => "1",
-            Some(MemoryAlignment::Alignment2) => "2",
-            Some(MemoryAlignment::Alignment4) => "4",
-            Some(MemoryAlignment::Alignment8) => "8",
-            None => "none",
-        }
-    }
-
-    fn memory_read_mode_label(memory_read_mode: MemoryReadMode) -> &'static str {
-        match memory_read_mode {
-            MemoryReadMode::Skip => "skip",
-            MemoryReadMode::ReadBeforeScan => "before_scan",
-            MemoryReadMode::ReadInterleavedWithScan => "interleaved",
-        }
-    }
-
-    fn floating_point_tolerance_label(floating_point_tolerance: FloatingPointTolerance) -> &'static str {
-        match floating_point_tolerance {
-            FloatingPointTolerance::Tolerance10E1 => "0.1",
-            FloatingPointTolerance::Tolerance10E2 => "0.01",
-            FloatingPointTolerance::Tolerance10E3 => "0.001",
-            FloatingPointTolerance::Tolerance10E4 => "0.0001",
-            FloatingPointTolerance::Tolerance10E5 => "0.00001",
-            FloatingPointTolerance::ToleranceEpsilon => "epsilon",
-        }
     }
 }
 

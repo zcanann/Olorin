@@ -1,3 +1,4 @@
+use crate::views::element_scanner::summary::build_element_scanner_summary_lines;
 use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
 use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
@@ -201,63 +202,11 @@ impl ElementScannerPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let mut summary_lines = vec![
-            "Actions: s start, n reset/new, c collect, t/T data type, a add, x remove.".to_string(),
-            "Constraint edit: j/k select, m/M compare type, digits/-/. append, Backspace, Ctrl+u clear.".to_string(),
-            format!("data_type={}", self.selected_data_type_name()),
-            format!("constraints={}", self.active_constraint_count()),
-            format!("selected_constraint={}", self.selected_constraint_row_index + 1),
-            format!("pending_scan={}", self.has_pending_scan_request),
-            format!("has_results={}", self.has_scan_results),
-            format!("last_result_count={}", self.last_result_count),
-            format!("last_total_bytes={}", self.last_total_size_in_bytes),
-            format!("status={}", self.status_message),
-        ];
-
-        for (constraint_row_index, constraint_row) in self.constraint_rows.iter().enumerate() {
-            let selected_marker = if self.selected_constraint_row_index == constraint_row_index {
-                ">"
-            } else {
-                " "
-            };
-            summary_lines.push(format!(
-                "{} {} {}",
-                selected_marker,
-                Self::scan_compare_type_label(constraint_row.scan_compare_type),
-                constraint_row.scan_value_text
-            ));
-        }
-
-        summary_lines
+        build_element_scanner_summary_lines(self)
     }
 
     fn is_supported_value_character(value_character: char) -> bool {
         value_character.is_ascii_digit() || value_character == '-' || value_character == '.'
-    }
-
-    fn scan_compare_type_label(scan_compare_type: ScanCompareType) -> &'static str {
-        match scan_compare_type {
-            ScanCompareType::Immediate(ScanCompareTypeImmediate::Equal) => "==",
-            ScanCompareType::Immediate(ScanCompareTypeImmediate::NotEqual) => "!=",
-            ScanCompareType::Immediate(ScanCompareTypeImmediate::GreaterThan) => ">",
-            ScanCompareType::Immediate(ScanCompareTypeImmediate::GreaterThanOrEqual) => ">=",
-            ScanCompareType::Immediate(ScanCompareTypeImmediate::LessThan) => "<",
-            ScanCompareType::Immediate(ScanCompareTypeImmediate::LessThanOrEqual) => "<=",
-            ScanCompareType::Relative(ScanCompareTypeRelative::Changed) => "changed",
-            ScanCompareType::Relative(ScanCompareTypeRelative::Unchanged) => "unchanged",
-            ScanCompareType::Relative(ScanCompareTypeRelative::Increased) => "increased",
-            ScanCompareType::Relative(ScanCompareTypeRelative::Decreased) => "decreased",
-            ScanCompareType::Delta(ScanCompareTypeDelta::IncreasedByX) => "+x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::DecreasedByX) => "-x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::MultipliedByX) => "*x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::DividedByX) => "/x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::ModuloByX) => "%x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::ShiftLeftByX) => "<<x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::ShiftRightByX) => ">>x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::LogicalAndByX) => "&x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::LogicalOrByX) => "|x",
-            ScanCompareType::Delta(ScanCompareTypeDelta::LogicalXorByX) => "^x",
-        }
     }
 }
 

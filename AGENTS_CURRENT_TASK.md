@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: continue folderization by extracting remaining pane-specific presentation builders/helpers from `*_pane_state` files into focused `squalr-tui/src/views/*/` submodules where reducer/state and rendering preparation are still mixed.
+- Concrete next subtask: continue folderization by extracting non-presentation project-hierarchy graph/visibility builders from `project_explorer_pane_state` into focused `squalr-tui/src/views/project_explorer/*` submodules so reducer state transitions and hierarchy construction are decoupled.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -134,3 +134,6 @@ Information discovered during iteration:
 - Validation pass for pane-entry primitive migration: `cargo test -p squalr-tui` (57 passed).
 - TUI pane-entry folderization pass: extracted process/scan/project pane-entry row builders into focused modules under `squalr-tui/src/views/process_selector/entry_rows.rs`, `squalr-tui/src/views/scan_results/entry_rows.rs`, and `squalr-tui/src/views/project_explorer/entry_rows.rs`; pane-state files now delegate entry-row assembly to these submodules.
 - Validation pass for pane-entry folderization: `cargo test -p squalr-tui` (57 passed).
+- TUI pane-summary folderization pass: extracted pane summary/presentation builders from all `*_pane_state` files into focused `views/*/summary.rs` modules (`process_selector`, `scan_results`, `project_explorer`, `element_scanner`, `settings`, `struct_viewer`, `output`), leaving pane-state files focused on reducer/state transitions.
+- Added view module wiring for new summary modules (`squalr-tui/src/views/{element_scanner,output,settings,struct_viewer}/mod.rs` and expanded existing `mod.rs` exports); `summary_lines()` methods now delegate to module builders.
+- Validation pass after summary extraction refactor: `cargo test -p squalr-tui` (57 passed).

@@ -1,5 +1,6 @@
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::project_explorer::entry_rows::{build_visible_project_entry_rows, build_visible_project_item_entry_rows};
+use crate::views::project_explorer::summary::build_project_explorer_summary_lines;
 use squalr_engine_api::structures::projects::project::Project;
 use squalr_engine_api::structures::projects::project_info::ProjectInfo;
 use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
@@ -523,39 +524,7 @@ impl ProjectExplorerPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        vec![
-            "Mode: p project list, i project hierarchy.".to_string(),
-            "Project list: r refresh, n create, Enter/o open, e rename, x delete, c close active.".to_string(),
-            "Hierarchy: h refresh, j/k select, l expand, Left collapse, Space activate.".to_string(),
-            "Hierarchy cont: n new folder, x delete(confirm), m stage move, b move here, [/] reorder, u cancel move.".to_string(),
-            "Input mode: type, Backspace, Ctrl+u clear, Enter commit, Esc cancel.".to_string(),
-            format!("focus_target={:?}", self.focus_target),
-            format!("list_count={}", self.project_entries.len()),
-            format!("selected_name={:?}", self.selected_project_name),
-            format!("active_project={:?}", self.active_project_name),
-            format!("active_directory={:?}", self.active_project_directory_path),
-            format!("selected_item={:?}", self.selected_item_path),
-            format!("visible_item_count={}", self.project_item_visible_entries.len()),
-            format!("expanded={}", self.is_hierarchy_expanded),
-            format!("input_mode={:?}", self.input_mode),
-            format!("pending_name={}", self.pending_project_name_input),
-            format!("pending_move_count={}", self.pending_move_source_paths.len()),
-            format!("pending_delete_count={}", self.pending_delete_confirmation_paths.len()),
-            format!("awaiting_list={}", self.is_awaiting_project_list_response),
-            format!("awaiting_item_list={}", self.is_awaiting_project_item_list_response),
-            format!("creating={}", self.is_creating_project),
-            format!("opening={}", self.is_opening_project),
-            format!("renaming={}", self.is_renaming_project),
-            format!("deleting={}", self.is_deleting_project),
-            format!("closing={}", self.is_closing_project),
-            format!("creating_item={}", self.is_creating_project_item),
-            format!("deleting_item={}", self.is_deleting_project_item),
-            format!("moving_item={}", self.is_moving_project_item),
-            format!("reordering_item={}", self.is_reordering_project_item),
-            format!("activating_item={}", self.is_toggling_project_item_activation),
-            format!("status={}", self.status_message),
-            "Projects (top 5) + Hierarchy (top 10).".to_string(),
-        ]
+        build_project_explorer_summary_lines(self)
     }
 
     pub fn visible_project_entry_rows(&self) -> Vec<PaneEntryRow> {

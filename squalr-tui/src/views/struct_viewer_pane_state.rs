@@ -1,3 +1,4 @@
+use crate::views::struct_viewer::summary::build_struct_viewer_summary_lines;
 use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
@@ -240,68 +241,10 @@ impl StructViewerPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let selected_field_display_format = self.selected_field_active_display_format();
-        let selected_field_display_format_progress = self.selected_field_display_format_progress();
-        let selected_field_edit_state = self.selected_field_edit_state_label();
-        let mut summary_lines = vec![
-            "Actions: r refresh source, Up/Down or j/k select field, Enter commit field edit.".to_string(),
-            "Display format: [ previous, ] next. Disabled while an uncommitted edit exists.".to_string(),
-            "Edit mode: type, Backspace, Ctrl+u clear. Value fields only.".to_string(),
-            format!("source={:?}", self.source),
-            format!("selected_struct={:?}", self.selected_struct_name),
-            format!("field_count={}", self.focused_field_count()),
-            format!("selected_field={:?}", self.selected_field_name),
-            format!("selected_field_edit_state={}", selected_field_edit_state),
-            format!(
-                "selected_field_format={}",
-                selected_field_display_format
-                    .map(|active_display_format| active_display_format.to_string())
-                    .unwrap_or_else(|| "none".to_string())
-            ),
-            format!(
-                "selected_field_format_index={}",
-                selected_field_display_format_progress
-                    .map(|(active_display_value_index, display_value_count)| format!("{}/{}", active_display_value_index + 1, display_value_count))
-                    .unwrap_or_else(|| "0/0".to_string())
-            ),
-            format!("pending_edit={}", self.pending_edit_text),
-            format!("uncommitted_edit={}", self.has_uncommitted_edit),
-            format!("selected_scan_results={}", self.selected_scan_result_refs.len()),
-            format!("selected_project_items={}", self.selected_project_item_paths.len()),
-            format!("committing={}", self.is_committing_edit),
-            format!("status={}", self.status_message),
-        ];
-
-        let visible_field_count = self.focused_field_count().min(5);
-        for field_position in 0..visible_field_count {
-            if let Some(focused_field) = self
-                .focused_struct
-                .as_ref()
-                .and_then(|focused_struct| focused_struct.get_fields().get(field_position))
-            {
-                let selected_marker = if self.selected_field_position == Some(field_position) { ">" } else { " " };
-                let field_kind_marker = Self::field_kind_marker(focused_field);
-                let editability_marker = Self::field_editability_marker(focused_field);
-                let field_name = focused_field.get_name();
-                let format_suffix = self
-                    .active_display_value_for_field(field_name)
-                    .map(|active_display_value| format!(" ({})", active_display_value.get_anonymous_value_string_format()))
-                    .unwrap_or_else(String::new);
-                let value_preview = self
-                    .active_display_value_for_field(field_name)
-                    .map(|active_display_value| active_display_value.get_anonymous_value_string().to_string())
-                    .unwrap_or_else(|| "<nested>".to_string());
-                summary_lines.push(format!(
-                    "{} [{}|{}] {}{} = {}",
-                    selected_marker, field_kind_marker, editability_marker, field_name, format_suffix, value_preview
-                ));
-            }
-        }
-
-        summary_lines
+        build_struct_viewer_summary_lines(self)
     }
 
-    fn focused_field_count(&self) -> usize {
+    pub(crate) fn focused_field_count(&self) -> usize {
         self.focused_struct
             .as_ref()
             .map(|focused_struct| focused_struct.get_fields().len())
@@ -471,7 +414,7 @@ impl StructViewerPaneState {
             .insert(selected_field_name, clamped_display_value_index);
     }
 
-    fn active_display_value_for_field(
+    pub(crate) fn active_display_value_for_field(
         &self,
         field_name: &str,
     ) -> Option<&AnonymousValueString> {
@@ -495,12 +438,12 @@ impl StructViewerPaneState {
         self.active_display_value_for_field(selected_field_name)
     }
 
-    fn selected_field_active_display_format(&self) -> Option<AnonymousValueStringFormat> {
+    pub(crate) fn selected_field_active_display_format(&self) -> Option<AnonymousValueStringFormat> {
         self.selected_field_active_display_value()
             .map(AnonymousValueString::get_anonymous_value_string_format)
     }
 
-    fn selected_field_display_format_progress(&self) -> Option<(usize, usize)> {
+    pub(crate) fn selected_field_display_format_progress(&self) -> Option<(usize, usize)> {
         let selected_field_name = self.selected_field_name.as_ref()?;
         let field_display_values = self.field_display_values.get(selected_field_name)?;
         if field_display_values.is_empty() {
@@ -516,7 +459,7 @@ impl StructViewerPaneState {
         Some((active_display_value_index, field_display_values.len()))
     }
 
-    fn selected_field_edit_state_label(&self) -> String {
+    pub(crate) fn selected_field_edit_state_label(&self) -> String {
         if let Some(block_reason) = self.selected_field_edit_block_reason() {
             return block_reason;
         }
@@ -524,14 +467,14 @@ impl StructViewerPaneState {
         "Editable value field.".to_string()
     }
 
-    fn field_kind_marker(valued_struct_field: &ValuedStructField) -> &'static str {
+    pub(crate) fn field_kind_marker(valued_struct_field: &ValuedStructField) -> &'static str {
         match valued_struct_field.get_field_data() {
             ValuedStructFieldData::Value(_) => "VAL",
             ValuedStructFieldData::NestedStruct(_) => "NEST",
         }
     }
 
-    fn field_editability_marker(valued_struct_field: &ValuedStructField) -> &'static str {
+    pub(crate) fn field_editability_marker(valued_struct_field: &ValuedStructField) -> &'static str {
         if valued_struct_field.get_is_read_only() { "RO" } else { "RW" }
     }
 }

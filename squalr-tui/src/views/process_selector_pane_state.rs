@@ -1,5 +1,6 @@
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::process_selector::entry_rows::build_visible_process_entry_rows;
+use crate::views::process_selector::summary::build_process_selector_summary_lines;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 
@@ -96,20 +97,7 @@ impl ProcessSelectorPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        vec![
-            "Actions: r refresh, w windowed/full, Up/Down select, Enter open.".to_string(),
-            format!("windowed_only={}", self.show_windowed_processes_only),
-            format!("list_count={}", self.process_list_entries.len()),
-            format!("selected_id={:?}", self.selected_process_identifier),
-            format!("selected_name={:?}", self.selected_process_name),
-            format!("opened_id={:?}", self.opened_process_identifier),
-            format!("opened_name={:?}", self.opened_process_name),
-            format!("loaded_once={}", self.has_loaded_process_list_once),
-            format!("awaiting_list={}", self.is_awaiting_process_list_response),
-            format!("opening_process={}", self.is_opening_process),
-            format!("status={}", self.status_message),
-            "Entries (top 5).".to_string(),
-        ]
+        build_process_selector_summary_lines(self)
     }
 
     pub fn visible_process_entry_rows(&self) -> Vec<PaneEntryRow> {

@@ -1,3 +1,4 @@
+use crate::views::output::summary::build_output_summary_lines;
 use squalr_engine_api::structures::logging::log_event::LogEvent;
 
 /// Stores recent log lines and output-pane configuration.
@@ -43,24 +44,7 @@ impl OutputPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        let mut summary_lines = vec![
-            "Actions: r refresh log history, x clear, +/- max lines.".to_string(),
-            format!("log_line_count={}", self.log_lines.len()),
-            format!("max_log_lines={}", self.max_log_line_count),
-            format!("auto_scroll_latest={}", self.did_auto_scroll_to_latest),
-            format!("status={}", self.status_message),
-        ];
-
-        let preview_line_count = self.log_lines.len().min(8);
-        if preview_line_count > 0 {
-            summary_lines.push("Recent:".to_string());
-            let start_line_index = self.log_lines.len().saturating_sub(preview_line_count);
-            for preview_line in &self.log_lines[start_line_index..] {
-                summary_lines.push(preview_line.clone());
-            }
-        }
-
-        summary_lines
+        build_output_summary_lines(self)
     }
 
     fn trim_to_max_line_count(&mut self) {

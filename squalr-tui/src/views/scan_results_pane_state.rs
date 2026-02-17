@@ -1,5 +1,6 @@
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::scan_results::entry_rows::build_visible_scan_result_rows;
+use crate::views::scan_results::summary::build_scan_results_summary_lines;
 use squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
@@ -317,29 +318,7 @@ impl ScanResultsPaneState {
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
-        vec![
-            "Actions: r query page, R refresh current page values, [/] page, f freeze toggle, a add project, x delete.".to_string(),
-            "Selection: Up/Down/j/k move, Shift+Up/Shift+Down range, Home/End bounds.".to_string(),
-            "Value edit: digits/-/. set buffer, Backspace, Ctrl+u clear, Enter commit, y copy selected value.".to_string(),
-            format!("page={}/{}", self.current_page_index, self.cached_last_page_index),
-            format!("page_size={}", self.results_per_page),
-            format!("result_count={}", self.total_result_count),
-            format!("total_size_bytes={}", self.total_size_in_bytes),
-            format!(
-                "selected_index={:?} selected_count={}",
-                self.selected_result_index,
-                self.selected_result_count()
-            ),
-            format!("edit_value={}", self.pending_value_edit_text),
-            format!("querying={}", self.is_querying_scan_results),
-            format!("refreshing={}", self.is_refreshing_scan_results),
-            format!("freezing={}", self.is_freezing_scan_results),
-            format!("deleting={}", self.is_deleting_scan_results),
-            format!("adding={}", self.is_adding_scan_results_to_project),
-            format!("committing={}", self.is_committing_value_edit),
-            format!("status={}", self.status_message),
-            "Entries (top 5).".to_string(),
-        ]
+        build_scan_results_summary_lines(self)
     }
 
     pub fn visible_scan_result_rows(&self) -> Vec<PaneEntryRow> {
