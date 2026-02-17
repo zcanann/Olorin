@@ -3,7 +3,7 @@ use crate::state::pane_entry_row::PaneEntryRow;
 use crate::state::pane_layout_state::PaneLayoutState;
 use crate::views::element_scanner_pane_state::ElementScannerPaneState;
 use crate::views::output_pane_state::OutputPaneState;
-use crate::views::process_selector_pane_state::ProcessSelectorPaneState;
+use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
 use crate::views::scan_results_pane_state::ScanResultsPaneState;
 use crate::views::settings_pane_state::SettingsPaneState;

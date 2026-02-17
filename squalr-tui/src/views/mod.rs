@@ -3,7 +3,6 @@ pub mod element_scanner_pane_state;
 pub mod output;
 pub mod output_pane_state;
 pub mod process_selector;
-pub mod process_selector_pane_state;
 pub mod project_explorer;
 pub mod scan_results;
 pub mod scan_results_pane_state;

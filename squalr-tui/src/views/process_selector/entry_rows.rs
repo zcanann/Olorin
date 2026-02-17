@@ -1,5 +1,5 @@
 use crate::state::pane_entry_row::PaneEntryRow;
-use crate::views::process_selector_pane_state::ProcessSelectorPaneState;
+use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 
 pub fn build_visible_process_entry_rows(process_selector_pane_state: &ProcessSelectorPaneState) -> Vec<PaneEntryRow> {
     let visible_process_count = process_selector_pane_state.process_list_entries.len().min(5);

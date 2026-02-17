@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: continue pane-state folderization by relocating `squalr-tui/src/views/process_selector_pane_state.rs` into `squalr-tui/src/views/process_selector/` (plus matching module wiring and import updates) so pane-state placement consistently mirrors GUI-side feature subfolders.
+- Concrete next subtask: continue pane-state folderization by relocating `squalr-tui/src/views/scan_results_pane_state.rs` into `squalr-tui/src/views/scan_results/` (plus matching module wiring and import updates) so pane-state placement consistently mirrors GUI-side feature subfolders.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -142,3 +142,5 @@ Information discovered during iteration:
 - Validation pass after hierarchy-builder extraction: `cargo test -p squalr-tui` (57 passed).
 - TUI project-explorer pane-state folderization pass: relocated `squalr-tui/src/views/project_explorer_pane_state.rs` to `squalr-tui/src/views/project_explorer/pane_state.rs`, rewired view/app/state imports to `crate::views::project_explorer::pane_state::*`, and updated module exports (`views/project_explorer/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
 - Validation pass after project-explorer pane-state relocation: `cargo test -p squalr-tui` (57 passed).
+- TUI process-selector pane-state folderization pass: relocated `squalr-tui/src/views/process_selector_pane_state.rs` to `squalr-tui/src/views/process_selector/pane_state.rs`, rewired view/app/state imports to `crate::views::process_selector::pane_state::*`, and updated module exports (`views/process_selector/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
+- Validation pass after process-selector pane-state relocation: `cargo test -p squalr-tui` (57 passed).

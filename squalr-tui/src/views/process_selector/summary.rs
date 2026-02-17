@@ -1,4 +1,4 @@
-use crate::views::process_selector_pane_state::ProcessSelectorPaneState;
+use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 
 pub fn build_process_selector_summary_lines(process_selector_pane_state: &ProcessSelectorPaneState) -> Vec<String> {
     vec![
