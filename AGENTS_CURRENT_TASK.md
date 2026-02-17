@@ -8,7 +8,8 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI vs TUI feature parity for project workflow affordances and identify any remaining high-friction keyboard loops.
+- Add `Home`/`End` project hierarchy navigation to reduce repeated `j/k` traversal in large projects.
+- Add project-list search/filter input flow (parallel to process selector search) for large project sets.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -44,3 +45,6 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Process selector now renders a dedicated `search: ...` row directly above process entries; when search input is active that row is selected, and selected process rows use `>` markers (`>*` if also opened).
 - Search-mode navigation now supports `Down/j` to exit search input and continue list navigation without forcing a server refresh.
 - Project workspace auto-seek to Project Explorer is now one-time per session; later navigation uses manual `F4` toggling between Process Selector and Project Explorer when a process is open.
+- Project hierarchy keymap parity fix completed:
+  - `r` now refreshes hierarchy items (matching summary expectations).
+  - `h` now collapses/selects parent (Vim parity with `Left`), removing the previous `h` refresh conflict.

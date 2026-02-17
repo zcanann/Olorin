@@ -375,7 +375,7 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         match key_code {
-            KeyCode::Char('h') => self.refresh_project_items_list(squalr_engine),
+            KeyCode::Char('r') => self.refresh_project_items_list(squalr_engine),
             KeyCode::Down | KeyCode::Char('j') => {
                 self.app_state
                     .project_explorer_pane_state
@@ -395,7 +395,7 @@ impl AppShell {
                     self.app_state.project_explorer_pane_state.status_message = "No expandable directory is selected.".to_string();
                 }
             }
-            KeyCode::Left => {
+            KeyCode::Left | KeyCode::Char('h') => {
                 if !self
                     .app_state
                     .project_explorer_pane_state
