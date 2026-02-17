@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit entry-heavy pane summaries under ultra-small heights for remaining UX tradeoffs now that `[ROWS]` telemetry is enforced when rows render.
+- Concrete next subtask: audit entry-heavy pane ultra-small width+height interaction for remaining UX tradeoffs now that telemetry/row-capacity reconciliation avoids row starvation at height=1.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -199,3 +199,6 @@ Information discovered during iteration:
 - TUI ultra-small telemetry visibility update: `app_render` now upserts `[ROWS]` telemetry for entry-heavy panes before final row-capacity calculation and recalculates capacity after insertion; this keeps telemetry synchronized whenever rows are rendered and avoids phantom minimum-row capacity when summary+separator already consume space.
 - Added focused `app_render` tests for telemetry upsert behavior (missing-marker replacement and empty-summary insertion) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (98 passed).
 - Checkpoint commit for ultra-small telemetry visibility parity: `cfffc8b0` (`Enforce TUI rows telemetry visibility under tiny pane heights`).
+- GUI vs TUI parity audit (this pass): forcing `[ROWS]` telemetry under ultra-small heights could consume the only content line and collapse entry-row capacity to zero (`height=1`, empty summary), creating a row-starvation tradeoff.
+- TUI telemetry reconciliation update: `app_render` now reconciles baseline row capacity against telemetry-adjusted capacity and keeps telemetry only when rows still fit; if telemetry would starve rows, it is removed and baseline row capacity is preserved. Stale `[ROWS]` lines are stripped when no rows fit.
+- Added focused `app_render` tests for telemetry reconciliation fallback, zero-capacity stripping, and non-starving telemetry preservation; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (101 passed).

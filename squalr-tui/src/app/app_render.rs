@@ -90,17 +90,12 @@ impl AppShell {
             .fit_summary_lines_to_width(self.app_state.pane_summary_lines(pane, pane_content_height), pane_content_width)
             .into_iter()
             .collect::<Vec<String>>();
-        let summary_lines = Self::clamp_summary_lines_for_entry_safeguard(pane, fitted_summary_lines, pane_content_height);
-        let provisional_entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
-        let summary_lines = Self::upsert_row_telemetry_line(
-            pane,
-            summary_lines,
-            self.app_state
-                .pane_row_telemetry_line(pane, provisional_entry_row_capacity),
-            pane_content_height,
-        );
-        let entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
-        let summary_lines = Self::replace_row_telemetry_line(summary_lines, self.app_state.pane_row_telemetry_line(pane, entry_row_capacity));
+        let clamped_summary_lines = Self::clamp_summary_lines_for_entry_safeguard(pane, fitted_summary_lines, pane_content_height);
+        let (summary_lines, entry_row_capacity) =
+            Self::reconcile_row_telemetry_for_capacity(pane, clamped_summary_lines, pane_content_height, |pane_entry_row_capacity| {
+                self.app_state
+                    .pane_row_telemetry_line(pane, pane_entry_row_capacity)
+            });
         let pane_lines: Vec<Line<'static>> = summary_lines.into_iter().map(Line::from).collect();
         let entry_rows = self.app_state.pane_entry_rows(pane, entry_row_capacity);
         let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows, pane_content_width);
@@ -208,6 +203,44 @@ impl AppShell {
         };
         summary_lines[row_summary_line_index] = row_telemetry_line;
         summary_lines
+    }
+
+    fn strip_row_telemetry_line(summary_lines: Vec<String>) -> Vec<String> {
+        summary_lines
+            .into_iter()
+            .filter(|summary_line| !summary_line.starts_with("[ROWS]"))
+            .collect()
+    }
+
+    fn reconcile_row_telemetry_for_capacity<F>(
+        pane: TuiPane,
+        summary_lines: Vec<String>,
+        pane_content_height: usize,
+        row_telemetry_line_builder: F,
+    ) -> (Vec<String>, usize)
+    where
+        F: Fn(usize) -> Option<String>,
+    {
+        let baseline_entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines.len());
+        if baseline_entry_row_capacity == 0 {
+            return (Self::strip_row_telemetry_line(summary_lines), 0);
+        }
+
+        let summary_lines_with_telemetry = Self::upsert_row_telemetry_line(
+            pane,
+            summary_lines.clone(),
+            row_telemetry_line_builder(baseline_entry_row_capacity),
+            pane_content_height,
+        );
+        let telemetry_entry_row_capacity = Self::pane_entry_row_capacity(pane, pane_content_height, summary_lines_with_telemetry.len());
+        if telemetry_entry_row_capacity == 0 {
+            return (Self::strip_row_telemetry_line(summary_lines), baseline_entry_row_capacity);
+        }
+
+        (
+            Self::replace_row_telemetry_line(summary_lines_with_telemetry, row_telemetry_line_builder(telemetry_entry_row_capacity)),
+            telemetry_entry_row_capacity,
+        )
     }
 
     fn clamp_summary_lines_for_entry_safeguard(
@@ -448,5 +481,40 @@ mod tests {
 
         assert_eq!(updated_summary_lines, vec!["[ROWS] visible=1.".to_string()]);
         assert_eq!(entry_row_capacity, 0);
+    }
+
+    #[test]
+    fn reconcile_rows_telemetry_falls_back_to_row_capacity_when_telemetry_would_starve_rows() {
+        let (summary_lines, entry_row_capacity) =
+            AppShell::reconcile_row_telemetry_for_capacity(TuiPane::ScanResults, Vec::new(), 1, |pane_entry_row_capacity| {
+                Some(format!("[ROWS] visible={}.", pane_entry_row_capacity))
+            });
+
+        assert_eq!(summary_lines, Vec::<String>::new());
+        assert_eq!(entry_row_capacity, 1);
+    }
+
+    #[test]
+    fn reconcile_rows_telemetry_strips_rows_when_no_entry_rows_fit() {
+        let (summary_lines, entry_row_capacity) = AppShell::reconcile_row_telemetry_for_capacity(
+            TuiPane::ProcessSelector,
+            vec!["[STAT] ok.".to_string(), "[ROWS] visible=1.".to_string()],
+            1,
+            |pane_entry_row_capacity| Some(format!("[ROWS] visible={}.", pane_entry_row_capacity)),
+        );
+
+        assert_eq!(summary_lines, vec!["[STAT] ok.".to_string()]);
+        assert_eq!(entry_row_capacity, 0);
+    }
+
+    #[test]
+    fn reconcile_rows_telemetry_preserves_rows_marker_when_capacity_allows_rows() {
+        let (summary_lines, entry_row_capacity) =
+            AppShell::reconcile_row_telemetry_for_capacity(TuiPane::ProcessSelector, vec!["[ACT] refresh.".to_string()], 3, |pane_entry_row_capacity| {
+                Some(format!("[ROWS] visible={}.", pane_entry_row_capacity))
+            });
+
+        assert_eq!(summary_lines, vec!["[ROWS] visible=1.".to_string()]);
+        assert_eq!(entry_row_capacity, 1);
     }
 }
