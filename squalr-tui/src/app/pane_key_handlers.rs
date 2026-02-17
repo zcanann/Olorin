@@ -297,12 +297,6 @@ impl AppShell {
             return;
         }
 
-        match key_event.code {
-            KeyCode::Char('p') => self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectList,
-            KeyCode::Char('i') => self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectHierarchy,
-            _ => {}
-        }
-
         match self.app_state.project_explorer_pane_state.focus_target {
             ProjectExplorerFocusTarget::ProjectList => self.handle_project_list_key_event(key_event.code, squalr_engine),
             ProjectExplorerFocusTarget::ProjectHierarchy => self.handle_project_hierarchy_key_event(key_event.code, squalr_engine),
@@ -408,6 +402,7 @@ impl AppShell {
             KeyCode::Char('[') => self.reorder_selected_project_item(squalr_engine, true),
             KeyCode::Char(']') => self.reorder_selected_project_item(squalr_engine, false),
             KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_project_item_with_confirmation(squalr_engine),
+            KeyCode::Char('c') => self.close_active_project(squalr_engine),
             _ => {}
         }
     }

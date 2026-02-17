@@ -1,8 +1,17 @@
 use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
 
 pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<String> {
+    let mode_label = if project_explorer_pane_state
+        .active_project_directory_path
+        .is_some()
+    {
+        "Hierarchy"
+    } else {
+        "Projects"
+    };
+
     vec![
-        "[MODE] p projects | i hierarchy.".to_string(),
+        format!("[MODE] {}.", mode_label),
         "[ACT] n create | Enter/o open | e rename | c close | x delete | r refresh.".to_string(),
         "[TREE] j/k move | l/Right expand | Left collapse | Space activate.".to_string(),
         "[MOVE] m stage | b move | [/] reorder | u clear-stage.".to_string(),

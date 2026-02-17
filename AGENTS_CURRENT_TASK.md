@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Continue iterative UI signal/noise passes after interactive validation, keeping only task-critical status and controls in pane summaries.
+- Audit GUI/TUI project-workspace parity for remaining high-value interaction gaps.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -33,4 +33,6 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
   - Removed high-noise internal operation booleans and redundant instructional blocks that consumed pane height.
   - Scan Results now shows pending value edit text only when non-empty.
   - Session header/footer copy was shortened (`[FOCUS]` renamed to `[LOOP]`) while preserving workspace context.
-- `cargo test -p squalr-tui` passes with 7 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
+- Project Explorer mode is now context-driven (no `p/i` toggle): opening/activating a project moves to hierarchy interaction mode automatically, and closing the active project returns to project-list mode.
+- `c` (close active project) is now available from hierarchy key handling, preserving the mode-return loop without manual toggles.
+- `cargo test -p squalr-tui` passes with 9 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.

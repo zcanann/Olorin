@@ -80,6 +80,15 @@ pub struct ProjectExplorerPaneState {
 }
 
 impl ProjectExplorerPaneState {
+    /// Synchronizes explorer focus target based on whether a project is currently open.
+    fn sync_focus_target_to_project_context(&mut self) {
+        self.focus_target = if self.active_project_directory_path.is_some() {
+            ProjectExplorerFocusTarget::ProjectHierarchy
+        } else {
+            ProjectExplorerFocusTarget::ProjectList
+        };
+    }
+
     pub fn apply_project_list(
         &mut self,
         project_entries: Vec<ProjectInfo>,
@@ -490,6 +499,7 @@ impl ProjectExplorerPaneState {
     ) {
         self.active_project_name = active_project_name;
         self.active_project_directory_path = active_project_directory_path;
+        self.sync_focus_target_to_project_context();
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
@@ -647,5 +657,28 @@ impl Default for ProjectExplorerPaneState {
             root_project_item_paths: Vec::new(),
             expanded_directory_paths: HashSet::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
+    use std::path::PathBuf;
+
+    #[test]
+    fn set_active_project_switches_focus_to_hierarchy() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.set_active_project(Some("TestProject".to_string()), Some(PathBuf::from("C:/tmp/test_project")));
+
+        assert_eq!(project_explorer_pane_state.focus_target, ProjectExplorerFocusTarget::ProjectHierarchy);
+    }
+
+    #[test]
+    fn clearing_active_project_switches_focus_to_project_list() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.set_active_project(Some("TestProject".to_string()), Some(PathBuf::from("C:/tmp/test_project")));
+        project_explorer_pane_state.set_active_project(None, None);
+
+        assert_eq!(project_explorer_pane_state.focus_target, ProjectExplorerFocusTarget::ProjectList);
     }
 }

@@ -1,7 +1,6 @@
 use super::app_shell::AppShell;
 use crate::state::pane::TuiPane;
 use crate::state::workspace_page::TuiWorkspacePage;
-use crate::views::project_explorer::pane_state::ProjectExplorerFocusTarget;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
@@ -904,12 +903,10 @@ impl AppShell {
             .is_some();
 
         if has_active_project {
-            self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectHierarchy;
             self.app_state.project_explorer_pane_state.status_message =
                 format!("Process '{}' opened. Project hierarchy is active for item workflows.", opened_process_name);
             self.refresh_project_items_list_with_feedback(squalr_engine, false);
         } else {
-            self.app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectList;
             self.app_state.project_explorer_pane_state.status_message =
                 format!("Process '{}' opened. Open or create a project to persist addresses.", opened_process_name);
         }
