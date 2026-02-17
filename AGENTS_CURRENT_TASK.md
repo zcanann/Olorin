@@ -13,7 +13,7 @@ Our current task, from `README.md`, is:
 - [x] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
 - [x] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
 - [x] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
-- [ ] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
+- [x] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
 - [ ] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
 - [ ] Implement project selector parity: list/create/open/rename/delete/close project.
 - [ ] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
@@ -49,5 +49,7 @@ Information discovered during iteration:
 - Added reducer tests in `squalr-tui` for focus cycling across hidden panes, hidden-pane focus restore, and guard rails preventing all panes from being hidden.
 - TUI process selector now dispatches `ProcessListRequest` (windowed/full toggle) and `ProcessOpenRequest` from keyboard-first controls (`r`, `w`, `Up/Down`, `Enter`), with synchronous response handling and visible status messages in-pane.
 - Checkpoint commit for process selector parity: `92cad535` (`Implement TUI process selector command parity`).
+- TUI element scanner now dispatches `ScanResetRequest`, `ScanCollectValuesRequest`, `ScanNewRequest`, and `ElementScanRequest` with keyboard-first controls (`n`, `c`, `s`, `t`/`T`, `a`, `x`, `j`/`k`, `m`/`M`) and per-pane status/result metadata updates.
+- Added `element_scanner_pane_state` reducer tests for constraint cap/retention, data type cycling, and relative constraint serialization behavior.
 
 

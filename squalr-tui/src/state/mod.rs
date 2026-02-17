@@ -87,13 +87,7 @@ impl TuiAppState {
     ) -> Vec<String> {
         match pane {
             TuiPane::ProcessSelector => self.process_selector_pane_state.summary_lines(),
-            TuiPane::ElementScanner => {
-                vec![
-                    format!("data_type={:?}", self.element_scanner_pane_state.selected_data_type_name),
-                    format!("constraints={}", self.element_scanner_pane_state.active_constraint_count),
-                    format!("pending_scan={}", self.element_scanner_pane_state.has_pending_scan_request),
-                ]
-            }
+            TuiPane::ElementScanner => self.element_scanner_pane_state.summary_lines(),
             TuiPane::ScanResults => {
                 vec![
                     format!("page={}", self.scan_results_pane_state.current_page_index),

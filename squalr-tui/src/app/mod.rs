@@ -1,7 +1,7 @@
 use crate::state::TuiAppState;
 use crate::state::pane::TuiPane;
 use anyhow::{Context, Result};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 use crossterm::{cursor, execute};
 use ratatui::Terminal;
@@ -15,6 +15,10 @@ use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
+use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
+use squalr_engine_api::commands::scan::element_scan::element_scan_request::ElementScanRequest;
+use squalr_engine_api::commands::scan::new::scan_new_request::ScanNewRequest;
+use squalr_engine_api::commands::scan::reset::scan_reset_request::ScanResetRequest;
 use std::io::{self, Stdout};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
@@ -155,7 +159,7 @@ impl AppShell {
             }
 
             if !was_handled_by_global_shortcut {
-                self.handle_focused_pane_event(key_event.code, squalr_engine);
+                self.handle_focused_pane_event(key_event, squalr_engine);
             }
         }
     }
@@ -180,11 +184,13 @@ impl AppShell {
 
     fn handle_focused_pane_event(
         &mut self,
-        key_code: KeyCode,
+        key_event: KeyEvent,
         squalr_engine: &mut SqualrEngine,
     ) {
-        if self.app_state.focused_pane() == TuiPane::ProcessSelector {
-            self.handle_process_selector_key_event(key_code, squalr_engine);
+        match self.app_state.focused_pane() {
+            TuiPane::ProcessSelector => self.handle_process_selector_key_event(key_event.code, squalr_engine),
+            TuiPane::ElementScanner => self.handle_element_scanner_key_event(key_event, squalr_engine),
+            _ => {}
         }
     }
 
@@ -213,6 +219,292 @@ impl AppShell {
             KeyCode::Enter | KeyCode::Char('o') => self.open_selected_process(squalr_engine),
             _ => {}
         }
+    }
+
+    fn handle_element_scanner_key_event(
+        &mut self,
+        key_event: KeyEvent,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_event.code {
+            KeyCode::Char('s') => self.start_element_scan(squalr_engine),
+            KeyCode::Char('n') => self.reset_scan_state(squalr_engine),
+            KeyCode::Char('c') => self.collect_scan_values(squalr_engine),
+            KeyCode::Char('t') => self
+                .app_state
+                .element_scanner_pane_state
+                .cycle_data_type_forward(),
+            KeyCode::Char('T') => self
+                .app_state
+                .element_scanner_pane_state
+                .cycle_data_type_backward(),
+            KeyCode::Char('j') | KeyCode::Down => self
+                .app_state
+                .element_scanner_pane_state
+                .select_next_constraint(),
+            KeyCode::Char('k') | KeyCode::Up => self
+                .app_state
+                .element_scanner_pane_state
+                .select_previous_constraint(),
+            KeyCode::Char('m') => self
+                .app_state
+                .element_scanner_pane_state
+                .cycle_selected_constraint_compare_type_forward(),
+            KeyCode::Char('M') => self
+                .app_state
+                .element_scanner_pane_state
+                .cycle_selected_constraint_compare_type_backward(),
+            KeyCode::Char('a') => {
+                if !self.app_state.element_scanner_pane_state.add_constraint() {
+                    self.app_state.element_scanner_pane_state.status_message = "Maximum of five constraints reached.".to_string();
+                }
+            }
+            KeyCode::Char('x') => {
+                if !self
+                    .app_state
+                    .element_scanner_pane_state
+                    .remove_selected_constraint()
+                {
+                    self.app_state.element_scanner_pane_state.status_message = "At least one constraint is required.".to_string();
+                }
+            }
+            KeyCode::Backspace => self
+                .app_state
+                .element_scanner_pane_state
+                .backspace_selected_constraint_value(),
+            KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.app_state
+                    .element_scanner_pane_state
+                    .clear_selected_constraint_value();
+            }
+            KeyCode::Char(scan_value_character) => {
+                self.app_state
+                    .element_scanner_pane_state
+                    .append_selected_constraint_value_character(scan_value_character);
+            }
+            _ => {}
+        }
+    }
+
+    fn reset_scan_state(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request
+        {
+            self.app_state.element_scanner_pane_state.status_message = "Scan request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.element_scanner_pane_state.status_message = "No unprivileged engine state is available for scan reset.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request = true;
+        self.app_state.element_scanner_pane_state.status_message = "Resetting active scan.".to_string();
+
+        let scan_reset_request = ScanResetRequest {};
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_reset_request.send(engine_unprivileged_state, move |scan_reset_response| {
+            let _ = response_sender.send(scan_reset_response);
+        });
+
+        if !request_dispatched {
+            self.app_state
+                .element_scanner_pane_state
+                .has_pending_scan_request = false;
+            self.app_state.element_scanner_pane_state.status_message = "Failed to dispatch scan reset request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(scan_reset_response) => {
+                if scan_reset_response.success {
+                    self.app_state.element_scanner_pane_state.has_scan_results = false;
+                    self.app_state.element_scanner_pane_state.last_result_count = 0;
+                    self.app_state
+                        .element_scanner_pane_state
+                        .last_total_size_in_bytes = 0;
+                    self.app_state.element_scanner_pane_state.status_message = "Scan state reset.".to_string();
+                } else {
+                    self.app_state.element_scanner_pane_state.status_message = "Scan reset request failed.".to_string();
+                }
+            }
+            Err(receive_error) => {
+                self.app_state.element_scanner_pane_state.status_message = format!("Timed out waiting for scan reset response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request = false;
+    }
+
+    fn collect_scan_values(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request
+        {
+            self.app_state.element_scanner_pane_state.status_message = "Scan request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.element_scanner_pane_state.status_message = "No unprivileged engine state is available for value collection.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request = true;
+        self.app_state.element_scanner_pane_state.status_message = "Collecting scan values.".to_string();
+
+        let scan_collect_values_request = ScanCollectValuesRequest {};
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_collect_values_request.send(engine_unprivileged_state, move |scan_collect_values_response| {
+            let _ = response_sender.send(scan_collect_values_response);
+        });
+
+        if !request_dispatched {
+            self.app_state
+                .element_scanner_pane_state
+                .has_pending_scan_request = false;
+            self.app_state.element_scanner_pane_state.status_message = "Failed to dispatch scan collect values request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(scan_collect_values_response) => {
+                self.app_state.element_scanner_pane_state.last_result_count = scan_collect_values_response.scan_results_metadata.result_count;
+                self.app_state
+                    .element_scanner_pane_state
+                    .last_total_size_in_bytes = scan_collect_values_response
+                    .scan_results_metadata
+                    .total_size_in_bytes;
+                self.app_state.element_scanner_pane_state.status_message = format!(
+                    "Collected values for {} results.",
+                    scan_collect_values_response.scan_results_metadata.result_count
+                );
+            }
+            Err(receive_error) => {
+                self.app_state.element_scanner_pane_state.status_message = format!("Timed out waiting for collect values response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request = false;
+    }
+
+    fn start_element_scan(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request
+        {
+            self.app_state.element_scanner_pane_state.status_message = "Scan request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.element_scanner_pane_state.status_message = "No unprivileged engine state is available for element scanning.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request = true;
+        self.app_state.element_scanner_pane_state.status_message = "Starting scan.".to_string();
+
+        if !self.app_state.element_scanner_pane_state.has_scan_results {
+            let scan_new_request = ScanNewRequest {};
+            let (response_sender, response_receiver) = mpsc::sync_channel(1);
+            let request_dispatched = scan_new_request.send(engine_unprivileged_state, move |scan_new_response| {
+                let _ = response_sender.send(scan_new_response);
+            });
+
+            if !request_dispatched {
+                self.app_state
+                    .element_scanner_pane_state
+                    .has_pending_scan_request = false;
+                self.app_state.element_scanner_pane_state.status_message = "Failed to dispatch new scan request.".to_string();
+                return;
+            }
+
+            if let Err(receive_error) = response_receiver.recv_timeout(Duration::from_secs(3)) {
+                self.app_state
+                    .element_scanner_pane_state
+                    .has_pending_scan_request = false;
+                self.app_state.element_scanner_pane_state.status_message = format!("Timed out waiting for new scan response: {}", receive_error);
+                return;
+            }
+        }
+
+        let element_scan_request = ElementScanRequest {
+            scan_constraints: self
+                .app_state
+                .element_scanner_pane_state
+                .build_anonymous_scan_constraints(),
+            data_type_refs: vec![
+                self.app_state
+                    .element_scanner_pane_state
+                    .selected_data_type_ref(),
+            ],
+        };
+
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = element_scan_request.send(engine_unprivileged_state, move |element_scan_response| {
+            let _ = response_sender.send(element_scan_response);
+        });
+
+        if !request_dispatched {
+            self.app_state
+                .element_scanner_pane_state
+                .has_pending_scan_request = false;
+            self.app_state.element_scanner_pane_state.status_message = "Failed to dispatch element scan request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(element_scan_response) => {
+                self.app_state.element_scanner_pane_state.has_scan_results = true;
+                self.app_state.element_scanner_pane_state.last_result_count = element_scan_response.scan_results_metadata.result_count;
+                self.app_state
+                    .element_scanner_pane_state
+                    .last_total_size_in_bytes = element_scan_response.scan_results_metadata.total_size_in_bytes;
+                self.app_state.element_scanner_pane_state.status_message =
+                    format!("Scan complete with {} results.", element_scan_response.scan_results_metadata.result_count);
+            }
+            Err(receive_error) => {
+                self.app_state.element_scanner_pane_state.status_message = format!("Timed out waiting for element scan response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .element_scanner_pane_state
+            .has_pending_scan_request = false;
     }
 
     fn refresh_process_list(
