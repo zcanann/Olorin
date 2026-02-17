@@ -4,13 +4,36 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit the GUI project and come up with a plan for a TUI using ratatui here.
+- [x] Audit the GUI project and produce a ratatui-first TUI parity plan.
+- [ ] Implement ratatui app shell in `squalr-tui` (terminal init/restore, tick loop, input loop, graceful shutdown).
+- [ ] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
+- [ ] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
+- [ ] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
+- [ ] Implement element scanner toolbar parity: new scan, collect values, start scan, data type select, up to 5 constraints.
+- [ ] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
+- [ ] Implement project selector parity: list/create/open/rename/delete/close project.
+- [ ] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
+- [ ] Implement struct viewer parity for selected scan results/project items, including edit commit callback routing.
+- [ ] Implement settings panes parity (general/memory/scan list+set requests).
+- [ ] Implement output pane parity using log history stream + periodic redraw.
+- [ ] Add focused unit tests in `squalr-tui` for pure state reducers and keyboard command routing.
+- [ ] Run `cargo fmt` and targeted tests (`cargo test -p squalr-tui` + selected engine/view-model tests as needed).
+- [ ] Checkpoint commit and keep this task file compact as milestones complete.
 
 ## Important Information
 Append important discoveries. Compact regularly.
 
 Information found in initial audit:
-- 
+- `squalr-tui` currently initializes `SqualrEngine` only; no terminal event loop or UI rendering exists yet.
+- GUI default surface is 7 docked windows: Process Selector, Project Explorer, Struct Viewer, Output, Element Scanner, Pointer Scanner, Settings.
+- Pointer Scanner is currently a stub in GUI too, so TUI can keep it placeholder without parity regression.
+- High-value parity path is command/view-data parity, not pixel/docking parity. Mouse-heavy drag interactions should become keyboard commands in TUI.
 
 Information discovered during iteration:
-- 
+- Process selector command parity requirements identified: `ProcessListRequest` (windowed + full) and `ProcessOpenRequest`.
+- Element scanner command parity requirements identified: `ScanNewRequest`, `ElementScanRequest`, `ScanCollectValuesRequest`, `ScanResetRequest`.
+- Scan results command parity requirements identified: `ScanResultsQueryRequest`, `ScanResultsRefreshRequest`, `ScanResultsSetPropertyRequest`, `ScanResultsFreezeRequest`, `ScanResultsDeleteRequest`, `ProjectItemsAddRequest`.
+- Project selector command parity requirements identified: `ProjectListRequest`, `ProjectCreateRequest`, `ProjectOpenRequest`, `ProjectRenameRequest`, `ProjectDeleteRequest`, `ProjectCloseRequest`.
+- Project hierarchy command parity requirements identified: `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, `ProjectItemsReorderRequest`, plus edit side effects (`ProjectSaveRequest`, `ProjectItemsRenameRequest`, `MemoryWriteRequest`).
+- Settings command parity requirements identified: list/set pairs for general, memory, and scan settings.
+- Existing GUI view-data modules already encapsulate most command logic and are a strong extraction target for shared UI-agnostic state/actions to reduce duplication between egui and ratatui.
