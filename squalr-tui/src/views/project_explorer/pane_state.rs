@@ -430,6 +430,29 @@ impl ProjectExplorerPaneState {
         self.update_selected_project_fields();
     }
 
+    pub fn select_first_project(&mut self) {
+        if self.project_entries.is_empty() {
+            self.selected_project_list_index = None;
+            self.update_selected_project_fields();
+            return;
+        }
+
+        self.selected_project_list_index = Some(0);
+        self.update_selected_project_fields();
+    }
+
+    pub fn select_last_project(&mut self) {
+        if self.project_entries.is_empty() {
+            self.selected_project_list_index = None;
+            self.update_selected_project_fields();
+            return;
+        }
+
+        let last_project_list_index = self.project_entries.len() - 1;
+        self.selected_project_list_index = Some(last_project_list_index);
+        self.update_selected_project_fields();
+    }
+
     pub fn select_project_by_directory_path(
         &mut self,
         project_directory_path: &Path,
@@ -825,5 +848,34 @@ mod tests {
         project_explorer_pane_state.select_last_project_item();
 
         assert_eq!(project_explorer_pane_state.selected_project_item_visible_index, Some(1));
+    }
+
+    #[test]
+    fn selecting_first_project_uses_home_navigation_behavior() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.apply_project_list(vec![
+            ProjectInfo::new(PathBuf::from("C:/projects/AlphaProject/project.squalr"), None, ProjectManifest::default()),
+            ProjectInfo::new(PathBuf::from("C:/projects/BetaProject/project.squalr"), None, ProjectManifest::default()),
+        ]);
+        project_explorer_pane_state.select_next_project();
+
+        project_explorer_pane_state.select_first_project();
+
+        assert_eq!(project_explorer_pane_state.selected_project_list_index, Some(0));
+        assert_eq!(project_explorer_pane_state.selected_project_name.as_deref(), Some("AlphaProject"));
+    }
+
+    #[test]
+    fn selecting_last_project_uses_end_navigation_behavior() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.apply_project_list(vec![
+            ProjectInfo::new(PathBuf::from("C:/projects/AlphaProject/project.squalr"), None, ProjectManifest::default()),
+            ProjectInfo::new(PathBuf::from("C:/projects/BetaProject/project.squalr"), None, ProjectManifest::default()),
+        ]);
+
+        project_explorer_pane_state.select_last_project();
+
+        assert_eq!(project_explorer_pane_state.selected_project_list_index, Some(1));
+        assert_eq!(project_explorer_pane_state.selected_project_name.as_deref(), Some("BetaProject"));
     }
 }

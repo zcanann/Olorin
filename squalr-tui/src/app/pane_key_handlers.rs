@@ -152,6 +152,11 @@ impl AppShell {
                 .app_state
                 .process_selector_pane_state
                 .select_previous_process(),
+            KeyCode::Home => self
+                .app_state
+                .process_selector_pane_state
+                .select_first_process(),
+            KeyCode::End => self.app_state.process_selector_pane_state.select_last_process(),
             KeyCode::Enter | KeyCode::Char('o') => self.open_selected_process(squalr_engine),
             _ => {}
         }
@@ -377,6 +382,11 @@ impl AppShell {
                 .app_state
                 .project_explorer_pane_state
                 .select_previous_project(),
+            KeyCode::Home => self
+                .app_state
+                .project_explorer_pane_state
+                .select_first_project(),
+            KeyCode::End => self.app_state.project_explorer_pane_state.select_last_project(),
             KeyCode::Enter | KeyCode::Char('o') => self.open_selected_project(squalr_engine),
             KeyCode::Char('n') => self
                 .app_state

@@ -107,6 +107,29 @@ impl ProcessSelectorPaneState {
         self.update_selected_process_fields();
     }
 
+    pub fn select_first_process(&mut self) {
+        if self.process_list_entries.is_empty() {
+            self.selected_process_list_index = None;
+            self.update_selected_process_fields();
+            return;
+        }
+
+        self.selected_process_list_index = Some(0);
+        self.update_selected_process_fields();
+    }
+
+    pub fn select_last_process(&mut self) {
+        if self.process_list_entries.is_empty() {
+            self.selected_process_list_index = None;
+            self.update_selected_process_fields();
+            return;
+        }
+
+        let last_process_list_index = self.process_list_entries.len() - 1;
+        self.selected_process_list_index = Some(last_process_list_index);
+        self.update_selected_process_fields();
+    }
+
     pub fn selected_process_id(&self) -> Option<u32> {
         self.selected_process_list_index
             .and_then(|selected_process_index| self.process_list_entries.get(selected_process_index))
@@ -230,5 +253,47 @@ impl Default for ProcessSelectorPaneState {
             pending_search_name_input: String::new(),
             status_message: "Ready.".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ProcessSelectorPaneState;
+    use squalr_engine_api::structures::processes::process_info::ProcessInfo;
+
+    fn create_process_entry(
+        process_name: &str,
+        process_identifier: u32,
+    ) -> ProcessInfo {
+        ProcessInfo::new(process_identifier, process_name.to_string(), true, None)
+    }
+
+    #[test]
+    fn selecting_first_process_uses_home_navigation_behavior() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.apply_process_list(vec![
+            create_process_entry("Alpha", 100),
+            create_process_entry("Beta", 200),
+        ]);
+        process_selector_pane_state.select_next_process();
+
+        process_selector_pane_state.select_first_process();
+
+        assert_eq!(process_selector_pane_state.selected_process_list_index, Some(0));
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(100));
+    }
+
+    #[test]
+    fn selecting_last_process_uses_end_navigation_behavior() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.apply_process_list(vec![
+            create_process_entry("Alpha", 100),
+            create_process_entry("Beta", 200),
+        ]);
+
+        process_selector_pane_state.select_last_process();
+
+        assert_eq!(process_selector_pane_state.selected_process_list_index, Some(1));
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(200));
     }
 }
