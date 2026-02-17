@@ -2,12 +2,14 @@ use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 
-pub fn build_visible_process_entry_rows(process_selector_pane_state: &ProcessSelectorPaneState) -> Vec<PaneEntryRow> {
-    const PROCESS_VIEWPORT_CAPACITY: usize = 5;
+pub fn build_visible_process_entry_rows(
+    process_selector_pane_state: &ProcessSelectorPaneState,
+    viewport_capacity: usize,
+) -> Vec<PaneEntryRow> {
     let visible_process_range = build_selection_relative_viewport_range(
         process_selector_pane_state.process_list_entries.len(),
         process_selector_pane_state.selected_process_list_index,
-        PROCESS_VIEWPORT_CAPACITY,
+        viewport_capacity,
     );
     let mut entry_rows = Vec::with_capacity(visible_process_range.len());
 
@@ -47,7 +49,7 @@ mod tests {
             .collect();
         process_selector_pane_state.selected_process_list_index = Some(7);
 
-        let entry_rows = build_visible_process_entry_rows(&process_selector_pane_state);
+        let entry_rows = build_visible_process_entry_rows(&process_selector_pane_state, 5);
         let entry_names: Vec<&str> = entry_rows
             .iter()
             .map(|entry_row| entry_row.primary_text.as_str())

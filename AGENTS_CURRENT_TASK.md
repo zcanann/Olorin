@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Again, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit pane-entry viewport sizing against real pane height (remove fixed row-cap constants where practical) so visible list density scales with layout changes/focus boosts.
+- Concrete next subtask: audit non-entry summary preview caps (`struct_viewer` focused-field preview + `output` log preview) against real pane height so summary density scales with pane layout/focus changes.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -177,3 +177,7 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): pane entry-row builders were hard-pinned to top-of-list slices (`0..min(capacity)`), causing keyboard navigation context loss once selections moved beyond initial visible rows.
 - TUI pane-entry viewport behavior update: added shared selection-relative viewport helper (`views/entry_row_viewport.rs`) and switched process/project/scan entry-row builders to centered/clamped selection windowing instead of top-pinned slicing.
 - Added focused viewport tests (shared helper + process/project/project-item/scan entry-row builders) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (84 passed).
+- GUI vs TUI parity audit (this pass): pane-entry viewport capacities were still fixed constants (`5/10`) and did not scale with pane-height changes from weighted layout + focus boosts.
+- TUI pane-entry viewport sizing update: `app_render` now computes per-pane entry capacity from real pane content height after summary lines and routes that capacity through `TuiAppState` into process/project/scan entry-row builders; fixed row-cap constants were removed from these builders.
+- Project explorer capacity split update: `TuiAppState` now dynamically partitions project vs hierarchy entry-row budgets from total pane capacity (focused-target-aware when only one row fits), preserving bounded rendering while scaling with layout changes.
+- Added focused app-state coverage for project-explorer capacity budgeting behavior and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (86 passed).

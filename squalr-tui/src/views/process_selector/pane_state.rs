@@ -100,8 +100,11 @@ impl ProcessSelectorPaneState {
         build_process_selector_summary_lines(self)
     }
 
-    pub fn visible_process_entry_rows(&self) -> Vec<PaneEntryRow> {
-        build_visible_process_entry_rows(self)
+    pub fn visible_process_entry_rows(
+        &self,
+        viewport_capacity: usize,
+    ) -> Vec<PaneEntryRow> {
+        build_visible_process_entry_rows(self, viewport_capacity)
     }
 
     fn update_selected_process_fields(&mut self) {

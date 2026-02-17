@@ -85,12 +85,14 @@ impl AppShell {
         }
 
         let pane_content_width = pane_area.width.saturating_sub(2) as usize;
-        let pane_lines: Vec<Line<'static>> = self
+        let summary_lines = self
             .fit_summary_lines_to_width(self.app_state.pane_summary_lines(pane), pane_content_width)
-            .into_iter()
-            .map(Line::from)
-            .collect();
-        let entry_rows = self.app_state.pane_entry_rows(pane);
+            .into_iter();
+        let pane_content_height = pane_area.height.saturating_sub(2) as usize;
+        let summary_line_count = summary_lines.len();
+        let entry_row_capacity = pane_content_height.saturating_sub(summary_line_count.saturating_add(1));
+        let pane_lines: Vec<Line<'static>> = summary_lines.map(Line::from).collect();
+        let entry_rows = self.app_state.pane_entry_rows(pane, entry_row_capacity);
         let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows, pane_content_width);
 
         let pane_widget = Paragraph::new(pane_lines)

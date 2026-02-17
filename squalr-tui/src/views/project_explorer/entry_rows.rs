@@ -2,12 +2,14 @@ use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
 
-pub fn build_visible_project_entry_rows(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<PaneEntryRow> {
-    const PROJECT_VIEWPORT_CAPACITY: usize = 5;
+pub fn build_visible_project_entry_rows(
+    project_explorer_pane_state: &ProjectExplorerPaneState,
+    viewport_capacity: usize,
+) -> Vec<PaneEntryRow> {
     let visible_project_range = build_selection_relative_viewport_range(
         project_explorer_pane_state.project_entries.len(),
         project_explorer_pane_state.selected_project_list_index,
-        PROJECT_VIEWPORT_CAPACITY,
+        viewport_capacity,
     );
     let mut entry_rows = Vec::with_capacity(visible_project_range.len());
 
@@ -43,12 +45,14 @@ pub fn build_visible_project_entry_rows(project_explorer_pane_state: &ProjectExp
     entry_rows
 }
 
-pub fn build_visible_project_item_entry_rows(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<PaneEntryRow> {
-    const PROJECT_ITEM_VIEWPORT_CAPACITY: usize = 10;
+pub fn build_visible_project_item_entry_rows(
+    project_explorer_pane_state: &ProjectExplorerPaneState,
+    viewport_capacity: usize,
+) -> Vec<PaneEntryRow> {
     let visible_project_item_range = build_selection_relative_viewport_range(
         project_explorer_pane_state.project_item_visible_entries.len(),
         project_explorer_pane_state.selected_project_item_visible_index,
-        PROJECT_ITEM_VIEWPORT_CAPACITY,
+        viewport_capacity,
     );
     let mut entry_rows = Vec::with_capacity(visible_project_item_range.len());
 
@@ -104,7 +108,7 @@ mod tests {
         project_explorer_pane_state.selected_project_list_index = Some(7);
         project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectList;
 
-        let entry_rows = build_visible_project_entry_rows(&project_explorer_pane_state);
+        let entry_rows = build_visible_project_entry_rows(&project_explorer_pane_state, 5);
         let entry_directories: Vec<String> = entry_rows
             .iter()
             .map(|entry_row| entry_row.secondary_text.clone().unwrap_or_default())
@@ -138,7 +142,7 @@ mod tests {
         project_explorer_pane_state.selected_project_item_visible_index = Some(12);
         project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectHierarchy;
 
-        let entry_rows = build_visible_project_item_entry_rows(&project_explorer_pane_state);
+        let entry_rows = build_visible_project_item_entry_rows(&project_explorer_pane_state, 10);
         let entry_names: Vec<&str> = entry_rows
             .iter()
             .map(|entry_row| entry_row.primary_text.trim())

@@ -4,7 +4,7 @@ use crate::state::pane_layout_state::PaneLayoutState;
 use crate::views::element_scanner::pane_state::ElementScannerPaneState;
 use crate::views::output::pane_state::OutputPaneState;
 use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
-use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
+use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
 use crate::views::scan_results::pane_state::ScanResultsPaneState;
 use crate::views::settings::pane_state::SettingsPaneState;
 use crate::views::struct_viewer::pane_state::StructViewerPaneState;
@@ -90,20 +90,63 @@ impl TuiAppState {
     pub fn pane_entry_rows(
         &self,
         pane: TuiPane,
+        pane_entry_row_capacity: usize,
     ) -> Vec<PaneEntryRow> {
         match pane {
-            TuiPane::ProcessSelector => self.process_selector_pane_state.visible_process_entry_rows(),
-            TuiPane::ScanResults => self.scan_results_pane_state.visible_scan_result_rows(),
+            TuiPane::ProcessSelector => self
+                .process_selector_pane_state
+                .visible_process_entry_rows(pane_entry_row_capacity),
+            TuiPane::ScanResults => self
+                .scan_results_pane_state
+                .visible_scan_result_rows(pane_entry_row_capacity),
             TuiPane::ProjectExplorer => {
-                let mut entry_rows = self.project_explorer_pane_state.visible_project_entry_rows();
+                let (project_entry_row_capacity, project_item_entry_row_capacity) = self.project_explorer_entry_row_capacities(pane_entry_row_capacity);
+                let mut entry_rows = self
+                    .project_explorer_pane_state
+                    .visible_project_entry_rows(project_entry_row_capacity);
                 entry_rows.extend(
                     self.project_explorer_pane_state
-                        .visible_project_item_entry_rows(),
+                        .visible_project_item_entry_rows(project_item_entry_row_capacity),
                 );
                 entry_rows
             }
             _ => Vec::new(),
         }
+    }
+
+    fn project_explorer_entry_row_capacities(
+        &self,
+        total_entry_row_capacity: usize,
+    ) -> (usize, usize) {
+        if total_entry_row_capacity == 0 {
+            return (0, 0);
+        }
+
+        let project_entry_count = self.project_explorer_pane_state.project_entries.len();
+        let project_item_entry_count = self
+            .project_explorer_pane_state
+            .project_item_visible_entries
+            .len();
+        if project_entry_count == 0 {
+            return (0, total_entry_row_capacity);
+        }
+
+        if project_item_entry_count == 0 {
+            return (total_entry_row_capacity, 0);
+        }
+
+        if total_entry_row_capacity == 1 {
+            return match self.project_explorer_pane_state.focus_target {
+                ProjectExplorerFocusTarget::ProjectList => (1, 0),
+                ProjectExplorerFocusTarget::ProjectHierarchy => (0, 1),
+            };
+        }
+
+        let mut project_entry_row_capacity = ((total_entry_row_capacity as f32) * 0.33).round() as usize;
+        project_entry_row_capacity = project_entry_row_capacity.clamp(1, total_entry_row_capacity.saturating_sub(1));
+        let project_item_entry_row_capacity = total_entry_row_capacity.saturating_sub(project_entry_row_capacity);
+
+        (project_entry_row_capacity, project_item_entry_row_capacity)
     }
 
     fn cycle_focus(
@@ -137,6 +180,9 @@ impl TuiAppState {
 mod tests {
     use crate::state::TuiAppState;
     use crate::state::pane::TuiPane;
+    use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectHierarchyEntry};
+    use squalr_engine_api::structures::projects::{project_info::ProjectInfo, project_manifest::ProjectManifest};
+    use std::path::PathBuf;
 
     #[test]
     fn cycle_focus_forward_skips_hidden_panes() {
@@ -178,5 +224,80 @@ mod tests {
 
         assert!(app_state.is_pane_visible(TuiPane::Output));
         assert_eq!(app_state.focused_pane(), TuiPane::Output);
+    }
+
+    #[test]
+    fn project_explorer_entry_rows_respect_total_capacity() {
+        let mut app_state = TuiAppState::default();
+        app_state.project_explorer_pane_state.project_entries = vec![
+            ProjectInfo::new(
+                PathBuf::from("C:/Projects/ProjectA/project/squalr-project.json"),
+                None,
+                ProjectManifest::new(Vec::new()),
+            ),
+            ProjectInfo::new(
+                PathBuf::from("C:/Projects/ProjectB/project/squalr-project.json"),
+                None,
+                ProjectManifest::new(Vec::new()),
+            ),
+        ];
+        app_state
+            .project_explorer_pane_state
+            .project_item_visible_entries = vec![
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("root/item-a.json"),
+                display_name: "item-a".to_string(),
+                depth: 0,
+                is_directory: false,
+                is_expanded: false,
+                is_activated: false,
+            },
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("root/item-b.json"),
+                display_name: "item-b".to_string(),
+                depth: 0,
+                is_directory: false,
+                is_expanded: false,
+                is_activated: false,
+            },
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("root/item-c.json"),
+                display_name: "item-c".to_string(),
+                depth: 0,
+                is_directory: false,
+                is_expanded: false,
+                is_activated: false,
+            },
+        ];
+
+        let entry_rows = app_state.pane_entry_rows(TuiPane::ProjectExplorer, 4);
+
+        assert_eq!(entry_rows.len(), 4);
+    }
+
+    #[test]
+    fn project_explorer_single_row_capacity_prefers_focused_target() {
+        let mut app_state = TuiAppState::default();
+        app_state.project_explorer_pane_state.project_entries = vec![ProjectInfo::new(
+            PathBuf::from("C:/Projects/ProjectA/project/squalr-project.json"),
+            None,
+            ProjectManifest::new(Vec::new()),
+        )];
+        app_state
+            .project_explorer_pane_state
+            .project_item_visible_entries = vec![ProjectHierarchyEntry {
+            project_item_path: PathBuf::from("root/item-a.json"),
+            display_name: "item-a".to_string(),
+            depth: 0,
+            is_directory: false,
+            is_expanded: false,
+            is_activated: false,
+        }];
+        app_state.project_explorer_pane_state.focus_target = ProjectExplorerFocusTarget::ProjectHierarchy;
+
+        let entry_rows = app_state.pane_entry_rows(TuiPane::ProjectExplorer, 1);
+
+        assert_eq!(entry_rows.len(), 1);
+        assert_eq!(entry_rows[0].primary_text, "item-a");
     }
 }

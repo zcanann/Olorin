@@ -3,13 +3,15 @@ use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use crate::views::scan_results::pane_state::ScanResultsPaneState;
 use std::ops::RangeInclusive;
 
-pub fn build_visible_scan_result_rows(scan_results_pane_state: &ScanResultsPaneState) -> Vec<PaneEntryRow> {
-    const SCAN_RESULTS_VIEWPORT_CAPACITY: usize = 5;
+pub fn build_visible_scan_result_rows(
+    scan_results_pane_state: &ScanResultsPaneState,
+    viewport_capacity: usize,
+) -> Vec<PaneEntryRow> {
     let selected_result_range = build_selected_result_range(scan_results_pane_state);
     let visible_scan_result_range = build_selection_relative_viewport_range(
         scan_results_pane_state.scan_results.len(),
         scan_results_pane_state.selected_result_index,
-        SCAN_RESULTS_VIEWPORT_CAPACITY,
+        viewport_capacity,
     );
     let mut entry_rows = Vec::with_capacity(visible_scan_result_range.len());
 
@@ -101,7 +103,7 @@ mod tests {
         scan_results_pane_state.selected_result_index = Some(7);
         scan_results_pane_state.selected_range_end_index = Some(7);
 
-        let entry_rows = build_visible_scan_result_rows(&scan_results_pane_state);
+        let entry_rows = build_visible_scan_result_rows(&scan_results_pane_state, 5);
         let entry_primary_text: Vec<&str> = entry_rows
             .iter()
             .map(|entry_row| entry_row.primary_text.as_str())

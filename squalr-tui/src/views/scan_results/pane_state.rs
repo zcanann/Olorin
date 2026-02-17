@@ -321,8 +321,11 @@ impl ScanResultsPaneState {
         build_scan_results_summary_lines(self)
     }
 
-    pub fn visible_scan_result_rows(&self) -> Vec<PaneEntryRow> {
-        build_visible_scan_result_rows(self)
+    pub fn visible_scan_result_rows(
+        &self,
+        viewport_capacity: usize,
+    ) -> Vec<PaneEntryRow> {
+        build_visible_scan_result_rows(self, viewport_capacity)
     }
 
     fn selected_result_range(&self) -> Option<RangeInclusive<usize>> {

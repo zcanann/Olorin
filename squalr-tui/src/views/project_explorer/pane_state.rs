@@ -496,12 +496,18 @@ impl ProjectExplorerPaneState {
         build_project_explorer_summary_lines(self)
     }
 
-    pub fn visible_project_entry_rows(&self) -> Vec<PaneEntryRow> {
-        build_visible_project_entry_rows(self)
+    pub fn visible_project_entry_rows(
+        &self,
+        viewport_capacity: usize,
+    ) -> Vec<PaneEntryRow> {
+        build_visible_project_entry_rows(self, viewport_capacity)
     }
 
-    pub fn visible_project_item_entry_rows(&self) -> Vec<PaneEntryRow> {
-        build_visible_project_item_entry_rows(self)
+    pub fn visible_project_item_entry_rows(
+        &self,
+        viewport_capacity: usize,
+    ) -> Vec<PaneEntryRow> {
+        build_visible_project_item_entry_rows(self, viewport_capacity)
     }
 
     fn update_selected_project_fields(&mut self) {
