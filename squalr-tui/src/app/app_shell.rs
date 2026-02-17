@@ -204,7 +204,7 @@ mod tests {
     use crate::state::pane::TuiPane;
     use crate::views::project_explorer::pane_state::ProjectHierarchyEntry;
     use crate::views::settings::pane_state::SettingsCategory;
-    use crate::views::struct_viewer_pane_state::StructViewerSource;
+    use crate::views::struct_viewer::pane_state::StructViewerSource;
     use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use squalr_engine::engine_mode::EngineMode;
     use squalr_engine::squalr_engine::SqualrEngine;

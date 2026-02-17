@@ -501,7 +501,7 @@ impl Default for StructViewerPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::views::struct_viewer_pane_state::{StructViewerPaneState, StructViewerSource};
+    use crate::views::struct_viewer::pane_state::{StructViewerPaneState, StructViewerSource};
     use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
     use squalr_engine_api::structures::scan_results::scan_result::ScanResult;

@@ -481,7 +481,7 @@ impl AppShell {
         key_event: KeyEvent,
         squalr_engine: &mut SqualrEngine,
     ) {
-        let apply_edit_input_guard = |struct_viewer_pane_state: &mut crate::views::struct_viewer_pane_state::StructViewerPaneState| -> bool {
+        let apply_edit_input_guard = |struct_viewer_pane_state: &mut crate::views::struct_viewer::pane_state::StructViewerPaneState| -> bool {
             if let Some(block_reason) = struct_viewer_pane_state.selected_field_edit_block_reason() {
                 struct_viewer_pane_state.status_message = block_reason;
                 return false;

@@ -1,4 +1,4 @@
-use crate::views::struct_viewer_pane_state::StructViewerPaneState;
+use crate::views::struct_viewer::pane_state::StructViewerPaneState;
 
 pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewerPaneState) -> Vec<String> {
     let selected_field_display_format = struct_viewer_pane_state.selected_field_active_display_format();

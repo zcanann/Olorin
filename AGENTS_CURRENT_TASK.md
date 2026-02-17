@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: continue pane-state folderization by relocating `squalr-tui/src/views/struct_viewer_pane_state.rs` into `squalr-tui/src/views/struct_viewer/` (plus matching module wiring and import updates) so pane-state placement consistently mirrors GUI-side feature subfolders.
+- Concrete next subtask: run a focused GUI-vs-TUI parity audit for non-pane-state module layout and identify the next high-value `pr/tui` behavior/layout gap now that pane-state folderization is complete across core panes.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -154,3 +154,5 @@ Information discovered during iteration:
 - Validation pass after output pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
 - TUI settings pane-state folderization pass: relocated `squalr-tui/src/views/settings_pane_state.rs` to `squalr-tui/src/views/settings/pane_state.rs`, rewired view/app/state imports to `crate::views::settings::pane_state::*`, and updated module exports (`views/settings/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
 - Validation pass after settings pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
+- TUI struct-viewer pane-state folderization pass: relocated `squalr-tui/src/views/struct_viewer_pane_state.rs` to `squalr-tui/src/views/struct_viewer/pane_state.rs`, rewired view/app/state imports to `crate::views::struct_viewer::pane_state::*`, and updated module exports (`views/struct_viewer/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
+- Validation pass after struct-viewer pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).

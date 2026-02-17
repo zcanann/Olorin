@@ -7,7 +7,7 @@ use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
 use crate::views::scan_results::pane_state::ScanResultsPaneState;
 use crate::views::settings::pane_state::SettingsPaneState;
-use crate::views::struct_viewer_pane_state::StructViewerPaneState;
+use crate::views::struct_viewer::pane_state::StructViewerPaneState;
 
 /// Root state container for TUI panes.
 #[derive(Clone, Debug, Default)]
