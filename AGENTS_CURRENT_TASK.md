@@ -83,5 +83,6 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): GUI hierarchy view continuously reconciles loaded hierarchy with engine-opened project state; TUI lacked equivalent reconciliation, which could leave stale active-project/hierarchy state after project open/close timeout or out-of-band state changes.
 - TUI app-shell tick flow now synchronizes active project identity from `ProjectManager::get_opened_project()` each tick; when active project directory changes, TUI clears project hierarchy + struct viewer focus and resets project-item auto-refresh timing for immediate requery.
 - Added app-shell tests for project-state synchronization behavior (directory-change reset path, same-directory preserve path, and immediate project-item auto-refresh eligibility after directory change); validated with `cargo test -p squalr-tui` (49 passed).
+- Checkpoint commit for project-state synchronization parity: `085f006c` (`Sync TUI active project state with engine on tick`).
 
 
