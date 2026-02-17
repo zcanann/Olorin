@@ -240,8 +240,11 @@ impl StructViewerPaneState {
         self.cycle_selected_field_display_format(false)
     }
 
-    pub fn summary_lines(&self) -> Vec<String> {
-        build_struct_viewer_summary_lines(self)
+    pub fn summary_lines(
+        &self,
+        focused_field_preview_capacity: usize,
+    ) -> Vec<String> {
+        build_struct_viewer_summary_lines(self, focused_field_preview_capacity)
     }
 
     pub(crate) fn focused_field_count(&self) -> usize {

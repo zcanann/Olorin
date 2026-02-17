@@ -84,11 +84,11 @@ impl AppShell {
             title.push_str(" *");
         }
 
+        let pane_content_height = pane_area.height.saturating_sub(2) as usize;
         let pane_content_width = pane_area.width.saturating_sub(2) as usize;
         let summary_lines = self
-            .fit_summary_lines_to_width(self.app_state.pane_summary_lines(pane), pane_content_width)
+            .fit_summary_lines_to_width(self.app_state.pane_summary_lines(pane, pane_content_height), pane_content_width)
             .into_iter();
-        let pane_content_height = pane_area.height.saturating_sub(2) as usize;
         let summary_line_count = summary_lines.len();
         let entry_row_capacity = pane_content_height.saturating_sub(summary_line_count.saturating_add(1));
         let pane_lines: Vec<Line<'static>> = summary_lines.map(Line::from).collect();

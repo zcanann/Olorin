@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Again, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit non-entry summary preview caps (`struct_viewer` focused-field preview + `output` log preview) against real pane height so summary density scales with pane layout/focus changes.
+- Concrete next subtask: audit summary-line density behavior for non-entry panes (`settings`, `element_scanner`) under tiny pane heights and decide whether to introduce per-pane priority truncation before entry rows.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -181,3 +181,6 @@ Information discovered during iteration:
 - TUI pane-entry viewport sizing update: `app_render` now computes per-pane entry capacity from real pane content height after summary lines and routes that capacity through `TuiAppState` into process/project/scan entry-row builders; fixed row-cap constants were removed from these builders.
 - Project explorer capacity split update: `TuiAppState` now dynamically partitions project vs hierarchy entry-row budgets from total pane capacity (focused-target-aware when only one row fits), preserving bounded rendering while scaling with layout changes.
 - Added focused app-state coverage for project-explorer capacity budgeting behavior and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (86 passed).
+- GUI vs TUI parity audit (this pass): non-entry summary previews still used fixed caps (`struct_viewer` field preview `min(5)` and `output` log preview `min(8)`), so preview density did not scale with weighted pane height/focus changes.
+- TUI non-entry summary preview sizing update: `app_render` now passes measured pane content height into `TuiAppState::pane_summary_lines`, which computes dynamic preview budgets for `struct_viewer` and `output` (`fixed summary lines` + height-derived remainder); summary builders now consume explicit preview capacities instead of fixed caps.
+- Added focused summary tests for zero-preview-capacity behavior in `struct_viewer` and `output`, and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (88 passed).

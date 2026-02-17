@@ -1,6 +1,11 @@
 use crate::views::struct_viewer::pane_state::StructViewerPaneState;
 
-pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewerPaneState) -> Vec<String> {
+pub const STRUCT_VIEWER_FIXED_SUMMARY_LINE_COUNT: usize = 10;
+
+pub fn build_struct_viewer_summary_lines(
+    struct_viewer_pane_state: &StructViewerPaneState,
+    focused_field_preview_capacity: usize,
+) -> Vec<String> {
     let selected_field_display_format = struct_viewer_pane_state.selected_field_active_display_format();
     let selected_field_display_format_progress = struct_viewer_pane_state.selected_field_display_format_progress();
     let selected_field_edit_state = struct_viewer_pane_state.selected_field_edit_state_label();
@@ -41,7 +46,9 @@ pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewer
         format!("[STAT] {}.", struct_viewer_pane_state.status_message),
     ];
 
-    let visible_field_count = struct_viewer_pane_state.focused_field_count().min(5);
+    let visible_field_count = struct_viewer_pane_state
+        .focused_field_count()
+        .min(focused_field_preview_capacity);
     for field_position in 0..visible_field_count {
         if let Some(focused_field) = struct_viewer_pane_state
             .focused_struct
@@ -84,15 +91,49 @@ fn option_to_compact_text(option_text: Option<&str>) -> String {
 mod tests {
     use super::build_struct_viewer_summary_lines;
     use crate::views::struct_viewer::pane_state::StructViewerPaneState;
+    use squalr_engine_api::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
+    use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
+    use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
+    use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
+    use squalr_engine_api::structures::scan_results::scan_result_valued::ScanResultValued;
+
+    fn create_scan_result(scan_result_global_position: u64) -> ScanResult {
+        let scan_result_valued = ScanResultValued::new(
+            0x1000 + scan_result_global_position,
+            DataTypeRef::new("u8"),
+            String::new(),
+            Some(DataTypeU8::get_value_from_primitive(42)),
+            Vec::new(),
+            None,
+            Vec::new(),
+            ScanResultRef::new(scan_result_global_position),
+        );
+
+        ScanResult::new(scan_result_valued, String::new(), 0, None, Vec::new(), false)
+    }
 
     #[test]
     fn summary_uses_condensed_marker_group_lead_lines() {
         let struct_viewer_pane_state = StructViewerPaneState::default();
-        let summary_lines = build_struct_viewer_summary_lines(&struct_viewer_pane_state);
+        let summary_lines = build_struct_viewer_summary_lines(&struct_viewer_pane_state, 5);
 
         assert!(summary_lines[0].starts_with("[ACT]"));
         assert!(summary_lines[1].starts_with("[NAV]"));
         assert!(summary_lines[2].starts_with("[FMT]"));
         assert!(summary_lines[3].starts_with("[EDIT]"));
+    }
+
+    #[test]
+    fn focused_field_preview_capacity_zero_hides_field_preview_lines() {
+        let mut struct_viewer_pane_state = StructViewerPaneState::default();
+        struct_viewer_pane_state.focus_scan_results(&[create_scan_result(1)], vec![ScanResultRef::new(1)]);
+
+        let summary_lines = build_struct_viewer_summary_lines(&struct_viewer_pane_state, 0);
+        let focused_field_preview_line_count = summary_lines
+            .iter()
+            .filter(|summary_line| summary_line.contains("[FLD "))
+            .count();
+
+        assert_eq!(focused_field_preview_line_count, 0);
     }
 }

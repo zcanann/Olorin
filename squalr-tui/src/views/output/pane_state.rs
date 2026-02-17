@@ -43,8 +43,11 @@ impl OutputPaneState {
         self.trim_to_max_line_count();
     }
 
-    pub fn summary_lines(&self) -> Vec<String> {
-        build_output_summary_lines(self)
+    pub fn summary_lines(
+        &self,
+        log_preview_capacity: usize,
+    ) -> Vec<String> {
+        build_output_summary_lines(self, log_preview_capacity)
     }
 
     fn trim_to_max_line_count(&mut self) {

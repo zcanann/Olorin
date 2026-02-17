@@ -3,11 +3,13 @@ use crate::state::pane_entry_row::PaneEntryRow;
 use crate::state::pane_layout_state::PaneLayoutState;
 use crate::views::element_scanner::pane_state::ElementScannerPaneState;
 use crate::views::output::pane_state::OutputPaneState;
+use crate::views::output::summary::OUTPUT_FIXED_SUMMARY_LINE_COUNT;
 use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
 use crate::views::scan_results::pane_state::ScanResultsPaneState;
 use crate::views::settings::pane_state::SettingsPaneState;
 use crate::views::struct_viewer::pane_state::StructViewerPaneState;
+use crate::views::struct_viewer::summary::STRUCT_VIEWER_FIXED_SUMMARY_LINE_COUNT;
 
 /// Root state container for TUI panes.
 #[derive(Clone, Debug, Default)]
@@ -75,14 +77,19 @@ impl TuiAppState {
     pub fn pane_summary_lines(
         &self,
         pane: TuiPane,
+        pane_content_height: usize,
     ) -> Vec<String> {
         match pane {
             TuiPane::ProcessSelector => self.process_selector_pane_state.summary_lines(),
             TuiPane::ElementScanner => self.element_scanner_pane_state.summary_lines(),
             TuiPane::ScanResults => self.scan_results_pane_state.summary_lines(),
             TuiPane::ProjectExplorer => self.project_explorer_pane_state.summary_lines(),
-            TuiPane::StructViewer => self.struct_viewer_pane_state.summary_lines(),
-            TuiPane::Output => self.output_pane_state.summary_lines(),
+            TuiPane::StructViewer => self
+                .struct_viewer_pane_state
+                .summary_lines(pane_content_height.saturating_sub(STRUCT_VIEWER_FIXED_SUMMARY_LINE_COUNT)),
+            TuiPane::Output => self
+                .output_pane_state
+                .summary_lines(pane_content_height.saturating_sub(OUTPUT_FIXED_SUMMARY_LINE_COUNT)),
             TuiPane::Settings => self.settings_pane_state.summary_lines(),
         }
     }
