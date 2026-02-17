@@ -99,6 +99,15 @@ impl SettingsPaneState {
         };
     }
 
+    pub fn select_first_field(&mut self) {
+        self.selected_field_index = 0;
+    }
+
+    pub fn select_last_field(&mut self) {
+        let field_count = self.field_count_for_selected_category();
+        self.selected_field_index = field_count.saturating_sub(1);
+    }
+
     pub fn toggle_selected_boolean_field(&mut self) -> bool {
         let mut did_change_value = false;
 
@@ -420,5 +429,36 @@ impl Default for SettingsPaneState {
             scan_settings: ScanSettings::default(),
             status_message: "Ready.".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SettingsCategory, SettingsPaneState};
+
+    #[test]
+    fn select_first_field_sets_index_to_zero() {
+        let mut settings_pane_state = SettingsPaneState {
+            selected_category: SettingsCategory::Memory,
+            selected_field_index: 8,
+            ..SettingsPaneState::default()
+        };
+
+        settings_pane_state.select_first_field();
+
+        assert_eq!(settings_pane_state.selected_field_index, 0);
+    }
+
+    #[test]
+    fn select_last_field_uses_category_field_count() {
+        let mut settings_pane_state = SettingsPaneState {
+            selected_category: SettingsCategory::Scan,
+            selected_field_index: 0,
+            ..SettingsPaneState::default()
+        };
+
+        settings_pane_state.select_last_field();
+
+        assert_eq!(settings_pane_state.selected_field_index, 8);
     }
 }

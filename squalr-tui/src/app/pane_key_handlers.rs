@@ -47,6 +47,8 @@ impl AppShell {
             KeyCode::Char('[') => self.app_state.settings_pane_state.cycle_category_backward(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.settings_pane_state.select_next_field(),
             KeyCode::Up | KeyCode::Char('k') => self.app_state.settings_pane_state.select_previous_field(),
+            KeyCode::Home => self.app_state.settings_pane_state.select_first_field(),
+            KeyCode::End => self.app_state.settings_pane_state.select_last_field(),
             KeyCode::Char(' ') => {
                 if self
                     .app_state

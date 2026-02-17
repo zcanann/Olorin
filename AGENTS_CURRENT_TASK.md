@@ -8,48 +8,24 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Implement project-list parity for fast navigation in Settings pane (`Home`/`End` field jumps).
+- Audit GUI project against the TUI and identify remaining functional parity gaps.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
 
-- Implemented three page-based workspaces with fixed layouts and persistent output pane.
-- `Tab`/`Shift+Tab` now cycles focus within active page only.
-- Struct Viewer was removed from active navigation/layout (no page includes it), but backend/state coupling still exists and needs follow-up cleanup.
-- Removed automatic Struct Viewer coupling from scan/project command paths (state mutation + command side effects no longer auto-sync struct viewer focus).
-- Theme implementation moved from `theme/mod.rs` into dedicated `theme/tui_theme.rs` and re-exported by `theme/mod.rs`.
-- Project workspace now uses context routing:
-  - Default: Process Selector (full-width) + Output.
-  - After opening a process: Project Explorer (full-width) + Output.
-  - `F4` reopens Process Selector view from anywhere.
-- Global key routing in `AppShell` now uses a dedicated `handle_global_key_event` path before pane-local handlers, aligning dispatch flow with a clear top-level route-then-handle pattern.
-- Workspace hotkeys moved from `1/2/3` to `F1/F2/F3` to avoid scan/input collisions; process selector routing is intentionally less accessible on `F4`.
-- Process Selector search flow added:
-  - `/` enters search mode.
-  - typing updates `search_name` filtering via process-list request.
-  - `Backspace` edits, `Ctrl+u` clears, `Enter` commits mode, `Esc` cancels and clears filter.
-- Summary/header declutter pass completed:
-  - Process Selector, Project Explorer, Scan Results, Element Scanner, Settings, and Output summaries were reduced to concise action + status + essential state lines.
-- Project Explorer mode is now context-driven (no `p/i` toggle): opening/activating a project moves to hierarchy interaction mode automatically, and closing the active project returns to project-list mode.
-- `c` (close active project) is now available from hierarchy key handling, preserving the mode-return loop without manual toggles.
-- Project hierarchy rows now place activation state next to names using `[ ]`/`[x]`; hierarchy mode no longer allocates row space to project list.
-- Element scanner summary now avoids duplicate constraint row rendering.
-- Panel focus accent is now unified across panes instead of per-pane color variants.
-- Session + Controls were collapsed into a single `Info` header block, reclaiming body height in all workspaces.
-- Global quit behavior was hardened: plain `q` and `Esc` are no longer app-exit hotkeys; quit now requires `Ctrl+Q` or `Ctrl+C`.
-- Added `AppShell` tests covering new quit routing (`Esc`/plain `q` not consumed globally, `Ctrl+Q` exits globally).
-- Removed now-unused `TuiTheme` helper functions (`status_text_style`, `controls_block`) created obsolete by the header collapse.
-- `cargo test -p squalr-tui` passes with 19 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
-- Process selector search now uses client-side filtering over a cached process list (`ProcessListRequest.search_name=None`), removing per-keystroke engine round-trips.
-- Process selector now renders a dedicated `search: ...` row directly above process entries; when search input is active that row is selected, and selected process rows use `>` markers (`>*` if also opened).
-- Search-mode navigation now supports `Down/j` to exit search input and continue list navigation without forcing a server refresh.
-- Project workspace auto-seek to Project Explorer is now one-time per session; later navigation uses manual `F4` toggling between Process Selector and Project Explorer when a process is open.
-- Project hierarchy keymap parity fix completed:
-  - `r` now refreshes hierarchy items (matching summary expectations).
-  - `h` now collapses/selects parent (Vim parity with `Left`), removing the previous `h` refresh conflict.
-- Project Explorer now supports client-side project-list search flow:
-  - `/` enters search mode with a dedicated `search: ...` row above projects.
-  - typing applies immediate local filtering over cached `all_project_entries`.
-  - `Backspace` edits, `Ctrl+u` clears, `Enter` commits mode, `Esc` cancels and clears filter.
-- Project hierarchy navigation now supports `Home`/`End` for first/last visible item jumps.
-- Process selector and project list now support `Home`/`End` for first/last entry jumps (with matching summary hints and unit tests).
+- TUI now runs as three fixed workspace pages with persistent Output pane and in-page `Tab`/`Shift+Tab` focus loops.
+- Workspace switching is mapped to `F1/F2/F3`; `F4` toggles Project workspace context between Process Selector and Project Explorer when a process is open.
+- Global key routing is top-level first (`handle_global_key_event`) before pane-local handlers.
+- App exit is intentionally restricted to `Ctrl+Q` or `Ctrl+C`; plain `q` and `Esc` are not global quit keys (covered by `AppShell` tests).
+- Project Explorer is context-driven (no manual `p/i` mode switch); open/activate project enters hierarchy mode, close active project returns to list mode.
+- Hierarchy rows render activation state inline with names (`[ ]` / `[x]`) and support `h/Left` collapse-to-parent behavior.
+- Project hierarchy supports `Home`/`End` jump to first/last visible item.
+- Process Selector supports client-side search over cached process data with a dedicated `search:` row and no per-keystroke engine round-trip.
+- Project list supports the same client-side search pattern over cached project entries with dedicated search row UX.
+- Process selector and project list both support `Home`/`End` jump navigation with matching summary hints and tests.
+- Settings pane now supports `Home`/`End` field jump parity, matching other list-like panes.
+- Settings summary controls line now advertises `Home/End` jump behavior explicitly.
+- Struct Viewer is removed from active page layouts, but dormant state/backend coupling cleanup remains.
+- Theme logic lives in `theme/tui_theme.rs` and per-pane accent differences were removed for a unified focused-pane accent.
+- Header space was reclaimed by collapsing Session + Controls into a single `Info` block.
+- `cargo test -p squalr-tui` currently passes (21 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
