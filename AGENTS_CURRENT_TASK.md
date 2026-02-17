@@ -57,5 +57,6 @@ Information discovered during iteration:
 - Checkpoint commit for scan results parity: `1e89edc0` (`Implement TUI scan results pane command parity`).
 - TUI project selector now dispatches `ProjectListRequest`, `ProjectCreateRequest`, `ProjectOpenRequest`, `ProjectRenameRequest`, `ProjectDeleteRequest`, and `ProjectCloseRequest` with keyboard-first controls (`r`, `n`, `Enter`/`o`, `e`, `x`, `c`, `j`/`k`, plus inline name input commit/cancel).
 - Added `project_explorer_pane_state` reducer tests for default selection on list load, wraparound project selection, and rename-input guard behavior.
+- Checkpoint commit for project selector parity: `58e938ef` (`Implement TUI project selector command parity`).
 
 
