@@ -1,4 +1,5 @@
 mod app_shell;
+mod app_tick;
 mod command_dispatch;
 mod pane_key_handlers;
 

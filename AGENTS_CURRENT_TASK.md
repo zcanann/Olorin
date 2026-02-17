@@ -9,7 +9,8 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 - The TUI build for vscode should not be inside the vscode terminal, it should launch standalone.
-- [ ] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting tick/auto-refresh orchestration into focused app submodules (maintain behavior parity + tests).
+- [x] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting tick/auto-refresh orchestration into focused app submodules (maintain behavior parity + tests).
+- [ ] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting pane-layout drawing helpers into a focused app rendering submodule (maintain behavior parity + tests).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -100,3 +101,5 @@ Information discovered during iteration:
 - Checkpoint commit for module-layout cleanup: `21c60931` (`Refactor TUI module layout for app/state/views separation`).
 - TUI app-shell de-bloat pass: extracted pane-focused keyboard routing into `squalr-tui/src/app/pane_key_handlers.rs` and command/request dispatch + struct-viewer commit routing into `squalr-tui/src/app/command_dispatch.rs`; `squalr-tui/src/app/mod.rs` now composes `app_shell`, `pane_key_handlers`, and `command_dispatch` modules.
 - Validation pass after handler/dispatch extraction: `cargo test -p squalr-tui` (54 passed).
+- TUI app-shell de-bloat pass: extracted tick/auto-refresh orchestration and engine-event/project-state synchronization from `squalr-tui/src/app/app_shell.rs` into `squalr-tui/src/app/app_tick.rs`; tick helper methods now use `pub(super)` visibility for cross-module composition and existing app-shell tests.
+- Validation pass after tick-orchestration extraction: `cargo test -p squalr-tui` (54 passed).
