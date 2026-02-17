@@ -14,13 +14,23 @@ impl OutputPaneState {
         &mut self,
         log_history: Vec<LogEvent>,
     ) {
+        self.apply_log_history_with_feedback(log_history, true);
+    }
+
+    pub fn apply_log_history_with_feedback(
+        &mut self,
+        log_history: Vec<LogEvent>,
+        should_update_status_message: bool,
+    ) {
         self.log_lines = log_history
             .into_iter()
             .map(|log_event| format!("[{}] {}", log_event.level, log_event.message))
             .collect();
         self.trim_to_max_line_count();
         self.did_auto_scroll_to_latest = true;
-        self.status_message = format!("Loaded {} log lines.", self.log_lines.len());
+        if should_update_status_message {
+            self.status_message = format!("Loaded {} log lines.", self.log_lines.len());
+        }
     }
 
     pub fn clear_log_lines(&mut self) {
@@ -122,5 +132,21 @@ mod tests {
         output_pane_state.clear_log_lines();
 
         assert!(output_pane_state.log_lines.is_empty());
+    }
+
+    #[test]
+    fn apply_log_history_can_preserve_status_message() {
+        let mut output_pane_state = OutputPaneState::default();
+        output_pane_state.status_message = "Manual status should remain.".to_string();
+
+        output_pane_state.apply_log_history_with_feedback(
+            vec![LogEvent {
+                level: Level::Info,
+                message: "line".to_string(),
+            }],
+            false,
+        );
+
+        assert_eq!(output_pane_state.status_message, "Manual status should remain.");
     }
 }

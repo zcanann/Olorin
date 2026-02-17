@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior in settings/output panes during periodic auto-refresh paths.
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status behavior in process/project panes during initial auto-load and retry paths.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -73,5 +73,8 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): project hierarchy refresh could retain stale transient state in TUI (`expanded_directory_paths`, staged move paths, pending delete-confirm paths) when list responses removed items; GUI retain/refresh paths implicitly drop invalid references.
 - `ProjectExplorerPaneState::apply_project_items_list` now prunes invalid expanded/staged/confirm paths against refreshed project items, while preserving selected hierarchy entry by stable path when available.
 - Added reducer tests for project-item selection preservation and stale refresh-state pruning; validated with `cargo test -p squalr-tui` (40 passed).
+- GUI vs TUI parity audit (this pass): `settings` auto-refresh previously depended on a `"Ready."` status sentinel, which blocked retries after non-ready statuses. TUI now uses explicit load-state (`has_loaded_settings_once`) with bounded retry cadence in app-shell tick flow.
+- GUI vs TUI parity audit (this pass): periodic `output` refresh previously overwrote pane status each tick. TUI now preserves manual/status feedback during tick refresh and only updates output status text for explicit user-triggered refresh.
+- Added tests for settings auto-refresh eligibility interval/load-state gating and output status preservation, plus reducer coverage for opt-in output status updates; validated with `cargo test -p squalr-tui` (43 passed).
 
 

@@ -105,11 +105,13 @@ pub struct AppShell {
     pub consumed_scan_results_update_counter: u64,
     pub has_registered_scan_results_updated_listener: bool,
     pub last_scan_results_periodic_refresh_time: Option<Instant>,
+    pub last_settings_auto_refresh_attempt_time: Option<Instant>,
 }
 
 impl AppShell {
     const MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 50;
     const MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 5_000;
+    const MIN_SETTINGS_AUTO_REFRESH_INTERVAL_MS: u64 = 1_000;
 
     pub fn new(tick_rate: Duration) -> Self {
         Self {
@@ -121,6 +123,7 @@ impl AppShell {
             consumed_scan_results_update_counter: 0,
             has_registered_scan_results_updated_listener: false,
             last_scan_results_periodic_refresh_time: None,
+            last_settings_auto_refresh_attempt_time: None,
         }
     }
 
@@ -276,9 +279,7 @@ impl AppShell {
             self.refresh_project_items_list(squalr_engine);
         }
 
-        if !self.app_state.settings_pane_state.is_refreshing_settings && self.app_state.settings_pane_state.status_message == "Ready." {
-            self.refresh_all_settings_categories(squalr_engine);
-        }
+        self.refresh_settings_on_tick_if_eligible(squalr_engine);
     }
 
     fn register_scan_results_updated_listener_if_needed(
@@ -328,6 +329,35 @@ impl AppShell {
 
         if self.refresh_scan_results_page_with_feedback(squalr_engine, false) {
             self.last_scan_results_periodic_refresh_time = Some(Instant::now());
+        }
+    }
+
+    fn refresh_settings_on_tick_if_eligible(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        let current_tick_time = Instant::now();
+        if !self.should_refresh_settings_on_tick(current_tick_time) {
+            return;
+        }
+
+        self.last_settings_auto_refresh_attempt_time = Some(current_tick_time);
+        self.refresh_all_settings_categories_with_feedback(squalr_engine, false);
+    }
+
+    fn should_refresh_settings_on_tick(
+        &self,
+        current_tick_time: Instant,
+    ) -> bool {
+        if self.app_state.settings_pane_state.has_loaded_settings_once || self.app_state.settings_pane_state.is_refreshing_settings {
+            return false;
+        }
+
+        match self.last_settings_auto_refresh_attempt_time {
+            Some(last_settings_auto_refresh_attempt_time) => {
+                current_tick_time.duration_since(last_settings_auto_refresh_attempt_time) >= Duration::from_millis(Self::MIN_SETTINGS_AUTO_REFRESH_INTERVAL_MS)
+            }
+            None => true,
         }
     }
 
@@ -394,7 +424,7 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         match key_code {
-            KeyCode::Char('r') => self.refresh_output_log_history(squalr_engine),
+            KeyCode::Char('r') => self.refresh_output_log_history_with_feedback(squalr_engine, true),
             KeyCode::Char('x') | KeyCode::Delete => self.app_state.output_pane_state.clear_log_lines(),
             KeyCode::Char('+') | KeyCode::Char('=') => self.app_state.output_pane_state.increase_max_line_count(),
             KeyCode::Char('-') => self.app_state.output_pane_state.decrease_max_line_count(),
@@ -408,7 +438,7 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         match key_code {
-            KeyCode::Char('r') => self.refresh_all_settings_categories(squalr_engine),
+            KeyCode::Char('r') => self.refresh_all_settings_categories_with_feedback(squalr_engine, true),
             KeyCode::Char(']') => self.app_state.settings_pane_state.cycle_category_forward(),
             KeyCode::Char('[') => self.app_state.settings_pane_state.cycle_category_backward(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.settings_pane_state.select_next_field(),
@@ -928,6 +958,14 @@ impl AppShell {
         &mut self,
         squalr_engine: &mut SqualrEngine,
     ) {
+        self.refresh_output_log_history_with_feedback(squalr_engine, false);
+    }
+
+    fn refresh_output_log_history_with_feedback(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
+    ) {
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,
             None => {
@@ -946,12 +984,13 @@ impl AppShell {
         let log_history_snapshot = log_history_guard.iter().cloned().collect();
         self.app_state
             .output_pane_state
-            .apply_log_history(log_history_snapshot);
+            .apply_log_history_with_feedback(log_history_snapshot, should_update_status_message);
     }
 
-    fn refresh_all_settings_categories(
+    fn refresh_all_settings_categories_with_feedback(
         &mut self,
         squalr_engine: &mut SqualrEngine,
+        should_update_status_message: bool,
     ) {
         if self.app_state.settings_pane_state.is_refreshing_settings {
             self.app_state.settings_pane_state.status_message = "Settings refresh is already in progress.".to_string();
@@ -967,6 +1006,9 @@ impl AppShell {
         };
 
         self.app_state.settings_pane_state.is_refreshing_settings = true;
+        let mut did_read_general_settings = false;
+        let mut did_read_memory_settings = false;
+        let mut did_read_scan_settings = false;
 
         let general_settings_list_request = GeneralSettingsListRequest {};
         let (general_response_sender, general_response_receiver) = mpsc::sync_channel(1);
@@ -980,6 +1022,7 @@ impl AppShell {
                     self.app_state
                         .settings_pane_state
                         .apply_general_settings(general_settings);
+                    did_read_general_settings = true;
                 } else {
                     self.app_state.settings_pane_state.status_message = "Failed to read general settings.".to_string();
                 }
@@ -1001,6 +1044,7 @@ impl AppShell {
                     self.app_state
                         .settings_pane_state
                         .apply_memory_settings(memory_settings);
+                    did_read_memory_settings = true;
                 } else {
                     self.app_state.settings_pane_state.status_message = "Failed to read memory settings.".to_string();
                 }
@@ -1022,7 +1066,10 @@ impl AppShell {
                     self.app_state
                         .settings_pane_state
                         .apply_scan_settings(scan_settings);
-                    self.app_state.settings_pane_state.status_message = "Settings refreshed.".to_string();
+                    did_read_scan_settings = true;
+                    if should_update_status_message {
+                        self.app_state.settings_pane_state.status_message = "Settings refreshed.".to_string();
+                    }
                 } else {
                     self.app_state.settings_pane_state.status_message = "Failed to read scan settings.".to_string();
                 }
@@ -1030,6 +1077,10 @@ impl AppShell {
             Err(receive_error) => {
                 self.app_state.settings_pane_state.status_message = format!("Timed out waiting for scan settings response: {}", receive_error);
             }
+        }
+
+        if did_read_general_settings && did_read_memory_settings && did_read_scan_settings {
+            self.app_state.settings_pane_state.has_loaded_settings_once = true;
         }
 
         self.app_state.settings_pane_state.is_refreshing_settings = false;
@@ -3411,6 +3462,17 @@ mod tests {
     }
 
     #[test]
+    fn output_tick_refresh_preserves_existing_status_message() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.output_pane_state.status_message = "Manual output status.".to_string();
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for output status test");
+
+        app_shell.refresh_output_log_history(&mut squalr_engine);
+
+        assert_eq!(app_shell.app_state.output_pane_state.status_message, "Manual output status.");
+    }
+
+    #[test]
     fn scan_results_engine_update_waits_while_query_is_active() {
         let mut app_shell = AppShell::new(Duration::from_millis(100));
         let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for signal routing test");
@@ -3481,6 +3543,26 @@ mod tests {
 
         app_shell.last_scan_results_periodic_refresh_time = Some(current_tick_time - Duration::from_millis(1_100));
         assert!(app_shell.should_refresh_scan_results_page_on_tick(current_tick_time));
+    }
+
+    #[test]
+    fn settings_auto_refresh_eligibility_uses_load_state_and_interval() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let current_tick_time = Instant::now();
+        app_shell.app_state.settings_pane_state.status_message = "Applied general settings.".to_string();
+        app_shell.app_state.settings_pane_state.has_loaded_settings_once = false;
+
+        assert!(app_shell.should_refresh_settings_on_tick(current_tick_time));
+
+        app_shell.last_settings_auto_refresh_attempt_time = Some(current_tick_time);
+        assert!(!app_shell.should_refresh_settings_on_tick(current_tick_time));
+
+        app_shell.last_settings_auto_refresh_attempt_time =
+            Some(current_tick_time - Duration::from_millis(AppShell::MIN_SETTINGS_AUTO_REFRESH_INTERVAL_MS + 1));
+        assert!(app_shell.should_refresh_settings_on_tick(current_tick_time));
+
+        app_shell.app_state.settings_pane_state.has_loaded_settings_once = true;
+        assert!(!app_shell.should_refresh_settings_on_tick(current_tick_time));
     }
 
     #[test]
