@@ -159,17 +159,28 @@ impl StructViewerPaneState {
         if pending_character.is_control() {
             return;
         }
+        if !self.is_selected_field_editable() {
+            return;
+        }
 
         self.pending_edit_text.push(pending_character);
         self.has_uncommitted_edit = true;
     }
 
     pub fn backspace_pending_edit(&mut self) {
+        if !self.is_selected_field_editable() {
+            return;
+        }
+
         self.pending_edit_text.pop();
         self.has_uncommitted_edit = true;
     }
 
     pub fn clear_pending_edit(&mut self) {
+        if !self.is_selected_field_editable() {
+            return;
+        }
+
         self.pending_edit_text.clear();
         self.has_uncommitted_edit = true;
     }
@@ -231,14 +242,16 @@ impl StructViewerPaneState {
     pub fn summary_lines(&self) -> Vec<String> {
         let selected_field_display_format = self.selected_field_active_display_format();
         let selected_field_display_format_progress = self.selected_field_display_format_progress();
+        let selected_field_edit_state = self.selected_field_edit_state_label();
         let mut summary_lines = vec![
             "Actions: r refresh source, Up/Down or j/k select field, Enter commit field edit.".to_string(),
             "Display format: [ previous, ] next. Disabled while an uncommitted edit exists.".to_string(),
-            "Edit mode: type, Backspace, Ctrl+u clear. Editable fields only.".to_string(),
+            "Edit mode: type, Backspace, Ctrl+u clear. Value fields only.".to_string(),
             format!("source={:?}", self.source),
             format!("selected_struct={:?}", self.selected_struct_name),
             format!("field_count={}", self.focused_field_count()),
             format!("selected_field={:?}", self.selected_field_name),
+            format!("selected_field_edit_state={}", selected_field_edit_state),
             format!(
                 "selected_field_format={}",
                 selected_field_display_format
@@ -267,7 +280,8 @@ impl StructViewerPaneState {
                 .and_then(|focused_struct| focused_struct.get_fields().get(field_position))
             {
                 let selected_marker = if self.selected_field_position == Some(field_position) { ">" } else { " " };
-                let writable_marker = if focused_field.get_is_read_only() { "R" } else { "W" };
+                let field_kind_marker = Self::field_kind_marker(focused_field);
+                let editability_marker = Self::field_editability_marker(focused_field);
                 let field_name = focused_field.get_name();
                 let format_suffix = self
                     .active_display_value_for_field(field_name)
@@ -276,10 +290,10 @@ impl StructViewerPaneState {
                 let value_preview = self
                     .active_display_value_for_field(field_name)
                     .map(|active_display_value| active_display_value.get_anonymous_value_string().to_string())
-                    .unwrap_or_else(|| "?".to_string());
+                    .unwrap_or_else(|| "<nested>".to_string());
                 summary_lines.push(format!(
-                    "{} [{}] {}{} = {}",
-                    selected_marker, writable_marker, field_name, format_suffix, value_preview
+                    "{} [{}|{}] {}{} = {}",
+                    selected_marker, field_kind_marker, editability_marker, field_name, format_suffix, value_preview
                 ));
             }
         }
@@ -299,6 +313,25 @@ impl StructViewerPaneState {
         self.focused_struct
             .as_ref()
             .and_then(|focused_struct| focused_struct.get_fields().get(selected_field_position))
+    }
+
+    pub fn selected_field_edit_block_reason(&self) -> Option<String> {
+        let selected_field = self.selected_field()?;
+        if selected_field.get_is_read_only() {
+            return Some(format!("Field '{}' is read-only.", selected_field.get_name()));
+        }
+        if matches!(selected_field.get_field_data(), ValuedStructFieldData::NestedStruct(_)) {
+            return Some(format!(
+                "Field '{}' is nested; nested field edits are not supported in TUI yet.",
+                selected_field.get_name()
+            ));
+        }
+
+        None
+    }
+
+    pub fn is_selected_field_editable(&self) -> bool {
+        self.selected_field_edit_block_reason().is_none()
     }
 
     fn sync_selected_field_metadata(&mut self) {
@@ -482,6 +515,25 @@ impl StructViewerPaneState {
             .min(field_display_values.len() - 1);
         Some((active_display_value_index, field_display_values.len()))
     }
+
+    fn selected_field_edit_state_label(&self) -> String {
+        if let Some(block_reason) = self.selected_field_edit_block_reason() {
+            return block_reason;
+        }
+
+        "Editable value field.".to_string()
+    }
+
+    fn field_kind_marker(valued_struct_field: &ValuedStructField) -> &'static str {
+        match valued_struct_field.get_field_data() {
+            ValuedStructFieldData::Value(_) => "VAL",
+            ValuedStructFieldData::NestedStruct(_) => "NEST",
+        }
+    }
+
+    fn field_editability_marker(valued_struct_field: &ValuedStructField) -> &'static str {
+        if valued_struct_field.get_is_read_only() { "RO" } else { "RW" }
+    }
 }
 
 impl Default for StructViewerPaneState {
@@ -598,5 +650,32 @@ mod tests {
         let cycle_result = struct_viewer_pane_state.cycle_selected_field_display_format_forward();
 
         assert!(cycle_result.is_err());
+    }
+
+    #[test]
+    fn append_pending_edit_character_ignores_read_only_selected_field() {
+        let mut struct_viewer_pane_state = StructViewerPaneState::default();
+        let selected_scan_results = vec![create_scan_result(12)];
+        let selected_scan_result_refs = vec![ScanResultRef::new(12)];
+        struct_viewer_pane_state.focus_scan_results(&selected_scan_results, selected_scan_result_refs);
+
+        let field_position_index = struct_viewer_pane_state
+            .focused_struct
+            .as_ref()
+            .and_then(|focused_struct| {
+                focused_struct
+                    .get_fields()
+                    .iter()
+                    .position(|focused_field| focused_field.get_is_read_only())
+            })
+            .expect("scan-result struct should include a read-only field");
+        struct_viewer_pane_state.selected_field_position = Some(field_position_index);
+        struct_viewer_pane_state.sync_selected_field_metadata();
+        let initial_pending_edit_text = struct_viewer_pane_state.pending_edit_text.clone();
+
+        struct_viewer_pane_state.append_pending_edit_character('9');
+
+        assert_eq!(struct_viewer_pane_state.pending_edit_text, initial_pending_edit_text);
+        assert!(!struct_viewer_pane_state.has_uncommitted_edit);
     }
 }

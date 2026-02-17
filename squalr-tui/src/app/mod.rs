@@ -848,6 +848,14 @@ impl AppShell {
         key_event: KeyEvent,
         squalr_engine: &mut SqualrEngine,
     ) {
+        let apply_edit_input_guard = |struct_viewer_pane_state: &mut crate::state::struct_viewer_pane_state::StructViewerPaneState| -> bool {
+            if let Some(block_reason) = struct_viewer_pane_state.selected_field_edit_block_reason() {
+                struct_viewer_pane_state.status_message = block_reason;
+                return false;
+            }
+
+            true
+        };
         match key_event.code {
             KeyCode::Char('r') => self.refresh_struct_viewer_focus_from_source(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.struct_viewer_pane_state.select_next_field(),
@@ -895,14 +903,23 @@ impl AppShell {
                 }
             }
             KeyCode::Enter => self.commit_struct_viewer_field_edit(squalr_engine),
-            KeyCode::Backspace => self.app_state.struct_viewer_pane_state.backspace_pending_edit(),
-            KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.app_state.struct_viewer_pane_state.clear_pending_edit();
+            KeyCode::Backspace => {
+                if apply_edit_input_guard(&mut self.app_state.struct_viewer_pane_state) {
+                    self.app_state.struct_viewer_pane_state.backspace_pending_edit();
+                }
             }
-            KeyCode::Char(pending_character) => self
-                .app_state
-                .struct_viewer_pane_state
-                .append_pending_edit_character(pending_character),
+            KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                if apply_edit_input_guard(&mut self.app_state.struct_viewer_pane_state) {
+                    self.app_state.struct_viewer_pane_state.clear_pending_edit();
+                }
+            }
+            KeyCode::Char(pending_character) => {
+                if apply_edit_input_guard(&mut self.app_state.struct_viewer_pane_state) {
+                    self.app_state
+                        .struct_viewer_pane_state
+                        .append_pending_edit_character(pending_character);
+                }
+            }
             _ => {}
         }
     }
@@ -3487,6 +3504,64 @@ mod tests {
         app_shell.handle_focused_pane_event(KeyEvent::new(KeyCode::Char(']'), KeyModifiers::NONE), &mut squalr_engine);
 
         assert_ne!(app_shell.app_state.struct_viewer_pane_state.pending_edit_text, previous_pending_edit_text);
+    }
+
+    #[test]
+    fn focused_struct_viewer_reports_status_for_read_only_edit_attempt() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell.app_state.set_focus_to_pane(TuiPane::StructViewer);
+        app_shell.app_state.struct_viewer_pane_state.source = StructViewerSource::ScanResults;
+        let selected_scan_results = vec![create_scan_result(13)];
+        let selected_scan_result_refs = vec![ScanResultRef::new(13)];
+        app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .focus_scan_results(&selected_scan_results, selected_scan_result_refs);
+        let read_only_field_position = app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .focused_struct
+            .as_ref()
+            .and_then(|focused_struct| {
+                focused_struct
+                    .get_fields()
+                    .iter()
+                    .position(|focused_field| focused_field.get_is_read_only())
+            })
+            .expect("scan-result struct should include a read-only field");
+        app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .selected_field_position = Some(read_only_field_position);
+        app_shell.app_state.struct_viewer_pane_state.selected_field_name = app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .focused_struct
+            .as_ref()
+            .and_then(|focused_struct| {
+                focused_struct
+                    .get_fields()
+                    .get(read_only_field_position)
+                    .map(|focused_field| focused_field.get_name().to_string())
+            });
+        app_shell.app_state.struct_viewer_pane_state.status_message = "Ready.".to_string();
+        let initial_pending_edit_text = app_shell
+            .app_state
+            .struct_viewer_pane_state
+            .pending_edit_text
+            .clone();
+        let mut squalr_engine = SqualrEngine::new(EngineMode::Standalone).expect("engine should initialize for routing test");
+
+        app_shell.handle_focused_pane_event(KeyEvent::new(KeyCode::Char('9'), KeyModifiers::NONE), &mut squalr_engine);
+
+        assert_eq!(app_shell.app_state.struct_viewer_pane_state.pending_edit_text, initial_pending_edit_text);
+        assert!(
+            app_shell
+                .app_state
+                .struct_viewer_pane_state
+                .status_message
+                .contains("read-only")
+        );
     }
 
     #[test]

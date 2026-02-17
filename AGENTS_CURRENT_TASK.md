@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Audit GUI struct viewer behavior against TUI for any remaining non-command parity gaps after display-format cycling (for example nested-field UX, edit affordances, and field-level status semantics).
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer (look for additional non-command UX/status mismatches now that struct-viewer nested/edit affordance parity pass is complete).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -63,5 +63,8 @@ Information discovered during iteration:
 - TUI struct viewer now materializes supported per-field display representations via `SymbolRegistry::anonymize_value_to_supported_formats`, tracks active format per field, and supports keyboard-first format cycling (`[` previous, `]` next) with in-pane status and summary feedback.
 - Added struct-viewer reducer tests for format cycling and uncommitted-edit guard behavior, plus app-shell tests for focused `]` key routing and struct-edit payload formatting via a request-builder helper (`build_scan_results_set_property_request_for_struct_edit`).
 - Validation pass: `cargo test -p squalr-tui` (32 passed).
+- GUI vs TUI struct-viewer behavior audit (this pass): GUI only presents value edit affordances for editable value fields; nested/read-only fields remain non-committable. TUI now mirrors this by blocking text-edit mutations for non-editable selections and emitting explicit status feedback (`read-only` / nested unsupported) before commit.
+- TUI struct-viewer summary semantics now expose field-kind and editability markers (`VAL|RW`, `VAL|RO`, `NEST|RW|RO`) and render `<nested>` preview when no direct display value exists, closing the remaining field-level status visibility gap from the prior task.
+- Added reducer and app-shell tests for read-only edit guarding/status messaging and validated with `cargo test -p squalr-tui` (34 passed).
 
 
