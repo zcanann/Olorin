@@ -125,4 +125,4 @@ Information discovered during iteration:
 - Logger idempotency fix: `squalr-engine-session/src/logging/log_dispatcher.rs` now uses process-wide singleton logger state (`OnceLock<log4rs::Handle>` + init mutex) and shared in-memory log history (`LazyLock<Arc<RwLock<VecDeque<LogEvent>>>>`) so repeated `EngineUnprivilegedState` creation no longer reinitializes the global logger.
 - Added unit coverage for repeated `LogDispatcher` initialization sharing history without reinit errors (`logging::log_dispatcher::tests::repeated_initialization_uses_shared_log_history`).
 - Validation pass for logger idempotency + TUI regression: `cargo test -p squalr-engine-session` (1 passed), `cargo test -p squalr-tui` (57 passed).
-- Checkpoint commit for logger idempotency fix: `<pending>`.
+- Checkpoint commit for logger idempotency fix: `c8cfa01b` (`Make engine-session logger initialization singleton-safe`).
