@@ -35,6 +35,7 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         match self.app_state.project_explorer_pane_state.input_mode {
+            ProjectSelectorInputMode::Search => self.app_state.project_explorer_pane_state.commit_search_input(),
             ProjectSelectorInputMode::CreatingProject => self.create_project_from_pending_name(squalr_engine),
             ProjectSelectorInputMode::RenamingProject => self.rename_selected_project_from_pending_name(squalr_engine),
             ProjectSelectorInputMode::CreatingProjectDirectory => self.create_project_directory_from_pending_name(squalr_engine),

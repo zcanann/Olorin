@@ -8,8 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Add `Home`/`End` project hierarchy navigation to reduce repeated `j/k` traversal in large projects.
-- Add project-list search/filter input flow (parallel to process selector search) for large project sets.
+- Audit GUI project workflows against TUI and identify next highest-value parity gaps.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -40,7 +39,7 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Global quit behavior was hardened: plain `q` and `Esc` are no longer app-exit hotkeys; quit now requires `Ctrl+Q` or `Ctrl+C`.
 - Added `AppShell` tests covering new quit routing (`Esc`/plain `q` not consumed globally, `Ctrl+Q` exits globally).
 - Removed now-unused `TuiTheme` helper functions (`status_text_style`, `controls_block`) created obsolete by the header collapse.
-- `cargo test -p squalr-tui` passes with 13 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
+- `cargo test -p squalr-tui` passes with 15 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
 - Process selector search now uses client-side filtering over a cached process list (`ProcessListRequest.search_name=None`), removing per-keystroke engine round-trips.
 - Process selector now renders a dedicated `search: ...` row directly above process entries; when search input is active that row is selected, and selected process rows use `>` markers (`>*` if also opened).
 - Search-mode navigation now supports `Down/j` to exit search input and continue list navigation without forcing a server refresh.
@@ -48,3 +47,8 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Project hierarchy keymap parity fix completed:
   - `r` now refreshes hierarchy items (matching summary expectations).
   - `h` now collapses/selects parent (Vim parity with `Left`), removing the previous `h` refresh conflict.
+- Project Explorer now supports client-side project-list search flow:
+  - `/` enters search mode with a dedicated `search: ...` row above projects.
+  - typing applies immediate local filtering over cached `all_project_entries`.
+  - `Backspace` edits, `Ctrl+u` clears, `Enter` commits mode, `Esc` cancels and clears filter.
+- Project hierarchy navigation now supports `Home`/`End` for first/last visible item jumps.

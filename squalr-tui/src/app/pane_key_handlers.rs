@@ -305,27 +305,54 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         if self.app_state.project_explorer_pane_state.input_mode != ProjectSelectorInputMode::None {
-            match key_event.code {
-                KeyCode::Esc => self
-                    .app_state
-                    .project_explorer_pane_state
-                    .cancel_project_name_input(),
-                KeyCode::Backspace => self
-                    .app_state
-                    .project_explorer_pane_state
-                    .backspace_pending_project_name(),
-                KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                    self.app_state
+            match self.app_state.project_explorer_pane_state.input_mode {
+                ProjectSelectorInputMode::Search => match key_event.code {
+                    KeyCode::Esc => self.app_state.project_explorer_pane_state.cancel_search_input(),
+                    KeyCode::Enter => self.app_state.project_explorer_pane_state.commit_search_input(),
+                    KeyCode::Backspace => self
+                        .app_state
                         .project_explorer_pane_state
-                        .clear_pending_project_name();
+                        .backspace_pending_search_name(),
+                    KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                        self.app_state
+                            .project_explorer_pane_state
+                            .clear_pending_search_name();
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        self.app_state.project_explorer_pane_state.commit_search_input();
+                    }
+                    KeyCode::Char(search_character) => {
+                        self.app_state
+                            .project_explorer_pane_state
+                            .append_pending_search_character(search_character);
+                    }
+                    _ => {}
+                },
+                ProjectSelectorInputMode::CreatingProject | ProjectSelectorInputMode::RenamingProject | ProjectSelectorInputMode::CreatingProjectDirectory => {
+                    match key_event.code {
+                        KeyCode::Esc => self
+                            .app_state
+                            .project_explorer_pane_state
+                            .cancel_project_name_input(),
+                        KeyCode::Backspace => self
+                            .app_state
+                            .project_explorer_pane_state
+                            .backspace_pending_project_name(),
+                        KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                            self.app_state
+                                .project_explorer_pane_state
+                                .clear_pending_project_name();
+                        }
+                        KeyCode::Enter => self.commit_project_selector_input(squalr_engine),
+                        KeyCode::Char(project_name_character) => {
+                            self.app_state
+                                .project_explorer_pane_state
+                                .append_pending_project_name_character(project_name_character);
+                        }
+                        _ => {}
+                    }
                 }
-                KeyCode::Enter => self.commit_project_selector_input(squalr_engine),
-                KeyCode::Char(project_name_character) => {
-                    self.app_state
-                        .project_explorer_pane_state
-                        .append_pending_project_name_character(project_name_character);
-                }
-                _ => {}
+                ProjectSelectorInputMode::None => {}
             }
 
             return;
@@ -344,6 +371,7 @@ impl AppShell {
     ) {
         match key_code {
             KeyCode::Char('r') => self.refresh_project_list(squalr_engine),
+            KeyCode::Char('/') => self.app_state.project_explorer_pane_state.begin_search_input(),
             KeyCode::Down | KeyCode::Char('j') => self.app_state.project_explorer_pane_state.select_next_project(),
             KeyCode::Up | KeyCode::Char('k') => self
                 .app_state
@@ -386,6 +414,14 @@ impl AppShell {
                     .project_explorer_pane_state
                     .select_previous_project_item();
             }
+            KeyCode::Home => self
+                .app_state
+                .project_explorer_pane_state
+                .select_first_project_item(),
+            KeyCode::End => self
+                .app_state
+                .project_explorer_pane_state
+                .select_last_project_item(),
             KeyCode::Right | KeyCode::Char('l') => {
                 if !self
                     .app_state

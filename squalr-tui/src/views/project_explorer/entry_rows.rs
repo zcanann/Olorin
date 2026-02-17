@@ -1,17 +1,42 @@
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
-use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
+use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState, ProjectSelectorInputMode};
 
 pub fn build_visible_project_entry_rows(
     project_explorer_pane_state: &ProjectExplorerPaneState,
     viewport_capacity: usize,
 ) -> Vec<PaneEntryRow> {
+    if viewport_capacity == 0 {
+        return Vec::new();
+    }
+
+    let is_search_input_active = project_explorer_pane_state.input_mode == ProjectSelectorInputMode::Search;
+    let search_marker_text = if is_search_input_active { "/".to_string() } else { String::new() };
+    let mut entry_rows = vec![if is_search_input_active {
+        PaneEntryRow::selected(
+            search_marker_text.to_string(),
+            format!("search: {}", project_explorer_pane_state.pending_search_name_input),
+            None,
+        )
+    } else {
+        PaneEntryRow::normal(
+            search_marker_text.to_string(),
+            format!("search: {}", project_explorer_pane_state.pending_search_name_input),
+            None,
+        )
+    }];
+
+    let project_row_capacity = viewport_capacity.saturating_sub(1);
+    if project_row_capacity == 0 {
+        return entry_rows;
+    }
+
     let visible_project_range = build_selection_relative_viewport_range(
         project_explorer_pane_state.project_entries.len(),
         project_explorer_pane_state.selected_project_list_index,
-        viewport_capacity,
+        project_row_capacity,
     );
-    let mut entry_rows = Vec::with_capacity(visible_project_range.len());
+    entry_rows.reserve(visible_project_range.len());
 
     for visible_project_position in visible_project_range {
         if let Some(project_entry) = project_explorer_pane_state

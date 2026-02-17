@@ -16,6 +16,7 @@ use std::path::{Path, PathBuf};
 pub enum ProjectSelectorInputMode {
     #[default]
     None,
+    Search,
     CreatingProject,
     RenamingProject,
     CreatingProjectDirectory,
@@ -43,6 +44,7 @@ pub struct ProjectHierarchyEntry {
 /// Stores state for browsing projects and project items.
 #[derive(Clone, Debug)]
 pub struct ProjectExplorerPaneState {
+    pub all_project_entries: Vec<ProjectInfo>,
     pub project_entries: Vec<ProjectInfo>,
     pub selected_project_list_index: Option<usize>,
     pub selected_project_name: Option<String>,
@@ -53,6 +55,7 @@ pub struct ProjectExplorerPaneState {
     pub is_hierarchy_expanded: bool,
     pub focus_target: ProjectExplorerFocusTarget,
     pub input_mode: ProjectSelectorInputMode,
+    pub pending_search_name_input: String,
     pub pending_project_name_input: String,
     pub has_loaded_project_list_once: bool,
     pub is_awaiting_project_list_response: bool,
@@ -93,8 +96,29 @@ impl ProjectExplorerPaneState {
         &mut self,
         project_entries: Vec<ProjectInfo>,
     ) {
+        self.all_project_entries = project_entries;
+        self.apply_search_filter_to_projects();
+    }
+
+    pub fn apply_search_filter_to_projects(&mut self) {
         let selected_project_directory_path_before_refresh = self.selected_project_directory_path.clone();
-        self.project_entries = project_entries;
+        let search_name_filter = self
+            .pending_search_name_trimmed()
+            .map(|search_name| search_name.to_ascii_lowercase());
+        self.project_entries = match search_name_filter {
+            Some(search_name_filter) => self
+                .all_project_entries
+                .iter()
+                .filter(|project_entry| {
+                    project_entry
+                        .get_name()
+                        .to_ascii_lowercase()
+                        .contains(&search_name_filter)
+                })
+                .cloned()
+                .collect(),
+            None => self.all_project_entries.clone(),
+        };
         self.selected_project_list_index = selected_project_directory_path_before_refresh
             .as_ref()
             .and_then(|selected_project_directory_path| {
@@ -434,6 +458,51 @@ impl ProjectExplorerPaneState {
         self.selected_project_name.clone()
     }
 
+    pub fn begin_search_input(&mut self) {
+        self.input_mode = ProjectSelectorInputMode::Search;
+    }
+
+    pub fn commit_search_input(&mut self) {
+        self.input_mode = ProjectSelectorInputMode::None;
+    }
+
+    pub fn cancel_search_input(&mut self) {
+        self.input_mode = ProjectSelectorInputMode::None;
+        self.pending_search_name_input.clear();
+        self.apply_search_filter_to_projects();
+    }
+
+    pub fn append_pending_search_character(
+        &mut self,
+        pending_character: char,
+    ) {
+        if !Self::is_supported_search_character(pending_character) {
+            return;
+        }
+
+        self.pending_search_name_input.push(pending_character);
+        self.apply_search_filter_to_projects();
+    }
+
+    pub fn backspace_pending_search_name(&mut self) {
+        self.pending_search_name_input.pop();
+        self.apply_search_filter_to_projects();
+    }
+
+    pub fn clear_pending_search_name(&mut self) {
+        self.pending_search_name_input.clear();
+        self.apply_search_filter_to_projects();
+    }
+
+    pub fn pending_search_name_trimmed(&self) -> Option<String> {
+        let trimmed_search_name = self.pending_search_name_input.trim();
+        if trimmed_search_name.is_empty() {
+            None
+        } else {
+            Some(trimmed_search_name.to_string())
+        }
+    }
+
     pub fn begin_create_project_input(&mut self) {
         self.input_mode = ProjectSelectorInputMode::CreatingProject;
         self.pending_project_name_input = "NewProject".to_string();
@@ -518,6 +587,29 @@ impl ProjectExplorerPaneState {
         viewport_capacity: usize,
     ) -> Vec<PaneEntryRow> {
         build_visible_project_item_entry_rows(self, viewport_capacity)
+    }
+
+    pub fn select_first_project_item(&mut self) {
+        if self.project_item_visible_entries.is_empty() {
+            self.selected_project_item_visible_index = None;
+            self.update_selected_item_path();
+            return;
+        }
+
+        self.selected_project_item_visible_index = Some(0);
+        self.update_selected_item_path();
+    }
+
+    pub fn select_last_project_item(&mut self) {
+        if self.project_item_visible_entries.is_empty() {
+            self.selected_project_item_visible_index = None;
+            self.update_selected_item_path();
+            return;
+        }
+
+        let last_visible_project_item_position = self.project_item_visible_entries.len() - 1;
+        self.selected_project_item_visible_index = Some(last_visible_project_item_position);
+        self.update_selected_item_path();
     }
 
     fn update_selected_project_fields(&mut self) {
@@ -617,11 +709,16 @@ impl ProjectExplorerPaneState {
             || pending_character == '-'
             || pending_character == '.'
     }
+
+    fn is_supported_search_character(pending_character: char) -> bool {
+        pending_character.is_ascii_graphic() || pending_character == ' '
+    }
 }
 
 impl Default for ProjectExplorerPaneState {
     fn default() -> Self {
         Self {
+            all_project_entries: Vec::new(),
             project_entries: Vec::new(),
             selected_project_list_index: None,
             selected_project_name: None,
@@ -632,6 +729,7 @@ impl Default for ProjectExplorerPaneState {
             is_hierarchy_expanded: true,
             focus_target: ProjectExplorerFocusTarget::ProjectList,
             input_mode: ProjectSelectorInputMode::None,
+            pending_search_name_input: String::new(),
             pending_project_name_input: String::new(),
             has_loaded_project_list_once: false,
             is_awaiting_project_list_response: false,
@@ -662,7 +760,9 @@ impl Default for ProjectExplorerPaneState {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
+    use super::{ProjectExplorerFocusTarget, ProjectExplorerPaneState, ProjectHierarchyEntry};
+    use squalr_engine_api::structures::projects::project_info::ProjectInfo;
+    use squalr_engine_api::structures::projects::project_manifest::ProjectManifest;
     use std::path::PathBuf;
 
     #[test]
@@ -680,5 +780,50 @@ mod tests {
         project_explorer_pane_state.set_active_project(None, None);
 
         assert_eq!(project_explorer_pane_state.focus_target, ProjectExplorerFocusTarget::ProjectList);
+    }
+
+    #[test]
+    fn search_filter_restricts_project_entries() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.apply_project_list(vec![
+            ProjectInfo::new(PathBuf::from("C:/projects/AlphaProject/project.squalr"), None, ProjectManifest::default()),
+            ProjectInfo::new(PathBuf::from("C:/projects/BetaProject/project.squalr"), None, ProjectManifest::default()),
+        ]);
+
+        project_explorer_pane_state.begin_search_input();
+        for search_character in "beta".chars() {
+            project_explorer_pane_state.append_pending_search_character(search_character);
+        }
+        project_explorer_pane_state.commit_search_input();
+
+        assert_eq!(project_explorer_pane_state.project_entries.len(), 1);
+        assert_eq!(project_explorer_pane_state.project_entries[0].get_name(), "BetaProject");
+    }
+
+    #[test]
+    fn selecting_last_project_item_uses_end_navigation_behavior() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.project_item_visible_entries = vec![
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("C:/projects/opened/Foo"),
+                display_name: "Foo".to_string(),
+                depth: 0,
+                is_directory: true,
+                is_expanded: false,
+                is_activated: false,
+            },
+            ProjectHierarchyEntry {
+                project_item_path: PathBuf::from("C:/projects/opened/Bar"),
+                display_name: "Bar".to_string(),
+                depth: 0,
+                is_directory: true,
+                is_expanded: false,
+                is_activated: false,
+            },
+        ];
+
+        project_explorer_pane_state.select_last_project_item();
+
+        assert_eq!(project_explorer_pane_state.selected_project_item_visible_index, Some(1));
     }
 }
