@@ -177,6 +177,17 @@ impl ScanResultsPaneState {
             .collect()
     }
 
+    pub fn selected_scan_results(&self) -> Vec<ScanResult> {
+        let Some(selected_range) = self.selected_result_range() else {
+            return Vec::new();
+        };
+
+        selected_range
+            .filter_map(|selected_result_position| self.scan_results.get(selected_result_position))
+            .cloned()
+            .collect()
+    }
+
     pub fn selected_result_count(&self) -> usize {
         let Some(selected_range) = self.selected_result_range() else {
             return 0;

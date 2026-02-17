@@ -90,13 +90,7 @@ impl TuiAppState {
             TuiPane::ElementScanner => self.element_scanner_pane_state.summary_lines(),
             TuiPane::ScanResults => self.scan_results_pane_state.summary_lines(),
             TuiPane::ProjectExplorer => self.project_explorer_pane_state.summary_lines(),
-            TuiPane::StructViewer => {
-                vec![
-                    format!("selected_struct={:?}", self.struct_viewer_pane_state.selected_struct_name),
-                    format!("selected_field={:?}", self.struct_viewer_pane_state.selected_field_name),
-                    format!("uncommitted_edit={}", self.struct_viewer_pane_state.has_uncommitted_edit),
-                ]
-            }
+            TuiPane::StructViewer => self.struct_viewer_pane_state.summary_lines(),
             TuiPane::Output => {
                 vec![
                     format!("log_line_count={}", self.output_pane_state.log_lines.len()),

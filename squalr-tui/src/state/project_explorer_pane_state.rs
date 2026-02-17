@@ -177,6 +177,17 @@ impl ProjectExplorerPaneState {
             .map(|project_item_entry| project_item_entry.project_item_path.clone())
     }
 
+    pub fn selected_project_items_for_struct_viewer(&self) -> Vec<(PathBuf, ProjectItem)> {
+        let Some(selected_project_item_path) = self.selected_project_item_path() else {
+            return Vec::new();
+        };
+        let Some(selected_project_item) = self.opened_project_item_map.get(&selected_project_item_path) else {
+            return Vec::new();
+        };
+
+        vec![(selected_project_item_path, selected_project_item.clone())]
+    }
+
     pub fn selected_project_item_directory_target_path(&self) -> Option<PathBuf> {
         let selected_project_item_path = self.selected_project_item_path()?;
         if self.is_directory_path(&selected_project_item_path) {

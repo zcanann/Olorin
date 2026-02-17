@@ -17,7 +17,7 @@ Our current task, from `README.md`, is:
 - [x] Implement scan results pane parity: page navigation, selection range, freeze toggles, add to project, delete, commit edited value.
 - [x] Implement project selector parity: list/create/open/rename/delete/close project.
 - [x] Implement project hierarchy parity (keyboard-first): expand/collapse, select, activate toggle, create folder, delete confirm, move/reorder (non-drag alternatives).
-- [ ] Implement struct viewer parity for selected scan results/project items, including edit commit callback routing.
+- [x] Implement struct viewer parity for selected scan results/project items, including edit commit callback routing.
 - [ ] Implement settings panes parity (general/memory/scan list+set requests).
 - [ ] Implement output pane parity using log history stream + periodic redraw.
 - [ ] Add focused unit tests in `squalr-tui` for pure state reducers and keyboard command routing.
@@ -60,5 +60,6 @@ Information discovered during iteration:
 - Checkpoint commit for project selector parity: `58e938ef` (`Implement TUI project selector command parity`).
 - TUI project hierarchy now dispatches `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, and `ProjectItemsReorderRequest` with keyboard-first controls (`i` hierarchy mode, `h` refresh, `j`/`k` select, `l`/`Left` expand-collapse, `Space` activate, `n` create folder, `x` confirm-delete, `m` stage move, `b` move here, `[`/`]` reorder).
 - Checkpoint commit for project hierarchy parity: `7d69407d` (`Implement TUI project hierarchy keyboard command parity`).
+- TUI struct viewer now tracks focused source (`scan results` or `project items`), supports keyboard-first field navigation/edit buffering (`j`/`k`, `Enter`, text input), and routes commits through scan-result/property commands (`ScanResultsSetPropertyRequest`, `ScanResultsFreezeRequest`) and project-item edit routing (`ProjectSaveRequest`, `ProjectItemsRenameRequest`, `MemoryWriteRequest`) with selection sync from scan-results/project-hierarchy reducers.
 
 

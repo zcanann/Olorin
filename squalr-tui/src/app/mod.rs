@@ -1,6 +1,7 @@
 use crate::state::TuiAppState;
 use crate::state::pane::TuiPane;
 use crate::state::project_explorer_pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
+use crate::state::struct_viewer_pane_state::StructViewerSource;
 use anyhow::{Context, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
@@ -13,6 +14,7 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 use squalr_engine::engine_mode::EngineMode;
 use squalr_engine::squalr_engine::SqualrEngine;
+use squalr_engine_api::commands::memory::write::memory_write_request::MemoryWriteRequest;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
 use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
 use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
@@ -22,12 +24,14 @@ use squalr_engine_api::commands::project::delete::project_delete_request::Projec
 use squalr_engine_api::commands::project::list::project_list_request::ProjectListRequest;
 use squalr_engine_api::commands::project::open::project_open_request::ProjectOpenRequest;
 use squalr_engine_api::commands::project::rename::project_rename_request::ProjectRenameRequest;
+use squalr_engine_api::commands::project::save::project_save_request::ProjectSaveRequest;
 use squalr_engine_api::commands::project_items::activate::project_items_activate_request::ProjectItemsActivateRequest;
 use squalr_engine_api::commands::project_items::add::project_items_add_request::ProjectItemsAddRequest;
 use squalr_engine_api::commands::project_items::create::project_items_create_request::ProjectItemsCreateRequest;
 use squalr_engine_api::commands::project_items::delete::project_items_delete_request::ProjectItemsDeleteRequest;
 use squalr_engine_api::commands::project_items::list::project_items_list_request::ProjectItemsListRequest;
 use squalr_engine_api::commands::project_items::move_item::project_items_move_request::ProjectItemsMoveRequest;
+use squalr_engine_api::commands::project_items::rename::project_items_rename_request::ProjectItemsRenameRequest;
 use squalr_engine_api::commands::project_items::reorder::project_items_reorder_request::ProjectItemsReorderRequest;
 use squalr_engine_api::commands::scan::collect_values::scan_collect_values_request::ScanCollectValuesRequest;
 use squalr_engine_api::commands::scan::element_scan::element_scan_request::ElementScanRequest;
@@ -39,11 +43,20 @@ use squalr_engine_api::commands::scan_results::query::scan_results_query_request
 use squalr_engine_api::commands::scan_results::refresh::scan_results_refresh_request::ScanResultsRefreshRequest;
 use squalr_engine_api::commands::scan_results::set_property::scan_results_set_property_request::ScanResultsSetPropertyRequest;
 use squalr_engine_api::commands::unprivileged_command_request::UnprivilegedCommandRequest;
+use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
+use squalr_engine_api::registries::symbols::symbol_registry::SymbolRegistry;
 use squalr_engine_api::structures::data_values::anonymous_value_string::AnonymousValueString;
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
 use squalr_engine_api::structures::data_values::container_type::ContainerType;
+use squalr_engine_api::structures::projects::project::Project;
+use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_address::ProjectItemTypeAddress;
+use squalr_engine_api::structures::projects::project_items::built_in_types::project_item_type_directory::ProjectItemTypeDirectory;
+use squalr_engine_api::structures::projects::project_items::project_item::ProjectItem;
+use squalr_engine_api::structures::projects::project_items::project_item_ref::ProjectItemRef;
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
+use squalr_engine_api::structures::structs::valued_struct_field::ValuedStructField;
 use std::io::{self, Stdout};
+use std::path::Path;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -245,6 +258,7 @@ impl AppShell {
             TuiPane::ElementScanner => self.handle_element_scanner_key_event(key_event, squalr_engine),
             TuiPane::ScanResults => self.handle_scan_results_key_event(key_event, squalr_engine),
             TuiPane::ProjectExplorer => self.handle_project_explorer_key_event(key_event, squalr_engine),
+            TuiPane::StructViewer => self.handle_struct_viewer_key_event(key_event, squalr_engine),
             _ => {}
         }
     }
@@ -347,12 +361,25 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         let is_range_extend_modifier_active = key_event.modifiers.contains(KeyModifiers::SHIFT);
+        let mut should_refresh_struct_viewer_focus = false;
 
         match key_event.code {
-            KeyCode::Char('r') => self.query_scan_results_current_page(squalr_engine),
-            KeyCode::Char('R') => self.refresh_selected_scan_results(squalr_engine),
-            KeyCode::Char(']') => self.query_next_scan_results_page(squalr_engine),
-            KeyCode::Char('[') => self.query_previous_scan_results_page(squalr_engine),
+            KeyCode::Char('r') => {
+                self.query_scan_results_current_page(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char('R') => {
+                self.refresh_selected_scan_results(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char(']') => {
+                self.query_next_scan_results_page(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char('[') => {
+                self.query_previous_scan_results_page(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
             KeyCode::Down | KeyCode::Char('j') => {
                 if is_range_extend_modifier_active {
                     self.app_state
@@ -362,6 +389,7 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_next_result(is_range_extend_modifier_active);
+                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 if is_range_extend_modifier_active {
@@ -372,6 +400,7 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_previous_result(is_range_extend_modifier_active);
+                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Home => {
                 if is_range_extend_modifier_active {
@@ -382,6 +411,7 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_first_result(is_range_extend_modifier_active);
+                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::End => {
                 if is_range_extend_modifier_active {
@@ -392,11 +422,24 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_last_result(is_range_extend_modifier_active);
+                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char('f') => self.toggle_selected_scan_results_frozen_state(squalr_engine),
-            KeyCode::Char('a') => self.add_selected_scan_results_to_project(squalr_engine),
-            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_scan_results(squalr_engine),
-            KeyCode::Enter => self.commit_selected_scan_results_value_edit(squalr_engine),
+            KeyCode::Char('f') => {
+                self.toggle_selected_scan_results_frozen_state(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char('a') => {
+                self.add_selected_scan_results_to_project(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char('x') | KeyCode::Delete => {
+                self.delete_selected_scan_results(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Enter => {
+                self.commit_selected_scan_results_value_edit(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
             KeyCode::Backspace => self
                 .app_state
                 .scan_results_pane_state
@@ -415,6 +458,10 @@ impl AppShell {
                 .scan_results_pane_state
                 .append_pending_value_edit_character(scan_value_character),
             _ => {}
+        }
+
+        if should_refresh_struct_viewer_focus {
+            self.sync_struct_viewer_focus_from_scan_results();
         }
     }
 
@@ -499,16 +546,25 @@ impl AppShell {
         key_code: KeyCode,
         squalr_engine: &mut SqualrEngine,
     ) {
+        let mut should_refresh_struct_viewer_focus = false;
+
         match key_code {
-            KeyCode::Char('h') => self.refresh_project_items_list(squalr_engine),
-            KeyCode::Down | KeyCode::Char('j') => self
-                .app_state
-                .project_explorer_pane_state
-                .select_next_project_item(),
-            KeyCode::Up | KeyCode::Char('k') => self
-                .app_state
-                .project_explorer_pane_state
-                .select_previous_project_item(),
+            KeyCode::Char('h') => {
+                self.refresh_project_items_list(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.app_state
+                    .project_explorer_pane_state
+                    .select_next_project_item();
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.app_state
+                    .project_explorer_pane_state
+                    .select_previous_project_item();
+                should_refresh_struct_viewer_focus = true;
+            }
             KeyCode::Right | KeyCode::Char('l') => {
                 if !self
                     .app_state
@@ -517,6 +573,7 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No expandable directory is selected.".to_string();
                 }
+                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Left => {
                 if !self
@@ -526,8 +583,12 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No collapsible directory is selected.".to_string();
                 }
+                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char(' ') => self.toggle_selected_project_item_activation(squalr_engine),
+            KeyCode::Char(' ') => {
+                self.toggle_selected_project_item_activation(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
             KeyCode::Char('n') => {
                 if !self
                     .app_state
@@ -536,6 +597,7 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No project item directory target is selected.".to_string();
                 }
+                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Char('m') => {
                 if self
@@ -548,19 +610,430 @@ impl AppShell {
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "No project item is selected for move.".to_string();
                 }
+                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char('b') => self.move_staged_project_items_to_selected_directory(squalr_engine),
+            KeyCode::Char('b') => {
+                self.move_staged_project_items_to_selected_directory(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
             KeyCode::Char('u') => {
                 self.app_state
                     .project_explorer_pane_state
                     .clear_pending_move_source_paths();
                 self.app_state.project_explorer_pane_state.status_message = "Cleared staged project item move.".to_string();
+                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char('[') => self.reorder_selected_project_item(squalr_engine, true),
-            KeyCode::Char(']') => self.reorder_selected_project_item(squalr_engine, false),
-            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_project_item_with_confirmation(squalr_engine),
+            KeyCode::Char('[') => {
+                self.reorder_selected_project_item(squalr_engine, true);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char(']') => {
+                self.reorder_selected_project_item(squalr_engine, false);
+                should_refresh_struct_viewer_focus = true;
+            }
+            KeyCode::Char('x') | KeyCode::Delete => {
+                self.delete_selected_project_item_with_confirmation(squalr_engine);
+                should_refresh_struct_viewer_focus = true;
+            }
             _ => {}
         }
+
+        if should_refresh_struct_viewer_focus {
+            self.sync_struct_viewer_focus_from_project_items();
+        }
+    }
+
+    fn handle_struct_viewer_key_event(
+        &mut self,
+        key_event: KeyEvent,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_event.code {
+            KeyCode::Char('r') => self.refresh_struct_viewer_focus_from_source(),
+            KeyCode::Down | KeyCode::Char('j') => self.app_state.struct_viewer_pane_state.select_next_field(),
+            KeyCode::Up | KeyCode::Char('k') => self.app_state.struct_viewer_pane_state.select_previous_field(),
+            KeyCode::Enter => self.commit_struct_viewer_field_edit(squalr_engine),
+            KeyCode::Backspace => self.app_state.struct_viewer_pane_state.backspace_pending_edit(),
+            KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.app_state.struct_viewer_pane_state.clear_pending_edit();
+            }
+            KeyCode::Char(pending_character) => self
+                .app_state
+                .struct_viewer_pane_state
+                .append_pending_edit_character(pending_character),
+            _ => {}
+        }
+    }
+
+    fn refresh_struct_viewer_focus_from_source(&mut self) {
+        match self.app_state.struct_viewer_pane_state.source {
+            StructViewerSource::None => {
+                self.app_state.struct_viewer_pane_state.status_message = "No struct viewer source is selected.".to_string();
+            }
+            StructViewerSource::ScanResults => self.sync_struct_viewer_focus_from_scan_results(),
+            StructViewerSource::ProjectItems => self.sync_struct_viewer_focus_from_project_items(),
+        }
+    }
+
+    fn sync_struct_viewer_focus_from_scan_results(&mut self) {
+        let selected_scan_results = self.app_state.scan_results_pane_state.selected_scan_results();
+        let selected_scan_result_refs = self
+            .app_state
+            .scan_results_pane_state
+            .selected_scan_result_refs();
+        self.app_state
+            .struct_viewer_pane_state
+            .focus_scan_results(&selected_scan_results, selected_scan_result_refs);
+    }
+
+    fn sync_struct_viewer_focus_from_project_items(&mut self) {
+        let selected_project_items = self
+            .app_state
+            .project_explorer_pane_state
+            .selected_project_items_for_struct_viewer();
+        self.app_state
+            .struct_viewer_pane_state
+            .focus_project_items(selected_project_items);
+    }
+
+    fn commit_struct_viewer_field_edit(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.struct_viewer_pane_state.is_committing_edit {
+            self.app_state.struct_viewer_pane_state.status_message = "Struct field edit is already in progress.".to_string();
+            return;
+        }
+
+        let edited_field = match self
+            .app_state
+            .struct_viewer_pane_state
+            .build_edited_field_from_pending_text()
+        {
+            Ok(edited_field) => edited_field,
+            Err(error) => {
+                self.app_state.struct_viewer_pane_state.status_message = error;
+                return;
+            }
+        };
+
+        self.app_state.struct_viewer_pane_state.is_committing_edit = true;
+        self.app_state.struct_viewer_pane_state.status_message = format!("Committing field '{}'.", edited_field.get_name());
+
+        match self.app_state.struct_viewer_pane_state.source {
+            StructViewerSource::None => {
+                self.app_state.struct_viewer_pane_state.status_message = "No struct viewer source is selected for commit.".to_string();
+            }
+            StructViewerSource::ScanResults => self.commit_scan_result_struct_field_edit(squalr_engine, edited_field),
+            StructViewerSource::ProjectItems => self.commit_project_item_struct_field_edit(squalr_engine, edited_field),
+        }
+
+        self.app_state.struct_viewer_pane_state.is_committing_edit = false;
+    }
+
+    fn commit_scan_result_struct_field_edit(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        edited_field: ValuedStructField,
+    ) {
+        let selected_scan_result_refs = self
+            .app_state
+            .struct_viewer_pane_state
+            .selected_scan_result_refs
+            .clone();
+        if selected_scan_result_refs.is_empty() {
+            self.app_state.struct_viewer_pane_state.status_message = "No scan results are selected for struct edit commit.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.struct_viewer_pane_state.status_message = "No unprivileged engine state is available for scan result struct edits.".to_string();
+                return;
+            }
+        };
+
+        if edited_field.get_name() == ScanResult::PROPERTY_NAME_IS_FROZEN {
+            let target_frozen_state = edited_field
+                .get_data_value()
+                .map(|edited_data_value| {
+                    edited_data_value
+                        .get_value_bytes()
+                        .iter()
+                        .any(|edited_value_byte| *edited_value_byte != 0)
+                })
+                .unwrap_or(false);
+
+            let scan_results_freeze_request = ScanResultsFreezeRequest {
+                scan_result_refs: selected_scan_result_refs,
+                is_frozen: target_frozen_state,
+            };
+            let (response_sender, response_receiver) = mpsc::sync_channel(1);
+            let request_dispatched = scan_results_freeze_request.send(engine_unprivileged_state, move |scan_results_freeze_response| {
+                let _ = response_sender.send(scan_results_freeze_response);
+            });
+
+            if !request_dispatched {
+                self.app_state.struct_viewer_pane_state.status_message = "Failed to dispatch scan result freeze request from struct viewer.".to_string();
+                return;
+            }
+
+            match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                Ok(scan_results_freeze_response) => {
+                    if scan_results_freeze_response
+                        .failed_freeze_toggle_scan_result_refs
+                        .is_empty()
+                    {
+                        self.app_state.struct_viewer_pane_state.status_message = if target_frozen_state {
+                            "Committed frozen state from struct viewer.".to_string()
+                        } else {
+                            "Committed unfrozen state from struct viewer.".to_string()
+                        };
+                    } else {
+                        self.app_state.struct_viewer_pane_state.status_message = format!(
+                            "Freeze commit partially failed for {} scan results.",
+                            scan_results_freeze_response
+                                .failed_freeze_toggle_scan_result_refs
+                                .len()
+                        );
+                    }
+                    self.refresh_selected_scan_results(squalr_engine);
+                    self.sync_struct_viewer_focus_from_scan_results();
+                }
+                Err(receive_error) => {
+                    self.app_state.struct_viewer_pane_state.status_message = format!("Timed out waiting for scan result freeze response: {}", receive_error);
+                }
+            }
+            return;
+        }
+
+        let edited_data_value = match edited_field.get_data_value() {
+            Some(edited_data_value) => edited_data_value,
+            None => {
+                self.app_state.struct_viewer_pane_state.status_message = "Nested struct scan result edits are not supported in the TUI yet.".to_string();
+                return;
+            }
+        };
+        let symbol_registry = SymbolRegistry::get_instance();
+        let default_edit_format = symbol_registry.get_default_anonymous_value_string_format(edited_data_value.get_data_type_ref());
+        let edited_anonymous_value = match symbol_registry.anonymize_value(edited_data_value, default_edit_format) {
+            Ok(edited_anonymous_value) => edited_anonymous_value,
+            Err(error) => {
+                self.app_state.struct_viewer_pane_state.status_message = format!("Failed to format edited scan result value: {}", error);
+                return;
+            }
+        };
+
+        let scan_results_set_property_request = ScanResultsSetPropertyRequest {
+            scan_result_refs: selected_scan_result_refs,
+            field_namespace: edited_field.get_name().to_string(),
+            anonymous_value_string: edited_anonymous_value,
+        };
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = scan_results_set_property_request.send(engine_unprivileged_state, move |scan_results_set_property_response| {
+            let _ = response_sender.send(scan_results_set_property_response);
+        });
+
+        if !request_dispatched {
+            self.app_state.struct_viewer_pane_state.status_message = "Failed to dispatch scan result property request from struct viewer.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(_scan_results_set_property_response) => {
+                self.app_state.struct_viewer_pane_state.status_message =
+                    format!("Committed scan result field '{}' from struct viewer.", edited_field.get_name());
+                self.refresh_selected_scan_results(squalr_engine);
+                self.sync_struct_viewer_focus_from_scan_results();
+            }
+            Err(receive_error) => {
+                self.app_state.struct_viewer_pane_state.status_message = format!("Timed out waiting for scan result property response: {}", receive_error);
+            }
+        }
+    }
+
+    fn commit_project_item_struct_field_edit(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+        edited_field: ValuedStructField,
+    ) {
+        let selected_project_item_paths = self
+            .app_state
+            .struct_viewer_pane_state
+            .selected_project_item_paths
+            .clone();
+        if selected_project_item_paths.is_empty() {
+            self.app_state.struct_viewer_pane_state.status_message = "No project items are selected for struct edit commit.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.struct_viewer_pane_state.status_message = "No unprivileged engine state is available for project item struct edits.".to_string();
+                return;
+            }
+        };
+
+        let project_manager = engine_unprivileged_state.get_project_manager();
+        let opened_project_lock = project_manager.get_opened_project();
+        let edited_field_name = edited_field.get_name().to_string();
+        let edited_name = if edited_field_name == ProjectItem::PROPERTY_NAME {
+            Self::extract_string_value_from_edited_field(&edited_field)
+        } else {
+            None
+        };
+
+        let mut pending_memory_write_requests = Vec::new();
+        let mut pending_rename_requests = Vec::new();
+        let mut has_persisted_property_edit = false;
+        let mut opened_project_write_guard = match opened_project_lock.write() {
+            Ok(opened_project_write_guard) => opened_project_write_guard,
+            Err(error) => {
+                self.app_state.struct_viewer_pane_state.status_message = format!("Failed to acquire opened project lock for struct edit: {}", error);
+                return;
+            }
+        };
+        let opened_project = match opened_project_write_guard.as_mut() {
+            Some(opened_project) => opened_project,
+            None => {
+                self.app_state.struct_viewer_pane_state.status_message = "Cannot apply struct edit because no project is currently open.".to_string();
+                return;
+            }
+        };
+        let root_project_item_path = opened_project
+            .get_project_root_ref()
+            .get_project_item_path()
+            .clone();
+
+        for selected_project_item_path in &selected_project_item_paths {
+            if edited_field_name == ProjectItem::PROPERTY_NAME && selected_project_item_path == &root_project_item_path {
+                continue;
+            }
+
+            let project_item_ref = ProjectItemRef::new(selected_project_item_path.clone());
+            let selected_project_item = match opened_project.get_project_item_mut(&project_item_ref) {
+                Some(selected_project_item) => selected_project_item,
+                None => continue,
+            };
+            let project_item_type_id = selected_project_item
+                .get_item_type()
+                .get_project_item_type_id()
+                .to_string();
+            let should_apply_edited_field = Self::should_apply_struct_field_edit_to_project_item(&project_item_type_id, &edited_field_name);
+
+            if should_apply_edited_field {
+                selected_project_item.get_properties_mut().set_field_data(
+                    edited_field.get_name(),
+                    edited_field.get_field_data().clone(),
+                    edited_field.get_is_read_only(),
+                );
+                selected_project_item.set_has_unsaved_changes(true);
+                has_persisted_property_edit = true;
+            }
+
+            if let Some(edited_name) = &edited_name {
+                if let Some(project_items_rename_request) =
+                    Self::build_project_item_rename_request(selected_project_item_path, &project_item_type_id, edited_name)
+                {
+                    pending_rename_requests.push(project_items_rename_request);
+                }
+            }
+
+            if let Some(memory_write_request) = Self::build_memory_write_request_for_project_item_edit(selected_project_item, &edited_field) {
+                pending_memory_write_requests.push(memory_write_request);
+            }
+        }
+
+        if !has_persisted_property_edit && pending_rename_requests.is_empty() && pending_memory_write_requests.is_empty() {
+            self.app_state.struct_viewer_pane_state.status_message = "Selected project item field cannot be committed through TUI struct routing.".to_string();
+            return;
+        }
+
+        drop(opened_project_write_guard);
+
+        if has_persisted_property_edit {
+            if let Ok(mut opened_project_write_guard) = opened_project_lock.write() {
+                if let Some(opened_project) = opened_project_write_guard.as_mut() {
+                    opened_project
+                        .get_project_info_mut()
+                        .set_has_unsaved_changes(true);
+                }
+            }
+
+            let project_save_request = ProjectSaveRequest {};
+            let (response_sender, response_receiver) = mpsc::sync_channel(1);
+            project_save_request.send(engine_unprivileged_state, move |project_save_response| {
+                let _ = response_sender.send(project_save_response);
+            });
+
+            match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                Ok(project_save_response) => {
+                    if !project_save_response.success {
+                        self.app_state.struct_viewer_pane_state.status_message = "Project save failed while committing project item struct field.".to_string();
+                        return;
+                    }
+                }
+                Err(receive_error) => {
+                    self.app_state.struct_viewer_pane_state.status_message = format!("Timed out waiting for project save response: {}", receive_error);
+                    return;
+                }
+            }
+
+            project_manager.notify_project_items_changed();
+        }
+
+        for pending_rename_request in pending_rename_requests {
+            let (response_sender, response_receiver) = mpsc::sync_channel(1);
+            pending_rename_request.send(engine_unprivileged_state, move |project_items_rename_response| {
+                let _ = response_sender.send(project_items_rename_response);
+            });
+
+            match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                Ok(project_items_rename_response) => {
+                    if !project_items_rename_response.success {
+                        self.app_state.struct_viewer_pane_state.status_message = "Project item rename failed during struct edit commit.".to_string();
+                        return;
+                    }
+                }
+                Err(receive_error) => {
+                    self.app_state.struct_viewer_pane_state.status_message = format!("Timed out waiting for project item rename response: {}", receive_error);
+                    return;
+                }
+            }
+        }
+
+        for pending_memory_write_request in pending_memory_write_requests {
+            let (response_sender, response_receiver) = mpsc::sync_channel(1);
+            let request_dispatched = pending_memory_write_request.send(engine_unprivileged_state, move |memory_write_response| {
+                let _ = response_sender.send(memory_write_response);
+            });
+            if !request_dispatched {
+                self.app_state.struct_viewer_pane_state.status_message = "Failed to dispatch memory write request during struct edit commit.".to_string();
+                return;
+            }
+
+            match response_receiver.recv_timeout(Duration::from_secs(3)) {
+                Ok(memory_write_response) => {
+                    if !memory_write_response.success {
+                        self.app_state.struct_viewer_pane_state.status_message = "Memory write failed during project item struct edit commit.".to_string();
+                        return;
+                    }
+                }
+                Err(receive_error) => {
+                    self.app_state.struct_viewer_pane_state.status_message = format!("Timed out waiting for memory write response: {}", receive_error);
+                    return;
+                }
+            }
+        }
+
+        self.app_state
+            .struct_viewer_pane_state
+            .apply_committed_field(&edited_field);
+        self.app_state.struct_viewer_pane_state.status_message = format!("Committed project item field '{}' from struct viewer.", edited_field.get_name());
+        self.refresh_project_items_list(squalr_engine);
+        self.sync_struct_viewer_focus_from_project_items();
     }
 
     fn commit_project_selector_input(
@@ -1225,6 +1698,7 @@ impl AppShell {
             .scan_results_pane_state
             .apply_query_response(scan_results_query_response);
         self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
+        self.sync_struct_viewer_focus_from_scan_results();
     }
 
     fn refresh_process_list(
@@ -1456,6 +1930,7 @@ impl AppShell {
                     .project_explorer_pane_state
                     .apply_project_items_list(project_items_list_response.opened_project_items);
                 self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} project items.", project_item_count);
+                self.sync_struct_viewer_focus_from_project_items();
             }
             Err(receive_error) => {
                 self.app_state.project_explorer_pane_state.status_message = format!("Timed out waiting for project item list response: {}", receive_error);
@@ -1965,6 +2440,9 @@ impl AppShell {
                         .project_explorer_pane_state
                         .set_active_project(Some(selected_project_name.clone()), Some(selected_project_directory_path.clone()));
                     self.app_state.project_explorer_pane_state.clear_project_items();
+                    self.app_state
+                        .struct_viewer_pane_state
+                        .clear_focus("Cleared struct viewer after project open.");
                     self.app_state.project_explorer_pane_state.status_message = format!("Opened project '{}'.", selected_project_name);
                     self.refresh_project_items_list(squalr_engine);
                 } else {
@@ -2055,6 +2533,7 @@ impl AppShell {
                         self.app_state
                             .project_explorer_pane_state
                             .set_active_project(Some(new_project_name), Some(project_rename_response.new_project_path));
+                        self.sync_struct_viewer_focus_from_project_items();
                     }
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "Project rename request failed.".to_string();
@@ -2129,6 +2608,9 @@ impl AppShell {
                             .project_explorer_pane_state
                             .set_active_project(None, None);
                         self.app_state.project_explorer_pane_state.clear_project_items();
+                        self.app_state
+                            .struct_viewer_pane_state
+                            .clear_focus("Cleared struct viewer after project delete.");
                     }
                     self.app_state.project_explorer_pane_state.status_message = format!("Deleted project '{}'.", selected_project_name);
                     self.refresh_project_list(squalr_engine);
@@ -2177,6 +2659,9 @@ impl AppShell {
                         .project_explorer_pane_state
                         .set_active_project(None, None);
                     self.app_state.project_explorer_pane_state.clear_project_items();
+                    self.app_state
+                        .struct_viewer_pane_state
+                        .clear_focus("Cleared struct viewer after project close.");
                     self.app_state.project_explorer_pane_state.status_message = "Closed active project.".to_string();
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "Project close request failed.".to_string();
@@ -2188,6 +2673,86 @@ impl AppShell {
         }
 
         self.app_state.project_explorer_pane_state.is_closing_project = false;
+    }
+
+    fn extract_string_value_from_edited_field(edited_field: &ValuedStructField) -> Option<String> {
+        let edited_data_value = edited_field.get_data_value()?;
+        let edited_name = String::from_utf8(edited_data_value.get_value_bytes().clone()).ok()?;
+        let edited_name = edited_name.trim();
+
+        if edited_name.is_empty() { None } else { Some(edited_name.to_string()) }
+    }
+
+    fn build_project_item_rename_request(
+        project_item_path: &Path,
+        project_item_type_id: &str,
+        edited_name: &str,
+    ) -> Option<ProjectItemsRenameRequest> {
+        let sanitized_file_name = Path::new(edited_name)
+            .file_name()
+            .and_then(|file_name| file_name.to_str())
+            .map(str::trim)
+            .filter(|file_name| !file_name.is_empty())?
+            .to_string();
+        let is_directory_project_item = project_item_type_id == ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID;
+        let renamed_project_item_name = if is_directory_project_item {
+            sanitized_file_name
+        } else {
+            let mut file_name_with_extension = sanitized_file_name.clone();
+            let expected_extension = Project::PROJECT_ITEM_EXTENSION.trim_start_matches('.');
+            let has_expected_extension = Path::new(&sanitized_file_name)
+                .extension()
+                .and_then(|extension| extension.to_str())
+                .map(|extension| extension.eq_ignore_ascii_case(expected_extension))
+                .unwrap_or(false);
+            if !has_expected_extension {
+                file_name_with_extension.push('.');
+                file_name_with_extension.push_str(expected_extension);
+            }
+
+            file_name_with_extension
+        };
+        let current_file_name = project_item_path
+            .file_name()
+            .and_then(|file_name| file_name.to_str())
+            .unwrap_or_default();
+        if current_file_name == renamed_project_item_name {
+            return None;
+        }
+
+        Some(ProjectItemsRenameRequest {
+            project_item_path: project_item_path.to_path_buf(),
+            project_item_name: renamed_project_item_name,
+        })
+    }
+
+    fn build_memory_write_request_for_project_item_edit(
+        project_item: &mut ProjectItem,
+        edited_field: &ValuedStructField,
+    ) -> Option<MemoryWriteRequest> {
+        if project_item.get_item_type().get_project_item_type_id() != ProjectItemTypeAddress::PROJECT_ITEM_TYPE_ID {
+            return None;
+        }
+        if edited_field.get_name() != ProjectItemTypeAddress::PROPERTY_ADDRESS {
+            return None;
+        }
+
+        let edited_data_value = edited_field.get_data_value()?;
+        let address = ProjectItemTypeAddress::get_field_address(project_item);
+        let module_name = ProjectItemTypeAddress::get_field_module(project_item);
+
+        Some(MemoryWriteRequest {
+            address,
+            module_name,
+            value: edited_data_value.get_value_bytes().clone(),
+        })
+    }
+
+    fn should_apply_struct_field_edit_to_project_item(
+        project_item_type_id: &str,
+        edited_field_name: &str,
+    ) -> bool {
+        !(edited_field_name == ProjectItem::PROPERTY_NAME && project_item_type_id == ProjectItemTypeDirectory::PROJECT_ITEM_TYPE_ID)
     }
 
     fn draw_pane_layout(
