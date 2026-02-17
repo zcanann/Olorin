@@ -48,5 +48,6 @@ Information discovered during iteration:
 - TUI now renders a real multi-pane top-level layout with keyboard-only workflow: focus cycle (`Tab`/`Shift+Tab`), direct pane focus (`1-7`), pane visibility toggles (`Ctrl+1-7` or `v` for focused pane), and restore-all (`0`).
 - Added reducer tests in `squalr-tui` for focus cycling across hidden panes, hidden-pane focus restore, and guard rails preventing all panes from being hidden.
 - TUI process selector now dispatches `ProcessListRequest` (windowed/full toggle) and `ProcessOpenRequest` from keyboard-first controls (`r`, `w`, `Up/Down`, `Enter`), with synchronous response handling and visible status messages in-pane.
+- Checkpoint commit for process selector parity: `92cad535` (`Implement TUI process selector command parity`).
 
 
