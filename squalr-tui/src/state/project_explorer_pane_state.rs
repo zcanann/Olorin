@@ -79,8 +79,19 @@ impl ProjectExplorerPaneState {
         &mut self,
         project_entries: Vec<ProjectInfo>,
     ) {
+        let selected_project_directory_path_before_refresh = self.selected_project_directory_path.clone();
         self.project_entries = project_entries;
-        self.selected_project_list_index = if self.project_entries.is_empty() { None } else { Some(0) };
+        self.selected_project_list_index = selected_project_directory_path_before_refresh
+            .as_ref()
+            .and_then(|selected_project_directory_path| {
+                self.project_entries.iter().position(|project_entry| {
+                    project_entry
+                        .get_project_directory()
+                        .as_deref()
+                        .is_some_and(|project_directory| project_directory == selected_project_directory_path.as_path())
+                })
+            })
+            .or_else(|| if self.project_entries.is_empty() { None } else { Some(0) });
         self.update_selected_project_fields();
     }
 
@@ -851,5 +862,46 @@ mod tests {
 
         assert!(!project_explorer_pane_state.begin_rename_selected_project_input());
         assert_eq!(project_explorer_pane_state.input_mode, ProjectSelectorInputMode::None);
+    }
+
+    #[test]
+    fn apply_project_list_preserves_selected_project_by_directory_path() {
+        let mut project_explorer_pane_state = ProjectExplorerPaneState::default();
+        project_explorer_pane_state.apply_project_list(vec![
+            ProjectInfo::new(
+                PathBuf::from("C:/Projects/Alpha/project/squalr-project.json"),
+                None,
+                ProjectManifest::new(Vec::new()),
+            ),
+            ProjectInfo::new(
+                PathBuf::from("C:/Projects/Beta/project/squalr-project.json"),
+                None,
+                ProjectManifest::new(Vec::new()),
+            ),
+        ]);
+        project_explorer_pane_state.select_next_project();
+        assert_eq!(
+            project_explorer_pane_state.selected_project_directory_path,
+            Some(PathBuf::from("C:/Projects/Beta/project"))
+        );
+
+        project_explorer_pane_state.apply_project_list(vec![
+            ProjectInfo::new(
+                PathBuf::from("C:/Projects/Gamma/project/squalr-project.json"),
+                None,
+                ProjectManifest::new(Vec::new()),
+            ),
+            ProjectInfo::new(
+                PathBuf::from("C:/Projects/Beta/project/squalr-project.json"),
+                None,
+                ProjectManifest::new(Vec::new()),
+            ),
+        ]);
+
+        assert_eq!(project_explorer_pane_state.selected_project_list_index, Some(1));
+        assert_eq!(
+            project_explorer_pane_state.selected_project_directory_path,
+            Some(PathBuf::from("C:/Projects/Beta/project"))
+        );
     }
 }

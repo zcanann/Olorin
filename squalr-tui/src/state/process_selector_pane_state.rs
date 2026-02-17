@@ -28,8 +28,15 @@ impl ProcessSelectorPaneState {
         &mut self,
         process_entries: Vec<ProcessInfo>,
     ) {
+        let selected_process_identifier_before_refresh = self.selected_process_identifier;
         self.process_list_entries = process_entries;
-        self.selected_process_list_index = if self.process_list_entries.is_empty() { None } else { Some(0) };
+        self.selected_process_list_index = selected_process_identifier_before_refresh
+            .and_then(|selected_process_identifier| {
+                self.process_list_entries
+                    .iter()
+                    .position(|process_entry| process_entry.get_process_id_raw() == selected_process_identifier)
+            })
+            .or_else(|| if self.process_list_entries.is_empty() { None } else { Some(0) });
         self.update_selected_process_fields();
     }
 
@@ -166,6 +173,25 @@ mod tests {
         assert_eq!(process_selector_pane_state.selected_process_identifier, Some(101));
 
         process_selector_pane_state.select_previous_process();
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(202));
+    }
+
+    #[test]
+    fn apply_process_list_preserves_selected_process_by_identifier() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.apply_process_list(vec![
+            ProcessInfo::new(101, "alpha.exe".to_string(), true, None),
+            ProcessInfo::new(202, "beta.exe".to_string(), true, None),
+        ]);
+        process_selector_pane_state.select_next_process();
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(202));
+
+        process_selector_pane_state.apply_process_list(vec![
+            ProcessInfo::new(303, "gamma.exe".to_string(), true, None),
+            ProcessInfo::new(202, "beta.exe".to_string(), true, None),
+        ]);
+
+        assert_eq!(process_selector_pane_state.selected_process_list_index, Some(1));
         assert_eq!(process_selector_pane_state.selected_process_identifier, Some(202));
     }
 }

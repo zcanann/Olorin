@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer (look for additional non-command UX/status mismatches now that struct-viewer nested/edit affordance parity pass is complete).
+- [ ] Continue GUI-vs-TUI behavior parity audit outside struct viewer, with focus on non-command status/selection behavior in remaining panes after list/query refreshes.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -67,5 +67,8 @@ Information discovered during iteration:
 - TUI struct-viewer summary semantics now expose field-kind and editability markers (`VAL|RW`, `VAL|RO`, `NEST|RW|RO`) and render `<nested>` preview when no direct display value exists, closing the remaining field-level status visibility gap from the prior task.
 - Added reducer and app-shell tests for read-only edit guarding/status messaging and validated with `cargo test -p squalr-tui` (34 passed).
 - Checkpoint commit for struct-viewer affordance parity: `f99a826e` (`Align TUI struct-viewer edit affordances with GUI behavior`).
+- GUI vs TUI parity audit (this pass): TUI reducer refreshes were resetting user selection to index 0 for process list, project list, and scan results query responses; GUI keeps context across refreshes, so this caused keyboard UX drift.
+- TUI reducers now preserve selection by stable identity where available: process id in `ProcessSelectorPaneState`, project directory path in `ProjectExplorerPaneState`, and scan-result global index in `ScanResultsPaneState` (with bounded fallback behavior when prior selections are missing).
+- Added reducer coverage for each preserve-selection path and scan-results identity remap behavior; validated with `cargo test -p squalr-tui` (38 passed).
 
 

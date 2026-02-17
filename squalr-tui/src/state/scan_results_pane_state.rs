@@ -49,14 +49,57 @@ impl ScanResultsPaneState {
         &mut self,
         scan_results_query_response: ScanResultsQueryResponse,
     ) {
+        let selected_scan_result_global_index_before_refresh = self
+            .selected_result_index
+            .and_then(|selected_result_index| self.scan_results.get(selected_result_index))
+            .map(|selected_scan_result| {
+                selected_scan_result
+                    .get_base_result()
+                    .get_scan_result_ref()
+                    .get_scan_result_global_index()
+            });
+        let selected_range_end_scan_result_global_index_before_refresh = self
+            .selected_range_end_index
+            .and_then(|selected_range_end_index| self.scan_results.get(selected_range_end_index))
+            .map(|selected_scan_result| {
+                selected_scan_result
+                    .get_base_result()
+                    .get_scan_result_ref()
+                    .get_scan_result_global_index()
+            });
+        let selected_result_index_before_refresh = self.selected_result_index;
+        let selected_range_end_index_before_refresh = self.selected_range_end_index;
+
         self.current_page_index = scan_results_query_response.page_index;
         self.cached_last_page_index = scan_results_query_response.last_page_index;
         self.results_per_page = scan_results_query_response.page_size;
         self.total_result_count = scan_results_query_response.result_count;
         self.total_size_in_bytes = scan_results_query_response.total_size_in_bytes;
         self.scan_results = scan_results_query_response.scan_results;
-        self.selected_result_index = if self.scan_results.is_empty() { None } else { Some(0) };
-        self.selected_range_end_index = None;
+        self.selected_result_index = selected_scan_result_global_index_before_refresh
+            .and_then(|selected_scan_result_global_index| {
+                self.scan_results.iter().position(|scan_result| {
+                    scan_result
+                        .get_base_result()
+                        .get_scan_result_ref()
+                        .get_scan_result_global_index()
+                        == selected_scan_result_global_index
+                })
+            })
+            .or_else(|| selected_result_index_before_refresh.filter(|selected_result_index| *selected_result_index < self.scan_results.len()))
+            .or_else(|| if self.scan_results.is_empty() { None } else { Some(0) });
+        self.selected_range_end_index = selected_range_end_scan_result_global_index_before_refresh
+            .and_then(|selected_range_end_scan_result_global_index| {
+                self.scan_results.iter().position(|scan_result| {
+                    scan_result
+                        .get_base_result()
+                        .get_scan_result_ref()
+                        .get_scan_result_global_index()
+                        == selected_range_end_scan_result_global_index
+                })
+            })
+            .or_else(|| selected_range_end_index_before_refresh.filter(|selected_range_end_index| *selected_range_end_index < self.scan_results.len()));
+        self.clamp_selection_to_bounds();
         self.sync_pending_value_edit_from_selection();
     }
 
@@ -390,6 +433,7 @@ impl Default for ScanResultsPaneState {
 #[cfg(test)]
 mod tests {
     use crate::state::scan_results_pane_state::ScanResultsPaneState;
+    use squalr_engine_api::commands::scan_results::query::scan_results_query_response::ScanResultsQueryResponse;
     use squalr_engine_api::structures::data_types::data_type_ref::DataTypeRef;
     use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
     use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
@@ -408,6 +452,23 @@ mod tests {
         );
 
         ScanResult::new(scan_result_valued, String::new(), 0, None, Vec::new(), false)
+    }
+
+    fn create_query_response(
+        page_index: u64,
+        scan_result_global_indices: &[u64],
+    ) -> ScanResultsQueryResponse {
+        ScanResultsQueryResponse {
+            page_index,
+            last_page_index: page_index,
+            page_size: scan_result_global_indices.len() as u64,
+            result_count: scan_result_global_indices.len() as u64,
+            total_size_in_bytes: 0,
+            scan_results: scan_result_global_indices
+                .iter()
+                .map(|scan_result_global_index| create_scan_result(*scan_result_global_index))
+                .collect(),
+        }
     }
 
     #[test]
@@ -453,5 +514,37 @@ mod tests {
         let did_change_page = scan_results_pane_state.set_current_page_index(2);
 
         assert!(!did_change_page);
+    }
+
+    #[test]
+    fn apply_query_response_restores_selected_result_by_scan_result_ref() {
+        let mut scan_results_pane_state = ScanResultsPaneState::default();
+        scan_results_pane_state.scan_results = [10, 11, 12]
+            .iter()
+            .map(|scan_result_global_index| create_scan_result(*scan_result_global_index))
+            .collect();
+        scan_results_pane_state.selected_result_index = Some(1);
+        scan_results_pane_state.selected_range_end_index = Some(2);
+
+        scan_results_pane_state.apply_query_response(create_query_response(0, &[12, 10, 11]));
+
+        assert_eq!(scan_results_pane_state.selected_result_index, Some(2));
+        assert_eq!(scan_results_pane_state.selected_range_end_index, Some(0));
+    }
+
+    #[test]
+    fn apply_query_response_defaults_to_first_result_when_previous_selection_missing() {
+        let mut scan_results_pane_state = ScanResultsPaneState::default();
+        scan_results_pane_state.scan_results = [10, 11]
+            .iter()
+            .map(|scan_result_global_index| create_scan_result(*scan_result_global_index))
+            .collect();
+        scan_results_pane_state.selected_result_index = Some(1);
+        scan_results_pane_state.selected_range_end_index = Some(1);
+
+        scan_results_pane_state.apply_query_response(create_query_response(0, &[99]));
+
+        assert_eq!(scan_results_pane_state.selected_result_index, Some(0));
+        assert_eq!(scan_results_pane_state.selected_range_end_index, None);
     }
 }
