@@ -9,7 +9,7 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 - The TUI build for vscode should not be inside the vscode terminal, it should launch standalone.
-- [ ] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting pane-specific handlers/command dispatch into focused app submodules (maintain behavior parity + tests).
+- [ ] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting tick/auto-refresh orchestration into focused app submodules (maintain behavior parity + tests).
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -98,3 +98,5 @@ Information discovered during iteration:
 - TUI architecture cleanup pass: pane modules moved from `squalr-tui/src/state/` to `squalr-tui/src/views/` to better mirror GUI layering; `squalr-tui/src/app/mod.rs` and `squalr-tui/src/state/mod.rs` are now include-only module files with re-exports; `TuiAppState` moved to `squalr-tui/src/state/app_state.rs`.
 - Validation pass after module relocation/refactor: `cargo test -p squalr-tui` (54 passed).
 - Checkpoint commit for module-layout cleanup: `21c60931` (`Refactor TUI module layout for app/state/views separation`).
+- TUI app-shell de-bloat pass: extracted pane-focused keyboard routing into `squalr-tui/src/app/pane_key_handlers.rs` and command/request dispatch + struct-viewer commit routing into `squalr-tui/src/app/command_dispatch.rs`; `squalr-tui/src/app/mod.rs` now composes `app_shell`, `pane_key_handlers`, and `command_dispatch` modules.
+- Validation pass after handler/dispatch extraction: `cargo test -p squalr-tui` (54 passed).
