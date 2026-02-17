@@ -149,3 +149,4 @@ Information discovered during iteration:
 - Validation pass after scan-results pane-state relocation: `cargo test -p squalr-tui` (57 passed).
 - TUI element-scanner pane-state folderization pass: relocated `squalr-tui/src/views/element_scanner_pane_state.rs` to `squalr-tui/src/views/element_scanner/pane_state.rs`, rewired view/state imports to `crate::views::element_scanner::pane_state::*`, and updated module exports (`views/element_scanner/mod.rs`, `views/mod.rs`) to match feature-subfolder structure.
 - Validation pass after element-scanner pane-state relocation: `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (57 passed).
+- Checkpoint commit for element-scanner pane-state folderization: `61c9f2f0` (`Relocate element scanner pane state into feature folder`).
