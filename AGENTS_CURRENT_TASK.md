@@ -112,4 +112,4 @@ Information discovered during iteration:
 - TUI app-shell command dispatch de-bloat pass: split `squalr-tui/src/app/command_dispatch.rs` into focused domain modules (`command_dispatch_scan.rs` for scan/process flows and `command_dispatch_project.rs` for project/item flows) while keeping `command_dispatch.rs` scoped to output/settings/struct-commit coordination.
 - Updated `squalr-tui/src/app/mod.rs` module composition to include the new dispatch modules directly, preserving existing `AppShell` method surface for pane handlers/tick orchestration.
 - Validation pass after dispatch split + launch fix: `cargo test -p squalr-tui` (57 passed).
-- Checkpoint commit for dispatch split + launch parity: <pending>.
+- Checkpoint commit for dispatch split + launch parity: `52a25180` (`Split TUI command dispatch by domain and restore external launch`).
