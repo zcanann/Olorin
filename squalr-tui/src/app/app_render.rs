@@ -96,7 +96,8 @@ impl AppShell {
                 self.app_state
                     .pane_row_telemetry_line(pane, pane_entry_row_capacity)
             });
-        let pane_lines: Vec<Line<'static>> = summary_lines.into_iter().map(Line::from).collect();
+        let display_summary_lines = self.fit_summary_lines_to_width(summary_lines, pane_content_width);
+        let pane_lines: Vec<Line<'static>> = display_summary_lines.into_iter().map(Line::from).collect();
         let entry_rows = self.app_state.pane_entry_rows(pane, entry_row_capacity);
         let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows, pane_content_width);
 
@@ -133,8 +134,9 @@ impl AppShell {
         let marker_style = TuiTheme::pane_entry_marker_style(entry_row.tone);
         let primary_style = TuiTheme::pane_entry_primary_style(entry_row.tone);
         let secondary_style = TuiTheme::pane_entry_secondary_style(entry_row.tone);
-        let marker_text = Self::format_marker_prefix(entry_row.marker_text);
-        let available_content_width = content_width.saturating_sub(3);
+        let marker_text = Self::format_marker_prefix(entry_row.marker_text, content_width);
+        let marker_prefix_width = marker_text.chars().count();
+        let available_content_width = content_width.saturating_sub(marker_prefix_width);
         let (primary_text, secondary_text) = Self::fit_entry_row_content(entry_row.primary_text, entry_row.secondary_text, available_content_width);
         let mut entry_spans = vec![
             Span::styled(marker_text, marker_style),
@@ -292,7 +294,23 @@ impl AppShell {
         usize::from(Self::is_entry_heavy_pane(pane))
     }
 
-    fn format_marker_prefix(marker_text: String) -> String {
+    fn format_marker_prefix(
+        marker_text: String,
+        content_width: usize,
+    ) -> String {
+        if content_width == 0 {
+            return String::new();
+        }
+
+        if content_width == 1 {
+            return Self::truncate_line_with_ellipsis(marker_text, 1);
+        }
+
+        if content_width == 2 {
+            let truncated_marker = Self::truncate_line_with_ellipsis(marker_text, 2);
+            return format!("{:>2}", truncated_marker);
+        }
+
         let truncated_marker = Self::truncate_line_with_ellipsis(marker_text, 2);
         format!("{:>2} ", truncated_marker)
     }
@@ -387,8 +405,14 @@ mod tests {
 
     #[test]
     fn entry_marker_prefix_stays_aligned() {
-        assert_eq!(AppShell::format_marker_prefix("*".to_string()), " * ");
-        assert_eq!(AppShell::format_marker_prefix("LONG".to_string()), "L. ");
+        assert_eq!(AppShell::format_marker_prefix("*".to_string(), 8), " * ");
+        assert_eq!(AppShell::format_marker_prefix("LONG".to_string(), 8), "L. ");
+    }
+
+    #[test]
+    fn entry_marker_prefix_preserves_marker_visibility_in_tiny_widths() {
+        assert_eq!(AppShell::format_marker_prefix("*".to_string(), 1), "*");
+        assert_eq!(AppShell::format_marker_prefix("*".to_string(), 2), " *");
     }
 
     #[test]
@@ -420,6 +444,18 @@ mod tests {
             .collect();
 
         assert_eq!(rendered_text, " F primary");
+    }
+
+    #[test]
+    fn entry_row_render_keeps_marker_visible_at_single_column_width() {
+        let rendered_line = AppShell::render_entry_row(PaneEntryRow::selected("*".to_string(), "primary".to_string(), Some("secondary".to_string())), 1);
+        let rendered_text: String = rendered_line
+            .spans
+            .iter()
+            .map(|span| span.content.to_string())
+            .collect();
+
+        assert_eq!(rendered_text, "*");
     }
 
     #[test]
