@@ -148,9 +148,8 @@ impl AppShell {
         self.draw_pane_layout(frame, vertical_chunks[1]);
 
         let footer = Paragraph::new(vec![
-            Line::from("Focus: Tab / Shift+Tab. Focus pane: 1-7. Toggle pane: Ctrl+1-7 or v. Show all: 0."),
-            Line::from("Global: q / Esc / Ctrl+C to exit."),
-            Line::from("Keyboard-first workflow enabled for all pane interactions."),
+            Line::from(Self::footer_navigation_controls_line()),
+            Line::from(Self::footer_exit_controls_line()),
         ])
         .style(TuiTheme::status_text_style())
         .block(TuiTheme::controls_block("Controls"));
@@ -163,6 +162,14 @@ impl AppShell {
             EngineMode::UnprivilegedHost => "[MODE] Squalr TUI | Unprivileged Host.",
             EngineMode::PrivilegedShell => "[MODE] Squalr TUI | Privileged Shell.",
         }
+    }
+
+    fn footer_navigation_controls_line() -> &'static str {
+        "[NAV] Tab/Shift+Tab focus | 1-7 jump | Ctrl+1-7 or v toggle | 0 show-all."
+    }
+
+    fn footer_exit_controls_line() -> &'static str {
+        "[EXIT] q / Esc / Ctrl+C."
     }
 
     fn session_opened_process_metadata_line(&self) -> String {
@@ -537,6 +544,15 @@ mod tests {
 
         assert_eq!(app_shell.session_opened_process_metadata_line(), "[PROC] none.");
         assert_eq!(app_shell.session_active_project_metadata_line(), "[PROJ] none.");
+    }
+
+    #[test]
+    fn footer_control_lines_use_condensed_marker_groups() {
+        assert_eq!(
+            AppShell::footer_navigation_controls_line(),
+            "[NAV] Tab/Shift+Tab focus | 1-7 jump | Ctrl+1-7 or v toggle | 0 show-all."
+        );
+        assert_eq!(AppShell::footer_exit_controls_line(), "[EXIT] q / Esc / Ctrl+C.");
     }
 
     #[test]

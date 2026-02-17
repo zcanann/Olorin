@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit GUI top-surface shortcut affordances and align TUI controls/footer legend density (condensed marker groups + reduced redundancy) while preserving keyboard-first readability.
+- Concrete next subtask: audit per-pane action legends for density and align summary lead lines to condensed marker-group format (short labels, lower redundancy) while preserving keyboard-first readability.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -164,3 +164,5 @@ Information discovered during iteration:
 - GUI top-surface affordance audit (this pass): GUI main shortcut bar prioritizes compact icon-first status context for process state, while TUI session metadata previously used longer prose labels.
 - TUI session metadata presentation update: `AppShell` header lines now use condensed icon-like markers (`[MODE]`, `[PROC]`, `[PROJ]`) and compact value formatting (including path condensation to `.../<parent>/<leaf>` for active project context).
 - Updated app-shell metadata tests to assert condensed marker-form output and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (61 passed).
+- GUI top-surface shortcut affordance audit follow-through: condensed TUI footer controls into marker-group lines (`[NAV]`, `[EXIT]`) and removed redundant keyboard-first prose to improve legend density while retaining readability.
+- Added focused app-shell regression coverage for footer marker-line text (`footer_control_lines_use_condensed_marker_groups`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (62 passed).
