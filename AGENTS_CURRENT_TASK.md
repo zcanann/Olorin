@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI vs TUI interaction parity and identify the next highest-value keyboard UX gaps for `pr/tui`.
+- Audit GUI vs TUI feature parity for project workflow affordances and identify any remaining high-friction keyboard loops.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -40,3 +40,7 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Added `AppShell` tests covering new quit routing (`Esc`/plain `q` not consumed globally, `Ctrl+Q` exits globally).
 - Removed now-unused `TuiTheme` helper functions (`status_text_style`, `controls_block`) created obsolete by the header collapse.
 - `cargo test -p squalr-tui` passes with 13 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
+- Process selector search now uses client-side filtering over a cached process list (`ProcessListRequest.search_name=None`), removing per-keystroke engine round-trips.
+- Process selector now renders a dedicated `search: ...` row directly above process entries; when search input is active that row is selected, and selected process rows use `>` markers (`>*` if also opened).
+- Search-mode navigation now supports `Down/j` to exit search input and continue list navigation without forcing a server refresh.
+- Project workspace auto-seek to Project Explorer is now one-time per session; later navigation uses manual `F4` toggling between Process Selector and Project Explorer when a process is open.

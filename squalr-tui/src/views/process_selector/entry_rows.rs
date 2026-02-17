@@ -6,12 +6,37 @@ pub fn build_visible_process_entry_rows(
     process_selector_pane_state: &ProcessSelectorPaneState,
     viewport_capacity: usize,
 ) -> Vec<PaneEntryRow> {
+    if viewport_capacity == 0 {
+        return Vec::new();
+    }
+
+    let is_search_input_active = process_selector_pane_state.input_mode == crate::views::process_selector::pane_state::ProcessSelectorInputMode::Search;
+    let search_marker_text = if is_search_input_active { "/".to_string() } else { String::new() };
+    let mut entry_rows = vec![if is_search_input_active {
+        PaneEntryRow::selected(
+            search_marker_text.to_string(),
+            format!("search: {}", process_selector_pane_state.pending_search_name_input),
+            None,
+        )
+    } else {
+        PaneEntryRow::normal(
+            search_marker_text.to_string(),
+            format!("search: {}", process_selector_pane_state.pending_search_name_input),
+            None,
+        )
+    }];
+
+    let process_row_capacity = viewport_capacity.saturating_sub(1);
+    if process_row_capacity == 0 {
+        return entry_rows;
+    }
+
     let visible_process_range = build_selection_relative_viewport_range(
         process_selector_pane_state.process_list_entries.len(),
         process_selector_pane_state.selected_process_list_index,
-        viewport_capacity,
+        process_row_capacity,
     );
-    let mut entry_rows = Vec::with_capacity(visible_process_range.len());
+    entry_rows.reserve(visible_process_range.len());
 
     for visible_process_position in visible_process_range {
         if let Some(process_entry) = process_selector_pane_state
@@ -20,7 +45,12 @@ pub fn build_visible_process_entry_rows(
         {
             let is_selected_process = process_selector_pane_state.selected_process_list_index == Some(visible_process_position);
             let is_opened_process = process_selector_pane_state.opened_process_identifier == Some(process_entry.get_process_id_raw());
-            let marker_text = if is_opened_process { "*".to_string() } else { String::new() };
+            let marker_text = match (is_selected_process, is_opened_process) {
+                (true, true) => ">*".to_string(),
+                (true, false) => ">".to_string(),
+                (false, true) => "*".to_string(),
+                (false, false) => String::new(),
+            };
             let primary_text = process_entry.get_name().to_string();
             let secondary_text = Some(format!("pid={}", process_entry.get_process_id_raw()));
 

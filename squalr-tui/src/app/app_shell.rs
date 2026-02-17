@@ -68,6 +68,7 @@ pub struct AppShell {
     pub last_project_list_auto_refresh_attempt_time: Option<Instant>,
     pub last_project_items_auto_refresh_attempt_time: Option<Instant>,
     pub last_settings_auto_refresh_attempt_time: Option<Instant>,
+    pub has_auto_seeked_project_explorer_once: bool,
 }
 
 impl AppShell {
@@ -94,6 +95,7 @@ impl AppShell {
             last_project_list_auto_refresh_attempt_time: None,
             last_project_items_auto_refresh_attempt_time: None,
             last_settings_auto_refresh_attempt_time: None,
+            has_auto_seeked_project_explorer_once: false,
         }
     }
 
@@ -287,11 +289,28 @@ impl AppShell {
                 if function_key_index == 4 {
                     self.app_state
                         .set_active_workspace_page(TuiWorkspacePage::ProjectWorkspace);
-                    self.app_state
+                    if self
+                        .app_state
                         .process_selector_pane_state
-                        .activate_process_selector_view();
-                    self.app_state
-                        .set_focused_pane(crate::state::pane::TuiPane::ProcessSelector);
+                        .is_process_selector_view_active
+                        && self
+                            .app_state
+                            .process_selector_pane_state
+                            .opened_process_identifier
+                            .is_some()
+                    {
+                        self.app_state
+                            .process_selector_pane_state
+                            .activate_project_explorer_view();
+                        self.app_state
+                            .set_focused_pane(crate::state::pane::TuiPane::ProjectExplorer);
+                    } else {
+                        self.app_state
+                            .process_selector_pane_state
+                            .activate_process_selector_view();
+                        self.app_state
+                            .set_focused_pane(crate::state::pane::TuiPane::ProcessSelector);
+                    }
                     true
                 } else if let Some(target_workspace_page) = TuiWorkspacePage::from_function_key(function_key_index) {
                     self.app_state.set_active_workspace_page(target_workspace_page);

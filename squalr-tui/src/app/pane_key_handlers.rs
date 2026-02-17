@@ -106,7 +106,6 @@ impl AppShell {
             match key_event.code {
                 KeyCode::Esc => {
                     self.app_state.process_selector_pane_state.cancel_search_input();
-                    self.refresh_process_list(squalr_engine);
                 }
                 KeyCode::Enter => {
                     self.app_state.process_selector_pane_state.commit_search_input();
@@ -115,19 +114,19 @@ impl AppShell {
                     self.app_state
                         .process_selector_pane_state
                         .backspace_pending_search_name();
-                    self.refresh_process_list(squalr_engine);
                 }
                 KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                     self.app_state
                         .process_selector_pane_state
                         .clear_pending_search_name();
-                    self.refresh_process_list(squalr_engine);
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.app_state.process_selector_pane_state.commit_search_input();
                 }
                 KeyCode::Char(search_character) => {
                     self.app_state
                         .process_selector_pane_state
                         .append_pending_search_character(search_character);
-                    self.refresh_process_list(squalr_engine);
                 }
                 _ => {}
             }

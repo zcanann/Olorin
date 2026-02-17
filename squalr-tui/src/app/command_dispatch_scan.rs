@@ -771,10 +771,7 @@ impl AppShell {
                 .app_state
                 .process_selector_pane_state
                 .show_windowed_processes_only,
-            search_name: self
-                .app_state
-                .process_selector_pane_state
-                .pending_search_name_trimmed(),
+            search_name: None,
             match_case: false,
             limit: None,
             fetch_icons: false,
@@ -898,7 +895,13 @@ impl AppShell {
         self.app_state
             .set_active_workspace_page(TuiWorkspacePage::ProjectWorkspace);
         self.app_state.process_selector_pane_state.commit_search_input();
-        self.app_state.set_focused_pane(TuiPane::ProjectExplorer);
+        if !self.has_auto_seeked_project_explorer_once {
+            self.app_state
+                .process_selector_pane_state
+                .activate_project_explorer_view();
+            self.app_state.set_focused_pane(TuiPane::ProjectExplorer);
+            self.has_auto_seeked_project_explorer_once = true;
+        }
 
         let has_active_project = self
             .app_state

@@ -18,6 +18,7 @@ pub struct ProcessSelectorPaneState {
     pub selected_process_identifier: Option<u32>,
     pub selected_process_name: Option<String>,
     pub show_windowed_processes_only: bool,
+    pub all_process_entries: Vec<ProcessInfo>,
     pub process_list_entries: Vec<ProcessInfo>,
     pub selected_process_list_index: Option<usize>,
     pub opened_process_identifier: Option<u32>,
@@ -43,8 +44,29 @@ impl ProcessSelectorPaneState {
         &mut self,
         process_entries: Vec<ProcessInfo>,
     ) {
+        self.all_process_entries = process_entries;
+        self.apply_search_filter_to_process_entries();
+    }
+
+    pub fn apply_search_filter_to_process_entries(&mut self) {
         let selected_process_identifier_before_refresh = self.selected_process_identifier;
-        self.process_list_entries = process_entries;
+        let search_name_filter = self
+            .pending_search_name_trimmed()
+            .map(|search_name| search_name.to_ascii_lowercase());
+        self.process_list_entries = match search_name_filter {
+            Some(search_name_filter) => self
+                .all_process_entries
+                .iter()
+                .filter(|process_entry| {
+                    process_entry
+                        .get_name()
+                        .to_ascii_lowercase()
+                        .contains(&search_name_filter)
+                })
+                .cloned()
+                .collect(),
+            None => self.all_process_entries.clone(),
+        };
         self.selected_process_list_index = selected_process_identifier_before_refresh
             .and_then(|selected_process_identifier| {
                 self.process_list_entries
@@ -99,18 +121,20 @@ impl ProcessSelectorPaneState {
             Some(opened_process_info) => {
                 self.opened_process_identifier = Some(opened_process_info.get_process_id_raw());
                 self.opened_process_name = Some(opened_process_info.get_name().to_string());
-                self.is_process_selector_view_active = false;
             }
             None => {
                 self.opened_process_identifier = None;
                 self.opened_process_name = None;
-                self.is_process_selector_view_active = true;
             }
         }
     }
 
     pub fn activate_process_selector_view(&mut self) {
         self.is_process_selector_view_active = true;
+    }
+
+    pub fn activate_project_explorer_view(&mut self) {
+        self.is_process_selector_view_active = false;
     }
 
     pub fn begin_search_input(&mut self) {
@@ -124,6 +148,7 @@ impl ProcessSelectorPaneState {
     pub fn cancel_search_input(&mut self) {
         self.input_mode = ProcessSelectorInputMode::None;
         self.pending_search_name_input.clear();
+        self.apply_search_filter_to_process_entries();
     }
 
     pub fn append_pending_search_character(
@@ -135,14 +160,17 @@ impl ProcessSelectorPaneState {
         }
 
         self.pending_search_name_input.push(pending_character);
+        self.apply_search_filter_to_process_entries();
     }
 
     pub fn backspace_pending_search_name(&mut self) {
         self.pending_search_name_input.pop();
+        self.apply_search_filter_to_process_entries();
     }
 
     pub fn clear_pending_search_name(&mut self) {
         self.pending_search_name_input.clear();
+        self.apply_search_filter_to_process_entries();
     }
 
     pub fn pending_search_name_trimmed(&self) -> Option<String> {
@@ -189,6 +217,7 @@ impl Default for ProcessSelectorPaneState {
             selected_process_identifier: None,
             selected_process_name: None,
             show_windowed_processes_only: false,
+            all_process_entries: Vec::new(),
             process_list_entries: Vec::new(),
             selected_process_list_index: None,
             opened_process_identifier: None,

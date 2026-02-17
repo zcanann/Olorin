@@ -1,21 +1,12 @@
 use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 
 pub fn build_process_selector_summary_lines(process_selector_pane_state: &ProcessSelectorPaneState) -> Vec<String> {
-    let search_mode_label = if process_selector_pane_state.input_mode == crate::views::process_selector::pane_state::ProcessSelectorInputMode::Search {
-        "search"
-    } else {
-        "browse"
-    };
-
     vec![
-        "[ACT] Enter/o open | / search | r refresh | w windowed/full.".to_string(),
+        "[ACT] Enter/o open | / search | r refresh | w windowed/full | F4 toggle view.".to_string(),
         format!(
-            "[SEARCH] mode={} | query=\"{}\".",
-            search_mode_label, process_selector_pane_state.pending_search_name_input
-        ),
-        format!(
-            "[LIST] count={} | windowed_only={} | loading={}.",
+            "[LIST] shown={} | total={} | windowed_only={} | loading={}.",
             process_selector_pane_state.process_list_entries.len(),
+            process_selector_pane_state.all_process_entries.len(),
             process_selector_pane_state.show_windowed_processes_only,
             process_selector_pane_state.is_awaiting_process_list_response
         ),

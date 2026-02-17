@@ -170,9 +170,15 @@ impl AppShell {
         &mut self,
         opened_process: Option<OpenedProcessInfo>,
     ) {
+        let has_opened_process = opened_process.is_some();
         self.app_state
             .process_selector_pane_state
             .set_opened_process(opened_process);
+        if !has_opened_process {
+            self.app_state
+                .process_selector_pane_state
+                .activate_process_selector_view();
+        }
     }
 
     pub(super) fn query_scan_results_page_if_engine_event_pending(
