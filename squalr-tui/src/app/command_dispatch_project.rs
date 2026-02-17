@@ -169,7 +169,6 @@ impl AppShell {
                 if should_update_status_message {
                     self.app_state.project_explorer_pane_state.status_message = format!("Loaded {} project items.", project_item_count);
                 }
-                self.sync_struct_viewer_focus_from_project_items();
             }
             Err(receive_error) => {
                 if should_update_status_message {
@@ -681,9 +680,6 @@ impl AppShell {
                         .project_explorer_pane_state
                         .set_active_project(Some(selected_project_name.clone()), Some(selected_project_directory_path.clone()));
                     self.app_state.project_explorer_pane_state.clear_project_items();
-                    self.app_state
-                        .struct_viewer_pane_state
-                        .clear_focus("Cleared struct viewer after project open.");
                     self.app_state.project_explorer_pane_state.status_message = format!("Opened project '{}'.", selected_project_name);
                     self.refresh_project_items_list(squalr_engine);
                 } else {
@@ -774,7 +770,6 @@ impl AppShell {
                         self.app_state
                             .project_explorer_pane_state
                             .set_active_project(Some(new_project_name), Some(project_rename_response.new_project_path));
-                        self.sync_struct_viewer_focus_from_project_items();
                     }
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "Project rename request failed.".to_string();
@@ -849,9 +844,6 @@ impl AppShell {
                             .project_explorer_pane_state
                             .set_active_project(None, None);
                         self.app_state.project_explorer_pane_state.clear_project_items();
-                        self.app_state
-                            .struct_viewer_pane_state
-                            .clear_focus("Cleared struct viewer after project delete.");
                     }
                     self.app_state.project_explorer_pane_state.status_message = format!("Deleted project '{}'.", selected_project_name);
                     self.refresh_project_list(squalr_engine);
@@ -900,9 +892,6 @@ impl AppShell {
                         .project_explorer_pane_state
                         .set_active_project(None, None);
                     self.app_state.project_explorer_pane_state.clear_project_items();
-                    self.app_state
-                        .struct_viewer_pane_state
-                        .clear_focus("Cleared struct viewer after project close.");
                     self.app_state.project_explorer_pane_state.status_message = "Closed active project.".to_string();
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "Project close request failed.".to_string();

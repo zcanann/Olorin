@@ -99,9 +99,6 @@ impl AppShell {
 
         if did_active_project_directory_change {
             self.app_state.project_explorer_pane_state.clear_project_items();
-            self.app_state
-                .struct_viewer_pane_state
-                .clear_focus("Cleared struct viewer after project-state synchronization.");
             self.last_project_items_auto_refresh_attempt_time = None;
         }
     }

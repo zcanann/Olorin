@@ -725,7 +725,6 @@ impl AppShell {
         if should_update_status_message {
             self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
         }
-        self.sync_struct_viewer_focus_from_scan_results();
     }
 
     pub(super) fn refresh_process_list(

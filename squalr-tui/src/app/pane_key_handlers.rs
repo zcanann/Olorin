@@ -194,25 +194,12 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         let is_range_extend_modifier_active = key_event.modifiers.contains(KeyModifiers::SHIFT);
-        let mut should_refresh_struct_viewer_focus = false;
 
         match key_event.code {
-            KeyCode::Char('r') => {
-                self.query_scan_results_current_page(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char('R') => {
-                self.refresh_scan_results_page(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char(']') => {
-                self.query_next_scan_results_page(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char('[') => {
-                self.query_previous_scan_results_page(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
+            KeyCode::Char('r') => self.query_scan_results_current_page(squalr_engine),
+            KeyCode::Char('R') => self.refresh_scan_results_page(squalr_engine),
+            KeyCode::Char(']') => self.query_next_scan_results_page(squalr_engine),
+            KeyCode::Char('[') => self.query_previous_scan_results_page(squalr_engine),
             KeyCode::Down | KeyCode::Char('j') => {
                 if is_range_extend_modifier_active {
                     self.app_state
@@ -222,7 +209,6 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_next_result(is_range_extend_modifier_active);
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 if is_range_extend_modifier_active {
@@ -233,7 +219,6 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_previous_result(is_range_extend_modifier_active);
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Home => {
                 if is_range_extend_modifier_active {
@@ -244,7 +229,6 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_first_result(is_range_extend_modifier_active);
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::End => {
                 if is_range_extend_modifier_active {
@@ -255,24 +239,11 @@ impl AppShell {
                 self.app_state
                     .scan_results_pane_state
                     .select_last_result(is_range_extend_modifier_active);
-                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char('f') => {
-                self.toggle_selected_scan_results_frozen_state(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char('a') => {
-                self.add_selected_scan_results_to_project(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char('x') | KeyCode::Delete => {
-                self.delete_selected_scan_results(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Enter => {
-                self.commit_selected_scan_results_value_edit(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
+            KeyCode::Char('f') => self.toggle_selected_scan_results_frozen_state(squalr_engine),
+            KeyCode::Char('a') => self.add_selected_scan_results_to_project(squalr_engine),
+            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_scan_results(squalr_engine),
+            KeyCode::Enter => self.commit_selected_scan_results_value_edit(squalr_engine),
             KeyCode::Backspace => self
                 .app_state
                 .scan_results_pane_state
@@ -291,10 +262,6 @@ impl AppShell {
                 .scan_results_pane_state
                 .append_pending_value_edit_character(scan_value_character),
             _ => {}
-        }
-
-        if should_refresh_struct_viewer_focus {
-            self.sync_struct_viewer_focus_from_scan_results();
         }
     }
 
@@ -379,24 +346,17 @@ impl AppShell {
         key_code: KeyCode,
         squalr_engine: &mut SqualrEngine,
     ) {
-        let mut should_refresh_struct_viewer_focus = false;
-
         match key_code {
-            KeyCode::Char('h') => {
-                self.refresh_project_items_list(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
+            KeyCode::Char('h') => self.refresh_project_items_list(squalr_engine),
             KeyCode::Down | KeyCode::Char('j') => {
                 self.app_state
                     .project_explorer_pane_state
                     .select_next_project_item();
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.app_state
                     .project_explorer_pane_state
                     .select_previous_project_item();
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Right | KeyCode::Char('l') => {
                 if !self
@@ -406,7 +366,6 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No expandable directory is selected.".to_string();
                 }
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Left => {
                 if !self
@@ -416,12 +375,8 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No collapsible directory is selected.".to_string();
                 }
-                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char(' ') => {
-                self.toggle_selected_project_item_activation(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
+            KeyCode::Char(' ') => self.toggle_selected_project_item_activation(squalr_engine),
             KeyCode::Char('n') => {
                 if !self
                     .app_state
@@ -430,7 +385,6 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No project item directory target is selected.".to_string();
                 }
-                should_refresh_struct_viewer_focus = true;
             }
             KeyCode::Char('m') => {
                 if self
@@ -443,36 +397,18 @@ impl AppShell {
                 } else {
                     self.app_state.project_explorer_pane_state.status_message = "No project item is selected for move.".to_string();
                 }
-                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char('b') => {
-                self.move_staged_project_items_to_selected_directory(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
+            KeyCode::Char('b') => self.move_staged_project_items_to_selected_directory(squalr_engine),
             KeyCode::Char('u') => {
                 self.app_state
                     .project_explorer_pane_state
                     .clear_pending_move_source_paths();
                 self.app_state.project_explorer_pane_state.status_message = "Cleared staged project item move.".to_string();
-                should_refresh_struct_viewer_focus = true;
             }
-            KeyCode::Char('[') => {
-                self.reorder_selected_project_item(squalr_engine, true);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char(']') => {
-                self.reorder_selected_project_item(squalr_engine, false);
-                should_refresh_struct_viewer_focus = true;
-            }
-            KeyCode::Char('x') | KeyCode::Delete => {
-                self.delete_selected_project_item_with_confirmation(squalr_engine);
-                should_refresh_struct_viewer_focus = true;
-            }
+            KeyCode::Char('[') => self.reorder_selected_project_item(squalr_engine, true),
+            KeyCode::Char(']') => self.reorder_selected_project_item(squalr_engine, false),
+            KeyCode::Char('x') | KeyCode::Delete => self.delete_selected_project_item_with_confirmation(squalr_engine),
             _ => {}
-        }
-
-        if should_refresh_struct_viewer_focus {
-            self.sync_struct_viewer_focus_from_project_items();
         }
     }
 
