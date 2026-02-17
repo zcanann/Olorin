@@ -21,7 +21,7 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}",
-            "terminal": "integrated"
+            "terminal": "external"
         },
         {
             "type": "lldb",
@@ -41,7 +41,7 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}",
-            "terminal": "integrated"
+            "terminal": "external"
         },
         {
             "type": "lldb",
@@ -61,7 +61,7 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}",
-            "terminal": "integrated",
+            "terminal": "external",
             "env": {
                 "RUSTFLAGS": "-g"
             }

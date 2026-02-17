@@ -8,13 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- The TUI build for vscode should not be inside the vscode terminal, it should launch standalone.
-- [x] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting tick/auto-refresh orchestration into focused app submodules (maintain behavior parity + tests).
-- [x] Continue de-bloating `squalr-tui/src/app/app_shell.rs` by extracting pane-layout drawing helpers into a focused app rendering submodule (maintain behavior parity + tests).
-- [x] Audit GUI vs TUI behavior parity again and identify the next concrete gap after app-shell rendering extraction.
-- [x] Add opened-process state synchronization parity in TUI by mirroring GUI `ProcessChangedEvent` handling (event listener + tick-safe state reconcile + tests).
-- [ ] Audit GUI vs TUI behavior parity again and identify the next concrete gap after opened-process synchronization.
-- command_dispatch.rs is bloated and overloaded surely
+- Audit GUI project against TUI and identify the next behavior-level parity gap.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -114,3 +108,8 @@ Information discovered during iteration:
 - Next behavior-level parity target identified: add event-driven opened-process synchronization in TUI (mirror GUI process-changed event handling and validate stale-state recovery paths with app-shell tests).
 - TUI app shell now registers a one-time `ProcessChangedEvent` listener, stores the latest opened-process payload thread-safely, and reconciles process-selector opened-process state on tick when pending engine updates exist.
 - Added app-shell tests for process-change synchronization behavior (pending update apply, no-op without updates, and stale-state clear on `None` payload); validated with `cargo test -p squalr-tui` (57 passed).
+- TUI VS Code launch parity now enforces standalone terminals: `.vscode/launch.json` uses CodeLLDB `terminal: external` for all `squalr-tui` launch entries.
+- TUI app-shell command dispatch de-bloat pass: split `squalr-tui/src/app/command_dispatch.rs` into focused domain modules (`command_dispatch_scan.rs` for scan/process flows and `command_dispatch_project.rs` for project/item flows) while keeping `command_dispatch.rs` scoped to output/settings/struct-commit coordination.
+- Updated `squalr-tui/src/app/mod.rs` module composition to include the new dispatch modules directly, preserving existing `AppShell` method surface for pane handlers/tick orchestration.
+- Validation pass after dispatch split + launch fix: `cargo test -p squalr-tui` (57 passed).
+- Checkpoint commit for dispatch split + launch parity: <pending>.
