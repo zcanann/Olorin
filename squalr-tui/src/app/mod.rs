@@ -1,3 +1,4 @@
+mod app_render;
 mod app_shell;
 mod app_tick;
 mod command_dispatch;
