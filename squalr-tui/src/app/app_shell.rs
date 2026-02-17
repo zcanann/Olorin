@@ -133,28 +133,22 @@ impl AppShell {
 
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(6), Constraint::Min(0), Constraint::Length(5)])
+            .constraints([Constraint::Length(8), Constraint::Min(0)])
             .split(frame.area());
 
-        let header = Paragraph::new(vec![
+        let info_header = Paragraph::new(vec![
             Line::from(Self::engine_mode_header_text(engine_mode)),
             Line::from(self.session_opened_process_metadata_line()),
             Line::from(self.session_active_project_metadata_line()),
             Line::from(self.session_active_workspace_metadata_line()),
-        ])
-        .style(TuiTheme::panel_text_style())
-        .block(TuiTheme::session_block("Session"));
-        frame.render_widget(header, vertical_chunks[0]);
-
-        self.draw_pane_layout(frame, vertical_chunks[1]);
-
-        let footer = Paragraph::new(vec![
             Line::from(Self::footer_navigation_controls_line()),
             Line::from(Self::footer_exit_controls_line()),
         ])
-        .style(TuiTheme::status_text_style())
-        .block(TuiTheme::controls_block("Controls"));
-        frame.render_widget(footer, vertical_chunks[2]);
+        .style(TuiTheme::panel_text_style())
+        .block(TuiTheme::session_block("Info"));
+        frame.render_widget(info_header, vertical_chunks[0]);
+
+        self.draw_pane_layout(frame, vertical_chunks[1]);
     }
 
     fn engine_mode_header_text(engine_mode: EngineMode) -> &'static str {
@@ -170,7 +164,7 @@ impl AppShell {
     }
 
     fn footer_exit_controls_line() -> &'static str {
-        "[EXIT] q / Esc / Ctrl+C."
+        "[EXIT] Ctrl+Q / Ctrl+C."
     }
 
     fn session_opened_process_metadata_line(&self) -> String {
@@ -273,7 +267,7 @@ impl AppShell {
         key_event: KeyEvent,
     ) -> bool {
         match key_event.code {
-            KeyCode::Char('q') | KeyCode::Esc => {
+            KeyCode::Char('q') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.should_exit = true;
                 true
             }
@@ -308,5 +302,45 @@ impl AppShell {
             }
             _ => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppShell;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use std::time::Duration;
+
+    #[test]
+    fn escape_key_is_not_consumed_globally() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let escape_key_event = KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE);
+
+        let was_consumed = app_shell.handle_global_key_event(escape_key_event);
+
+        assert!(!was_consumed);
+        assert!(!app_shell.should_exit);
+    }
+
+    #[test]
+    fn plain_q_is_not_consumed_globally() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let plain_q_key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE);
+
+        let was_consumed = app_shell.handle_global_key_event(plain_q_key_event);
+
+        assert!(!was_consumed);
+        assert!(!app_shell.should_exit);
+    }
+
+    #[test]
+    fn ctrl_q_exits_globally() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        let ctrl_q_key_event = KeyEvent::new(KeyCode::Char('q'), KeyModifiers::CONTROL);
+
+        let was_consumed = app_shell.handle_global_key_event(ctrl_q_key_event);
+
+        assert!(was_consumed);
+        assert!(app_shell.should_exit);
     }
 }

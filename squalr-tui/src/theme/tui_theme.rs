@@ -16,10 +16,6 @@ impl TuiTheme {
         Style::default().fg(Color::Rgb(214, 222, 235))
     }
 
-    pub fn status_text_style() -> Style {
-        Style::default().fg(Color::Rgb(148, 163, 184))
-    }
-
     pub fn pane_entry_marker_style(pane_entry_row_tone: PaneEntryRowTone) -> Style {
         match pane_entry_row_tone {
             PaneEntryRowTone::Selected => Style::default()
@@ -57,18 +53,6 @@ impl TuiTheme {
                 Style::default()
                     .bg(Color::Rgb(20, 26, 34))
                     .fg(Color::Rgb(226, 232, 240)),
-            )
-    }
-
-    pub fn controls_block<'a>(title: &'a str) -> Block<'a> {
-        Block::default()
-            .borders(Borders::ALL)
-            .title(title)
-            .border_style(Style::default().fg(Color::Rgb(71, 85, 105)))
-            .style(
-                Style::default()
-                    .bg(Color::Rgb(18, 23, 31))
-                    .fg(Color::Rgb(184, 202, 222)),
             )
     }
 

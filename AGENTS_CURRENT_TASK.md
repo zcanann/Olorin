@@ -8,8 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Collapse Controls + Session into an info section. Reduces 1 header giving us screen space back.
-- Evaluate replacing global `q`/`Esc` quit with safer quit behavior now that text input/search flows are expanding.
+- Audit GUI vs TUI interaction parity and identify the next highest-value keyboard UX gaps for `pr/tui`.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -36,4 +35,8 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Project hierarchy rows now place activation state next to names using `[ ]`/`[x]`; hierarchy mode no longer allocates row space to project list.
 - Element scanner summary now avoids duplicate constraint row rendering.
 - Panel focus accent is now unified across panes instead of per-pane color variants.
-- `cargo test -p squalr-tui` passes with 10 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
+- Session + Controls were collapsed into a single `Info` header block, reclaiming body height in all workspaces.
+- Global quit behavior was hardened: plain `q` and `Esc` are no longer app-exit hotkeys; quit now requires `Ctrl+Q` or `Ctrl+C`.
+- Added `AppShell` tests covering new quit routing (`Esc`/plain `q` not consumed globally, `Ctrl+Q` exits globally).
+- Removed now-unused `TuiTheme` helper functions (`status_text_style`, `controls_block`) created obsolete by the header collapse.
+- `cargo test -p squalr-tui` passes with 13 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.
