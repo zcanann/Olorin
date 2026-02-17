@@ -12,7 +12,11 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Paragraph};
 use squalr_engine::engine_mode::EngineMode;
 use squalr_engine::squalr_engine::SqualrEngine;
+use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
+use squalr_engine_api::commands::process::list::process_list_request::ProcessListRequest;
+use squalr_engine_api::commands::process::open::process_open_request::ProcessOpenRequest;
 use std::io::{self, Stdout};
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 pub struct TerminalGuard {
@@ -62,7 +66,7 @@ impl AppShell {
         &mut self,
         terminal_guard: &mut TerminalGuard,
         engine_mode: EngineMode,
-        _squalr_engine: &mut SqualrEngine,
+        squalr_engine: &mut SqualrEngine,
     ) -> Result<()> {
         while !self.should_exit {
             terminal_guard
@@ -73,11 +77,11 @@ impl AppShell {
             let timeout_duration = self.tick_rate.saturating_sub(self.last_tick_time.elapsed());
             if event::poll(timeout_duration).context("Failed while polling terminal events.")? {
                 let incoming_event = event::read().context("Failed while reading terminal event.")?;
-                self.handle_event(incoming_event);
+                self.handle_event(incoming_event, squalr_engine);
             }
 
             if self.last_tick_time.elapsed() >= self.tick_rate {
-                self.on_tick();
+                self.on_tick(squalr_engine);
                 self.last_tick_time = Instant::now();
             }
         }
@@ -121,12 +125,14 @@ impl AppShell {
     fn handle_event(
         &mut self,
         incoming_event: Event,
+        squalr_engine: &mut SqualrEngine,
     ) {
         if let Event::Key(key_event) = incoming_event {
             if key_event.kind != KeyEventKind::Press {
                 return;
             }
 
+            let mut was_handled_by_global_shortcut = true;
             match key_event.code {
                 KeyCode::Char('q') | KeyCode::Esc => self.should_exit = true,
                 KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => self.should_exit = true,
@@ -145,12 +151,206 @@ impl AppShell {
                         }
                     }
                 }
-                _ => {}
+                _ => was_handled_by_global_shortcut = false,
+            }
+
+            if !was_handled_by_global_shortcut {
+                self.handle_focused_pane_event(key_event.code, squalr_engine);
             }
         }
     }
 
-    fn on_tick(&mut self) {}
+    fn on_tick(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .process_selector_pane_state
+            .process_list_entries
+            .is_empty()
+            && !self
+                .app_state
+                .process_selector_pane_state
+                .is_awaiting_process_list_response
+        {
+            self.refresh_process_list(squalr_engine);
+        }
+    }
+
+    fn handle_focused_pane_event(
+        &mut self,
+        key_code: KeyCode,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.focused_pane() == TuiPane::ProcessSelector {
+            self.handle_process_selector_key_event(key_code, squalr_engine);
+        }
+    }
+
+    fn handle_process_selector_key_event(
+        &mut self,
+        key_code: KeyCode,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        match key_code {
+            KeyCode::Char('r') => self.refresh_process_list(squalr_engine),
+            KeyCode::Char('w') => {
+                let updated_windowed_filter = !self
+                    .app_state
+                    .process_selector_pane_state
+                    .show_windowed_processes_only;
+                self.app_state
+                    .process_selector_pane_state
+                    .set_windowed_filter(updated_windowed_filter);
+                self.refresh_process_list(squalr_engine);
+            }
+            KeyCode::Down | KeyCode::Char('j') => self.app_state.process_selector_pane_state.select_next_process(),
+            KeyCode::Up | KeyCode::Char('k') => self
+                .app_state
+                .process_selector_pane_state
+                .select_previous_process(),
+            KeyCode::Enter | KeyCode::Char('o') => self.open_selected_process(squalr_engine),
+            _ => {}
+        }
+    }
+
+    fn refresh_process_list(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .process_selector_pane_state
+            .is_awaiting_process_list_response
+        {
+            self.app_state.process_selector_pane_state.status_message = "Process list request already in progress.".to_string();
+            return;
+        }
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.process_selector_pane_state.status_message = "No unprivileged engine state is available for process queries.".to_string();
+                return;
+            }
+        };
+
+        self.app_state
+            .process_selector_pane_state
+            .is_awaiting_process_list_response = true;
+        self.app_state.process_selector_pane_state.status_message = "Refreshing process list.".to_string();
+
+        let process_list_request = ProcessListRequest {
+            require_windowed: self
+                .app_state
+                .process_selector_pane_state
+                .show_windowed_processes_only,
+            search_name: None,
+            match_case: false,
+            limit: None,
+            fetch_icons: false,
+        };
+
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = process_list_request.send(engine_unprivileged_state, move |process_list_response| {
+            let _ = response_sender.send(process_list_response);
+        });
+
+        if !request_dispatched {
+            self.app_state
+                .process_selector_pane_state
+                .is_awaiting_process_list_response = false;
+            self.app_state.process_selector_pane_state.status_message = "Failed to dispatch process list request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(process_list_response) => {
+                let process_count = process_list_response.processes.len();
+                self.app_state
+                    .process_selector_pane_state
+                    .apply_process_list(process_list_response.processes);
+                self.app_state.process_selector_pane_state.status_message = format!("Loaded {} processes.", process_count);
+            }
+            Err(receive_error) => {
+                self.app_state.process_selector_pane_state.status_message = format!("Timed out waiting for process list response: {}", receive_error);
+            }
+        }
+
+        self.app_state
+            .process_selector_pane_state
+            .is_awaiting_process_list_response = false;
+    }
+
+    fn open_selected_process(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self.app_state.process_selector_pane_state.is_opening_process {
+            self.app_state.process_selector_pane_state.status_message = "Process open request already in progress.".to_string();
+            return;
+        }
+
+        let selected_process_identifier = match self.app_state.process_selector_pane_state.selected_process_id() {
+            Some(selected_process_identifier) => selected_process_identifier,
+            None => {
+                self.app_state.process_selector_pane_state.status_message = "No process is selected.".to_string();
+                return;
+            }
+        };
+
+        let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
+            Some(engine_unprivileged_state) => engine_unprivileged_state,
+            None => {
+                self.app_state.process_selector_pane_state.status_message = "No unprivileged engine state is available for process opening.".to_string();
+                return;
+            }
+        };
+
+        self.app_state.process_selector_pane_state.is_opening_process = true;
+        self.app_state.process_selector_pane_state.status_message = format!("Opening process {}.", selected_process_identifier);
+
+        let process_open_request = ProcessOpenRequest {
+            process_id: Some(selected_process_identifier),
+            search_name: None,
+            match_case: false,
+        };
+
+        let (response_sender, response_receiver) = mpsc::sync_channel(1);
+        let request_dispatched = process_open_request.send(engine_unprivileged_state, move |process_open_response| {
+            let _ = response_sender.send(process_open_response);
+        });
+
+        if !request_dispatched {
+            self.app_state.process_selector_pane_state.is_opening_process = false;
+            self.app_state.process_selector_pane_state.status_message = "Failed to dispatch process open request.".to_string();
+            return;
+        }
+
+        match response_receiver.recv_timeout(Duration::from_secs(3)) {
+            Ok(process_open_response) => {
+                let opened_process = process_open_response.opened_process_info;
+                self.app_state
+                    .process_selector_pane_state
+                    .set_opened_process(opened_process.clone());
+                self.app_state.process_selector_pane_state.status_message = if let Some(opened_process_info) = opened_process {
+                    format!(
+                        "Opened process {} ({}).",
+                        opened_process_info.get_name(),
+                        opened_process_info.get_process_id_raw()
+                    )
+                } else {
+                    "Open process request completed with no process.".to_string()
+                };
+            }
+            Err(receive_error) => {
+                self.app_state.process_selector_pane_state.status_message = format!("Timed out waiting for process open response: {}", receive_error);
+            }
+        }
+
+        self.app_state.process_selector_pane_state.is_opening_process = false;
+    }
 
     fn draw_pane_layout(
         &self,

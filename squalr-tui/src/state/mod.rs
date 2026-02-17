@@ -86,13 +86,7 @@ impl TuiAppState {
         pane: TuiPane,
     ) -> Vec<String> {
         match pane {
-            TuiPane::ProcessSelector => {
-                vec![
-                    format!("selected_id={:?}", self.process_selector_pane_state.selected_process_identifier),
-                    format!("selected_name={:?}", self.process_selector_pane_state.selected_process_name),
-                    format!("windowed_only={}", self.process_selector_pane_state.show_windowed_processes_only),
-                ]
-            }
+            TuiPane::ProcessSelector => self.process_selector_pane_state.summary_lines(),
             TuiPane::ElementScanner => {
                 vec![
                     format!("data_type={:?}", self.element_scanner_pane_state.selected_data_type_name),

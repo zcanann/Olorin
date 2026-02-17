@@ -1,7 +1,171 @@
+use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
+use squalr_engine_api::structures::processes::process_info::ProcessInfo;
+
 /// Stores UI state for process selection workflows.
 #[derive(Clone, Debug, Default)]
 pub struct ProcessSelectorPaneState {
     pub selected_process_identifier: Option<u32>,
     pub selected_process_name: Option<String>,
     pub show_windowed_processes_only: bool,
+    pub process_list_entries: Vec<ProcessInfo>,
+    pub selected_process_list_index: Option<usize>,
+    pub opened_process_identifier: Option<u32>,
+    pub opened_process_name: Option<String>,
+    pub is_awaiting_process_list_response: bool,
+    pub is_opening_process: bool,
+    pub status_message: String,
+}
+
+impl ProcessSelectorPaneState {
+    pub fn set_windowed_filter(
+        &mut self,
+        show_windowed_processes_only: bool,
+    ) {
+        self.show_windowed_processes_only = show_windowed_processes_only;
+    }
+
+    pub fn apply_process_list(
+        &mut self,
+        process_entries: Vec<ProcessInfo>,
+    ) {
+        self.process_list_entries = process_entries;
+        self.selected_process_list_index = if self.process_list_entries.is_empty() { None } else { Some(0) };
+        self.update_selected_process_fields();
+    }
+
+    pub fn select_next_process(&mut self) {
+        if self.process_list_entries.is_empty() {
+            self.selected_process_list_index = None;
+            self.update_selected_process_fields();
+            return;
+        }
+
+        let selected_process_index = self.selected_process_list_index.unwrap_or(0);
+        let next_process_index = (selected_process_index + 1) % self.process_list_entries.len();
+        self.selected_process_list_index = Some(next_process_index);
+        self.update_selected_process_fields();
+    }
+
+    pub fn select_previous_process(&mut self) {
+        if self.process_list_entries.is_empty() {
+            self.selected_process_list_index = None;
+            self.update_selected_process_fields();
+            return;
+        }
+
+        let selected_process_index = self.selected_process_list_index.unwrap_or(0);
+        let previous_process_index = if selected_process_index == 0 {
+            self.process_list_entries.len() - 1
+        } else {
+            selected_process_index - 1
+        };
+        self.selected_process_list_index = Some(previous_process_index);
+        self.update_selected_process_fields();
+    }
+
+    pub fn selected_process_id(&self) -> Option<u32> {
+        self.selected_process_list_index
+            .and_then(|selected_process_index| self.process_list_entries.get(selected_process_index))
+            .map(|process_entry| process_entry.get_process_id_raw())
+    }
+
+    pub fn set_opened_process(
+        &mut self,
+        opened_process: Option<OpenedProcessInfo>,
+    ) {
+        match opened_process {
+            Some(opened_process_info) => {
+                self.opened_process_identifier = Some(opened_process_info.get_process_id_raw());
+                self.opened_process_name = Some(opened_process_info.get_name().to_string());
+            }
+            None => {
+                self.opened_process_identifier = None;
+                self.opened_process_name = None;
+            }
+        }
+    }
+
+    pub fn summary_lines(&self) -> Vec<String> {
+        let mut summary_lines = vec![
+            "Actions: r refresh, w windowed/full, Up/Down select, Enter open.".to_string(),
+            format!("windowed_only={}", self.show_windowed_processes_only),
+            format!("list_count={}", self.process_list_entries.len()),
+            format!("selected_id={:?}", self.selected_process_identifier),
+            format!("selected_name={:?}", self.selected_process_name),
+            format!("opened_id={:?}", self.opened_process_identifier),
+            format!("opened_name={:?}", self.opened_process_name),
+            format!("awaiting_list={}", self.is_awaiting_process_list_response),
+            format!("opening_process={}", self.is_opening_process),
+            format!("status={}", self.status_message),
+        ];
+
+        let visible_entry_count = self.process_list_entries.len().min(5);
+        for visible_process_index in 0..visible_entry_count {
+            if let Some(process_entry) = self.process_list_entries.get(visible_process_index) {
+                let selected_marker = if self.selected_process_list_index == Some(visible_process_index) {
+                    ">"
+                } else {
+                    " "
+                };
+                summary_lines.push(format!(
+                    "{} {} ({})",
+                    selected_marker,
+                    process_entry.get_name(),
+                    process_entry.get_process_id_raw()
+                ));
+            }
+        }
+
+        summary_lines
+    }
+
+    fn update_selected_process_fields(&mut self) {
+        if let Some(selected_process_index) = self.selected_process_list_index {
+            if let Some(selected_process_entry) = self.process_list_entries.get(selected_process_index) {
+                self.selected_process_identifier = Some(selected_process_entry.get_process_id_raw());
+                self.selected_process_name = Some(selected_process_entry.get_name().to_string());
+                return;
+            }
+        }
+
+        self.selected_process_identifier = None;
+        self.selected_process_name = None;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::state::process_selector_pane_state::ProcessSelectorPaneState;
+    use squalr_engine_api::structures::processes::process_info::ProcessInfo;
+
+    #[test]
+    fn apply_process_list_selects_first_process() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.apply_process_list(vec![
+            ProcessInfo::new(101, "alpha.exe".to_string(), true, None),
+            ProcessInfo::new(202, "beta.exe".to_string(), true, None),
+        ]);
+
+        assert_eq!(process_selector_pane_state.selected_process_list_index, Some(0));
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(101));
+        assert_eq!(process_selector_pane_state.selected_process_name, Some("alpha.exe".to_string()));
+    }
+
+    #[test]
+    fn process_selection_wraps_forward_and_backward() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.apply_process_list(vec![
+            ProcessInfo::new(101, "alpha.exe".to_string(), true, None),
+            ProcessInfo::new(202, "beta.exe".to_string(), true, None),
+        ]);
+
+        process_selector_pane_state.select_next_process();
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(202));
+
+        process_selector_pane_state.select_next_process();
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(101));
+
+        process_selector_pane_state.select_previous_process();
+        assert_eq!(process_selector_pane_state.selected_process_identifier, Some(202));
+    }
 }
