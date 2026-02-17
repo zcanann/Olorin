@@ -9,7 +9,7 @@ pub fn build_output_summary_lines(
     let mut summary_lines = vec![
         "[ACT] r refresh-log | x clear | +/- max-lines.".to_string(),
         format!(
-            "[META] log_line_count={} | max_log_lines={} | auto_scroll_latest={}.",
+            "[LOG] lines={} | max_lines={} | auto_scroll={}.",
             output_pane_state.log_lines.len(),
             output_pane_state.max_log_line_count,
             output_pane_state.did_auto_scroll_to_latest

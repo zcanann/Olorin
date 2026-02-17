@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI/TUI command and keybinding parity for core workflows (process open, scan run, project item ops, settings edit) and identify high-impact gaps.
+- Continue iterative UI signal/noise passes after interactive validation, keeping only task-critical status and controls in pane summaries.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -28,5 +28,9 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Global key routing in `AppShell` now uses a dedicated `handle_global_key_event` path before pane-local handlers, aligning dispatch flow with a clear top-level route-then-handle pattern.
 - Focus cycling now follows the active workspace pane order (Project: Process Selector -> Project Explorer -> Output, Scanner: Element Scanner -> Scan Results -> Output, Settings: Settings -> Output) rather than global pane enum ordering.
 - Added focused unit tests for workspace shortcut mapping, workspace pane composition, workspace switch focus rehoming, shared Output focus persistence, and forward/backward focus loops for Project/Scanner/Settings pages.
-- Header metadata now documents current-page focus-loop keybindings via a `[FOCUS]` hint.
+- Summary/header declutter pass completed:
+  - Process Selector, Project Explorer, Scan Results, Element Scanner, Settings, and Output summaries were reduced to concise action + status + essential state lines.
+  - Removed high-noise internal operation booleans and redundant instructional blocks that consumed pane height.
+  - Scan Results now shows pending value edit text only when non-empty.
+  - Session header/footer copy was shortened (`[FOCUS]` renamed to `[LOOP]`) while preserving workspace context.
 - `cargo test -p squalr-tui` passes with 7 tests; one existing warning remains for dormant `TuiPane::StructViewer` variant.

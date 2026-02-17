@@ -14,28 +14,21 @@ pub fn build_settings_summary_lines_with_capacity(
 
     let category_lines = selected_category_lines(settings_pane_state);
     let selected_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, 1);
-    let additional_field_capacity = line_capacity.saturating_sub(7);
+    let additional_field_capacity = line_capacity.saturating_sub(6);
     let additional_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, additional_field_capacity);
 
-    let mut prioritized_lines = vec![
-        "[CAT] ] next | [ prev | r refresh-all.".to_string(),
-        "[NAV] j/k field.".to_string(),
-        "[ACT] Space toggle | +/- step | </> cycle enum | Enter apply category.".to_string(),
-    ];
+    let mut prioritized_lines = vec!["[ACT] [/] category | j/k field | Space toggle | +/- step | </> enum | Enter apply.".to_string()];
     prioritized_lines.extend(selected_field_lines);
-    prioritized_lines.push(format!("[STAT] {}.", settings_pane_state.status_message));
     prioritized_lines.push(format!(
-        "[META] category={} | selected_field={}.",
+        "[CAT] {} | field={}.",
         settings_pane_state.selected_category.title(),
         settings_pane_state.selected_field_index
     ));
     prioritized_lines.push(format!(
-        "[LOAD] pending_changes={} | loaded_once={} | refreshing={} | applying={}.",
-        settings_pane_state.has_pending_changes,
-        settings_pane_state.has_loaded_settings_once,
-        settings_pane_state.is_refreshing_settings,
-        settings_pane_state.is_applying_settings
+        "[LOAD] pending={} | refreshing={} | applying={}.",
+        settings_pane_state.has_pending_changes, settings_pane_state.is_refreshing_settings, settings_pane_state.is_applying_settings
     ));
+    prioritized_lines.push(format!("[STAT] {}.", settings_pane_state.status_message));
     prioritized_lines.extend(additional_field_lines);
 
     prioritized_lines.into_iter().take(line_capacity).collect()
@@ -64,7 +57,7 @@ fn selected_category_lines(settings_pane_state: &SettingsPaneState) -> Vec<Strin
 
 fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![format!(
-        "{} [FLD] engine_request_delay_ms={}.",
+        "{} [FLD] request_delay_ms={}.",
         selection_marker(settings_pane_state.selected_field_index, 0),
         settings_pane_state.general_settings.engine_request_delay_ms
     )]
@@ -73,52 +66,52 @@ fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String>
 fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![
         format!(
-            "{} [FLD] memory_type_none={}.",
+            "{} [FLD] type.none={}.",
             selection_marker(settings_pane_state.selected_field_index, 0),
             settings_pane_state.memory_settings.memory_type_none
         ),
         format!(
-            "{} [FLD] memory_type_private={}.",
+            "{} [FLD] type.private={}.",
             selection_marker(settings_pane_state.selected_field_index, 1),
             settings_pane_state.memory_settings.memory_type_private
         ),
         format!(
-            "{} [FLD] memory_type_image={}.",
+            "{} [FLD] type.image={}.",
             selection_marker(settings_pane_state.selected_field_index, 2),
             settings_pane_state.memory_settings.memory_type_image
         ),
         format!(
-            "{} [FLD] memory_type_mapped={}.",
+            "{} [FLD] type.mapped={}.",
             selection_marker(settings_pane_state.selected_field_index, 3),
             settings_pane_state.memory_settings.memory_type_mapped
         ),
         format!(
-            "{} [FLD] required_write={}.",
+            "{} [FLD] require.write={}.",
             selection_marker(settings_pane_state.selected_field_index, 4),
             settings_pane_state.memory_settings.required_write
         ),
         format!(
-            "{} [FLD] required_execute={}.",
+            "{} [FLD] require.execute={}.",
             selection_marker(settings_pane_state.selected_field_index, 5),
             settings_pane_state.memory_settings.required_execute
         ),
         format!(
-            "{} [FLD] required_copy_on_write={}.",
+            "{} [FLD] require.copy_on_write={}.",
             selection_marker(settings_pane_state.selected_field_index, 6),
             settings_pane_state.memory_settings.required_copy_on_write
         ),
         format!(
-            "{} [FLD] excluded_write={}.",
+            "{} [FLD] exclude.write={}.",
             selection_marker(settings_pane_state.selected_field_index, 7),
             settings_pane_state.memory_settings.excluded_write
         ),
         format!(
-            "{} [FLD] excluded_execute={}.",
+            "{} [FLD] exclude.execute={}.",
             selection_marker(settings_pane_state.selected_field_index, 8),
             settings_pane_state.memory_settings.excluded_execute
         ),
         format!(
-            "{} [FLD] excluded_copy_on_write={}.",
+            "{} [FLD] exclude.copy_on_write={}.",
             selection_marker(settings_pane_state.selected_field_index, 9),
             settings_pane_state.memory_settings.excluded_copy_on_write
         ),
@@ -133,7 +126,7 @@ fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> 
             settings_pane_state.memory_settings.end_address
         ),
         format!(
-            "{} [FLD] only_query_usermode={}.",
+            "{} [FLD] usermode_only={}.",
             selection_marker(settings_pane_state.selected_field_index, 12),
             settings_pane_state.memory_settings.only_query_usermode
         ),
@@ -143,22 +136,22 @@ fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> 
 fn scan_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![
         format!(
-            "{} [FLD] results_page_size={}.",
+            "{} [FLD] page_size={}.",
             selection_marker(settings_pane_state.selected_field_index, 0),
             settings_pane_state.scan_settings.results_page_size
         ),
         format!(
-            "{} [FLD] freeze_interval_ms={}.",
+            "{} [FLD] freeze_ms={}.",
             selection_marker(settings_pane_state.selected_field_index, 1),
             settings_pane_state.scan_settings.freeze_interval_ms
         ),
         format!(
-            "{} [FLD] project_read_interval_ms={}.",
+            "{} [FLD] project_read_ms={}.",
             selection_marker(settings_pane_state.selected_field_index, 2),
             settings_pane_state.scan_settings.project_read_interval_ms
         ),
         format!(
-            "{} [FLD] results_read_interval_ms={}.",
+            "{} [FLD] result_read_ms={}.",
             selection_marker(settings_pane_state.selected_field_index, 3),
             settings_pane_state.scan_settings.results_read_interval_ms
         ),
@@ -173,17 +166,17 @@ fn scan_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
             memory_read_mode_label(settings_pane_state.scan_settings.memory_read_mode)
         ),
         format!(
-            "{} [FLD] floating_point_tolerance={}.",
+            "{} [FLD] float_tolerance={}.",
             selection_marker(settings_pane_state.selected_field_index, 6),
             floating_point_tolerance_label(settings_pane_state.scan_settings.floating_point_tolerance)
         ),
         format!(
-            "{} [FLD] is_single_threaded_scan={}.",
+            "{} [FLD] single_threaded={}.",
             selection_marker(settings_pane_state.selected_field_index, 7),
             settings_pane_state.scan_settings.is_single_threaded_scan
         ),
         format!(
-            "{} [FLD] debug_perform_validation_scan={}.",
+            "{} [FLD] debug_validate_scan={}.",
             selection_marker(settings_pane_state.selected_field_index, 8),
             settings_pane_state.scan_settings.debug_perform_validation_scan
         ),

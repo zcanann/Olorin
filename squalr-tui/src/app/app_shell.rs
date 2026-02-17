@@ -159,14 +159,14 @@ impl AppShell {
 
     fn engine_mode_header_text(engine_mode: EngineMode) -> &'static str {
         match engine_mode {
-            EngineMode::Standalone => "[MODE] Squalr TUI | Standalone.",
-            EngineMode::UnprivilegedHost => "[MODE] Squalr TUI | Unprivileged Host.",
-            EngineMode::PrivilegedShell => "[MODE] Squalr TUI | Privileged Shell.",
+            EngineMode::Standalone => "[MODE] standalone.",
+            EngineMode::UnprivilegedHost => "[MODE] unprivileged host.",
+            EngineMode::PrivilegedShell => "[MODE] privileged shell.",
         }
     }
 
     fn footer_navigation_controls_line() -> &'static str {
-        "[NAV] 1 Project | 2 Scanner | 3 Settings | Tab/Shift+Tab focus in page."
+        "[NAV] 1 Project | 2 Scanner | 3 Settings | Tab/Shift+Tab focus."
     }
 
     fn footer_exit_controls_line() -> &'static str {
@@ -221,7 +221,7 @@ impl AppShell {
     fn session_active_workspace_metadata_line(&self) -> String {
         let active_workspace_page = self.app_state.active_workspace_page();
         format!(
-            "[PAGE] {} | [FOCUS] {}.",
+            "[PAGE] {} | [LOOP] {}.",
             active_workspace_page.title(),
             active_workspace_page.focus_cycle_hint()
         )

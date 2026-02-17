@@ -15,24 +15,23 @@ pub fn build_element_scanner_summary_lines_with_capacity(
 
     let constraint_row_lines = build_constraint_row_lines(element_scanner_pane_state);
     let selected_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, 1);
-    let additional_constraint_capacity = line_capacity.saturating_sub(8);
+    let additional_constraint_capacity = line_capacity.saturating_sub(7);
     let additional_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, additional_constraint_capacity);
 
     let mut prioritized_lines = vec![
-        "[ACT] s scan | n new/reset | c collect | a add | x remove.".to_string(),
-        "[TYPE] t next | T prev data type.".to_string(),
-        "[EDIT] j/k row | m/M compare | digits - . append | Backspace | Ctrl+u clear.".to_string(),
+        "[ACT] s scan | n reset | c collect | a add | x remove.".to_string(),
+        "[CTRL] t/T type | m/M compare | j/k row | type value.".to_string(),
+        format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()),
     ];
     prioritized_lines.extend(selected_constraint_lines);
-    prioritized_lines.push(format!("[STAT] {}.", element_scanner_pane_state.status_message));
-    prioritized_lines.push(format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()));
     prioritized_lines.push(format!(
-        "[META] constraints={} | selected_row={} | pending_scan={} | has_results={}.",
+        "[SCAN] constraints={} | selected_row={} | pending={} | has_results={}.",
         element_scanner_pane_state.active_constraint_count(),
         element_scanner_pane_state.selected_constraint_row_index + 1,
         element_scanner_pane_state.has_pending_scan_request,
         element_scanner_pane_state.has_scan_results
     ));
+    prioritized_lines.push(format!("[STAT] {}.", element_scanner_pane_state.status_message));
     prioritized_lines.push(format!(
         "[LAST] result_count={} | total_bytes={}.",
         element_scanner_pane_state.last_result_count, element_scanner_pane_state.last_total_size_in_bytes

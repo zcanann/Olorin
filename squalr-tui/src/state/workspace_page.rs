@@ -28,9 +28,9 @@ impl TuiWorkspacePage {
 
     pub fn focus_cycle_hint(self) -> &'static str {
         match self {
-            Self::ProjectWorkspace => "Tab/Shift+Tab: Process Selector -> Project Explorer -> Output",
-            Self::ScannerWorkspace => "Tab/Shift+Tab: Element Scanner -> Scan Results -> Output",
-            Self::SettingsWorkspace => "Tab/Shift+Tab: Settings -> Output",
+            Self::ProjectWorkspace => "Process Selector -> Project Explorer -> Output",
+            Self::ScannerWorkspace => "Element Scanner -> Scan Results -> Output",
+            Self::SettingsWorkspace => "Settings -> Output",
         }
     }
 

@@ -1,36 +1,32 @@
 use crate::views::scan_results::pane_state::ScanResultsPaneState;
 
 pub fn build_scan_results_summary_lines(scan_results_pane_state: &ScanResultsPaneState) -> Vec<String> {
-    vec![
+    let mut summary_lines = vec![
         "[ACT] r query | R refresh-page | [/] page | f freeze | a add | x delete.".to_string(),
-        "[NAV] Up/Down/j/k move | Shift+Up/Down range | Home/End bounds.".to_string(),
-        "[EDIT] digits - . append | Backspace | Ctrl+u clear | Enter commit | y pull value.".to_string(),
+        "[NAV] Up/Down/j/k move | Shift+Up/Down range | Home/End.".to_string(),
+        "[EDIT] y pull | type value | Enter commit.".to_string(),
         format!(
-            "[PAGE] current={}/{}",
-            scan_results_pane_state.current_page_index, scan_results_pane_state.cached_last_page_index
+            "[PAGE] {}/{} | size={} | results={}.",
+            scan_results_pane_state.current_page_index,
+            scan_results_pane_state.cached_last_page_index,
+            scan_results_pane_state.results_per_page,
+            scan_results_pane_state.total_result_count
         ),
         format!(
-            "[META] page_size={} | result_count={} | total_bytes={}.",
-            scan_results_pane_state.results_per_page, scan_results_pane_state.total_result_count, scan_results_pane_state.total_size_in_bytes
-        ),
-        format!(
-            "[SEL] index={} | selected_count={}.",
+            "[SEL] index={} | selected={} | bytes={}.",
             option_to_compact_text(scan_results_pane_state.selected_result_index),
-            scan_results_pane_state.selected_result_count()
-        ),
-        format!("[VAL] {}.", scan_results_pane_state.pending_value_edit_text),
-        format!(
-            "[OPS] query={} | refresh={} | freeze={} | delete={} | add={} | commit={}.",
-            scan_results_pane_state.is_querying_scan_results,
-            scan_results_pane_state.is_refreshing_scan_results,
-            scan_results_pane_state.is_freezing_scan_results,
-            scan_results_pane_state.is_deleting_scan_results,
-            scan_results_pane_state.is_adding_scan_results_to_project,
-            scan_results_pane_state.is_committing_value_edit
+            scan_results_pane_state.selected_result_count(),
+            scan_results_pane_state.total_size_in_bytes
         ),
         format!("[STAT] {}.", scan_results_pane_state.status_message),
         "[ROWS] top=5.".to_string(),
-    ]
+    ];
+
+    if !scan_results_pane_state.pending_value_edit_text.is_empty() {
+        summary_lines.insert(5, format!("[VAL] {}.", scan_results_pane_state.pending_value_edit_text));
+    }
+
+    summary_lines
 }
 
 fn option_to_compact_text<T: std::fmt::Display>(option_value: Option<T>) -> String {
