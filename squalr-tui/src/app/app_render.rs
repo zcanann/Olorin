@@ -91,7 +91,7 @@ impl AppShell {
             .map(Line::from)
             .collect();
         let entry_rows = self.app_state.pane_entry_rows(pane);
-        let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows);
+        let pane_lines = self.append_entry_row_lines(pane_lines, entry_rows, pane_content_width);
 
         let pane_widget = Paragraph::new(pane_lines)
             .style(TuiTheme::panel_text_style())
@@ -103,6 +103,7 @@ impl AppShell {
         &self,
         mut pane_lines: Vec<Line<'static>>,
         entry_rows: Vec<PaneEntryRow>,
+        content_width: usize,
     ) -> Vec<Line<'static>> {
         if entry_rows.is_empty() {
             return pane_lines;
@@ -110,30 +111,28 @@ impl AppShell {
 
         pane_lines.push(Line::from(String::new()));
         for entry_row in entry_rows {
-            pane_lines.push(self.render_entry_row(entry_row));
+            pane_lines.push(Self::render_entry_row(entry_row, content_width));
         }
 
         pane_lines
     }
 
     fn render_entry_row(
-        &self,
         entry_row: PaneEntryRow,
+        content_width: usize,
     ) -> Line<'static> {
         let marker_style = TuiTheme::pane_entry_marker_style(entry_row.tone);
         let primary_style = TuiTheme::pane_entry_primary_style(entry_row.tone);
         let secondary_style = TuiTheme::pane_entry_secondary_style(entry_row.tone);
-        let marker_text = if entry_row.marker_text.is_empty() {
-            "  ".to_string()
-        } else {
-            entry_row.marker_text
-        };
+        let marker_text = Self::format_marker_prefix(entry_row.marker_text);
+        let available_content_width = content_width.saturating_sub(3);
+        let (primary_text, secondary_text) = Self::fit_entry_row_content(entry_row.primary_text, entry_row.secondary_text, available_content_width);
         let mut entry_spans = vec![
-            Span::styled(format!("{:>2} ", marker_text), marker_style),
-            Span::styled(entry_row.primary_text, primary_style),
+            Span::styled(marker_text, marker_style),
+            Span::styled(primary_text, primary_style),
         ];
 
-        if let Some(secondary_text) = entry_row.secondary_text {
+        if let Some(secondary_text) = secondary_text {
             entry_spans.push(Span::raw("  "));
             entry_spans.push(Span::styled(secondary_text, secondary_style));
         }
@@ -152,6 +151,56 @@ impl AppShell {
             .collect()
     }
 
+    fn format_marker_prefix(marker_text: String) -> String {
+        let truncated_marker = Self::truncate_line_with_ellipsis(marker_text, 2);
+        format!("{:>2} ", truncated_marker)
+    }
+
+    fn fit_entry_row_content(
+        primary_text: String,
+        secondary_text: Option<String>,
+        available_content_width: usize,
+    ) -> (String, Option<String>) {
+        if available_content_width == 0 {
+            return (String::new(), None);
+        }
+
+        let truncated_primary = Self::truncate_line_with_ellipsis(primary_text.clone(), available_content_width);
+        let Some(secondary_text) = secondary_text else {
+            return (truncated_primary, None);
+        };
+
+        let secondary_separator_width = 2usize;
+        let minimum_secondary_width = 4usize;
+        if available_content_width <= secondary_separator_width + minimum_secondary_width {
+            return (truncated_primary, None);
+        }
+
+        let primary_text_length = primary_text.chars().count();
+        let secondary_text_length = secondary_text.chars().count();
+        if primary_text_length + secondary_separator_width + secondary_text_length <= available_content_width {
+            return (primary_text, Some(secondary_text));
+        }
+
+        if available_content_width <= 24 {
+            return (truncated_primary, None);
+        }
+
+        let primary_width = available_content_width.saturating_sub(secondary_separator_width + minimum_secondary_width);
+        if primary_width == 0 {
+            return (truncated_primary, None);
+        }
+
+        let secondary_width = available_content_width.saturating_sub(primary_width + secondary_separator_width);
+        if secondary_width == 0 {
+            return (Self::truncate_line_with_ellipsis(primary_text, available_content_width), None);
+        }
+
+        let fitted_primary = Self::truncate_line_with_ellipsis(primary_text, primary_width);
+        let fitted_secondary = Self::truncate_line_with_ellipsis(secondary_text, secondary_width);
+        (fitted_primary, Some(fitted_secondary))
+    }
+
     fn truncate_line_with_ellipsis(
         text: String,
         max_width: usize,
@@ -166,17 +215,18 @@ impl AppShell {
         }
 
         if max_width == 1 {
-            return "…".to_string();
+            return ".".to_string();
         }
 
         let kept_text: String = text.chars().take(max_width - 1).collect();
-        format!("{}…", kept_text)
+        format!("{}.", kept_text)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::app::AppShell;
+    use crate::state::pane_entry_row::PaneEntryRow;
 
     #[test]
     fn truncation_leaves_short_lines_unchanged() {
@@ -185,11 +235,48 @@ mod tests {
 
     #[test]
     fn truncation_adds_ellipsis_for_narrow_width() {
-        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT] long status text".to_string(), 10), "[STAT] lo…");
+        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT] long status text".to_string(), 10), "[STAT] lo.");
     }
 
     #[test]
     fn truncation_handles_single_character_width() {
-        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT]".to_string(), 1), "…");
+        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT]".to_string(), 1), ".");
+    }
+
+    #[test]
+    fn entry_marker_prefix_stays_aligned() {
+        assert_eq!(AppShell::format_marker_prefix("*".to_string()), " * ");
+        assert_eq!(AppShell::format_marker_prefix("LONG".to_string()), "L. ");
+    }
+
+    #[test]
+    fn entry_row_omits_secondary_when_too_narrow() {
+        let (primary_text, secondary_text) = AppShell::fit_entry_row_content("primary-text".to_string(), Some("secondary-text".to_string()), 10);
+
+        assert_eq!(primary_text, "primary-t.");
+        assert_eq!(secondary_text, None);
+    }
+
+    #[test]
+    fn entry_row_truncates_primary_and_secondary_when_wide_enough() {
+        let (primary_text, secondary_text) = AppShell::fit_entry_row_content("012345678901234567890123456789".to_string(), Some("abcdefghij".to_string()), 28);
+
+        assert_eq!(primary_text, "012345678901234567890.");
+        assert_eq!(secondary_text, Some("abc.".to_string()));
+    }
+
+    #[test]
+    fn entry_row_render_keeps_fixed_marker_column_width() {
+        let rendered_line = AppShell::render_entry_row(
+            PaneEntryRow::selected("F".to_string(), "primary".to_string(), Some("secondary".to_string())),
+            12,
+        );
+        let rendered_text: String = rendered_line
+            .spans
+            .iter()
+            .map(|span| span.content.to_string())
+            .collect();
+
+        assert_eq!(rendered_text, " F primary");
     }
 }
