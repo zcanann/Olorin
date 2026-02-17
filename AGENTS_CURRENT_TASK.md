@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: mirror GUI top-surface affordances in TUI header/footer by surfacing opened process + active project context as first-class session metadata (not only inside pane summaries) with focused app-shell tests.
+- Concrete next subtask: audit GUI top-surface visual affordances and add richer TUI session metadata presentation (icon-like markers / condensed labels) while preserving keyboard-first readability and app-shell coverage.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -159,3 +159,5 @@ Information discovered during iteration:
 - GUI vs TUI parity audit (this pass): non-pane-state module layout is now aligned (feature folders + app-shell composition modules), but layout behavior still diverged because TUI split each column into equal heights while GUI default docking intentionally prioritizes scanner/results-heavy regions.
 - TUI layout behavior update: added `squalr-tui/src/app/pane_layout.rs` to encode deliberate per-pane vertical weights with focused-pane boost, and wired `app_render` to use ratio constraints derived from these weights instead of equal-split row allocation.
 - Added unit tests for pane-layout weight behavior (`focused` boost and `unlisted focus` no-op) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (59 passed).
+- TUI app-shell session metadata parity update: header/footer now reserve multi-line space and surface opened-process + active-project context as first-class session lines via dedicated `AppShell` metadata builders (`session_opened_process_metadata_line`, `session_active_project_metadata_line`).
+- Added focused app-shell tests for populated and unset session metadata rendering paths; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (61 passed).

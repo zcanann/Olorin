@@ -132,18 +132,15 @@ impl AppShell {
 
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(0), Constraint::Length(3)])
+            .constraints([Constraint::Length(5), Constraint::Min(0), Constraint::Length(5)])
             .split(frame.area());
 
-        let header_text = match engine_mode {
-            EngineMode::Standalone => "Squalr TUI (Standalone)",
-            EngineMode::UnprivilegedHost => "Squalr TUI (Unprivileged Host)",
-            EngineMode::PrivilegedShell => "Squalr TUI (Privileged Shell)",
-        };
+        let header_text = Self::engine_mode_header_text(engine_mode);
 
         let header = Paragraph::new(vec![
             Line::from(header_text),
-            Line::from("Focus: Tab / Shift+Tab. Focus pane: 1-7. Toggle pane: Ctrl+1-7 or v. Show all: 0."),
+            Line::from(self.session_opened_process_metadata_line()),
+            Line::from(self.session_active_project_metadata_line()),
         ])
         .style(TuiTheme::panel_text_style())
         .block(TuiTheme::session_block("Session"));
@@ -151,12 +148,63 @@ impl AppShell {
 
         self.draw_pane_layout(frame, vertical_chunks[1]);
 
-        let footer = Paragraph::new(vec![Line::from(
-            "Global: q / Esc / Ctrl+C to exit. Non-mouse workflow enabled for pane navigation and visibility.",
-        )])
+        let footer = Paragraph::new(vec![
+            Line::from("Focus: Tab / Shift+Tab. Focus pane: 1-7. Toggle pane: Ctrl+1-7 or v. Show all: 0."),
+            Line::from("Global: q / Esc / Ctrl+C to exit."),
+            Line::from("Keyboard-first workflow enabled for all pane interactions."),
+        ])
         .style(TuiTheme::status_text_style())
         .block(TuiTheme::controls_block("Controls"));
         frame.render_widget(footer, vertical_chunks[2]);
+    }
+
+    fn engine_mode_header_text(engine_mode: EngineMode) -> &'static str {
+        match engine_mode {
+            EngineMode::Standalone => "Squalr TUI (Standalone)",
+            EngineMode::UnprivilegedHost => "Squalr TUI (Unprivileged Host)",
+            EngineMode::PrivilegedShell => "Squalr TUI (Privileged Shell)",
+        }
+    }
+
+    fn session_opened_process_metadata_line(&self) -> String {
+        match (
+            self.app_state
+                .process_selector_pane_state
+                .opened_process_name
+                .as_deref(),
+            self.app_state
+                .process_selector_pane_state
+                .opened_process_identifier,
+        ) {
+            (Some(opened_process_name), Some(opened_process_identifier)) => {
+                format!("Opened process: {} (PID {}).", opened_process_name, opened_process_identifier)
+            }
+            (Some(opened_process_name), None) => format!("Opened process: {}.", opened_process_name),
+            (None, Some(opened_process_identifier)) => format!("Opened process: PID {}.", opened_process_identifier),
+            (None, None) => "Opened process: none.".to_string(),
+        }
+    }
+
+    fn session_active_project_metadata_line(&self) -> String {
+        match (
+            self.app_state
+                .project_explorer_pane_state
+                .active_project_name
+                .as_deref(),
+            self.app_state
+                .project_explorer_pane_state
+                .active_project_directory_path
+                .as_ref(),
+        ) {
+            (Some(active_project_name), Some(active_project_directory_path)) => {
+                format!("Active project: {} ({}).", active_project_name, active_project_directory_path.display())
+            }
+            (Some(active_project_name), None) => format!("Active project: {}.", active_project_name),
+            (None, Some(active_project_directory_path)) => {
+                format!("Active project: {}.", active_project_directory_path.display())
+            }
+            (None, None) => "Active project: none.".to_string(),
+        }
     }
 
     fn handle_event(
@@ -438,6 +486,41 @@ mod tests {
             None
         );
         assert_eq!(app_shell.consumed_process_changed_update_counter, 1);
+    }
+
+    #[test]
+    fn session_metadata_lines_surface_opened_process_and_active_project_context() {
+        let mut app_shell = AppShell::new(Duration::from_millis(100));
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .opened_process_name = Some("target.exe".to_string());
+        app_shell
+            .app_state
+            .process_selector_pane_state
+            .opened_process_identifier = Some(31337);
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .active_project_name = Some("Alpha".to_string());
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path = Some(PathBuf::from("C:/Projects/Alpha/project"));
+
+        assert_eq!(app_shell.session_opened_process_metadata_line(), "Opened process: target.exe (PID 31337).");
+        assert_eq!(
+            app_shell.session_active_project_metadata_line(),
+            "Active project: Alpha (C:/Projects/Alpha/project)."
+        );
+    }
+
+    #[test]
+    fn session_metadata_lines_fallback_to_none_when_context_is_unset() {
+        let app_shell = AppShell::new(Duration::from_millis(100));
+
+        assert_eq!(app_shell.session_opened_process_metadata_line(), "Opened process: none.");
+        assert_eq!(app_shell.session_active_project_metadata_line(), "Active project: none.");
     }
 
     #[test]
