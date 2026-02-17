@@ -8,13 +8,19 @@ pub fn build_settings_summary_lines(settings_pane_state: &SettingsPaneState) -> 
         "[CAT] ] next | [ prev | r refresh-all.".to_string(),
         "[NAV] j/k field.".to_string(),
         "[ACT] Space toggle | +/- step | </> cycle enum | Enter apply category.".to_string(),
-        format!("category={}", settings_pane_state.selected_category.title()),
-        format!("selected_field={}", settings_pane_state.selected_field_index),
-        format!("pending_changes={}", settings_pane_state.has_pending_changes),
-        format!("loaded_once={}", settings_pane_state.has_loaded_settings_once),
-        format!("refreshing={}", settings_pane_state.is_refreshing_settings),
-        format!("applying={}", settings_pane_state.is_applying_settings),
-        format!("status={}", settings_pane_state.status_message),
+        format!(
+            "[META] category={} | selected_field={}.",
+            settings_pane_state.selected_category.title(),
+            settings_pane_state.selected_field_index
+        ),
+        format!(
+            "[LOAD] pending_changes={} | loaded_once={} | refreshing={} | applying={}.",
+            settings_pane_state.has_pending_changes,
+            settings_pane_state.has_loaded_settings_once,
+            settings_pane_state.is_refreshing_settings,
+            settings_pane_state.is_applying_settings
+        ),
+        format!("[STAT] {}.", settings_pane_state.status_message),
     ];
 
     summary_lines.extend(selected_category_lines(settings_pane_state));
@@ -32,7 +38,7 @@ fn selected_category_lines(settings_pane_state: &SettingsPaneState) -> Vec<Strin
 fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     let selected_marker = selection_marker(settings_pane_state.selected_field_index, 0);
     vec![format!(
-        "{} engine_request_delay_ms={}",
+        "{} [FLD] engine_request_delay_ms={}.",
         selected_marker, settings_pane_state.general_settings.engine_request_delay_ms
     )]
 }
@@ -40,67 +46,67 @@ fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String>
 fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![
         format!(
-            "{} memory_type_none={}",
+            "{} [FLD] memory_type_none={}.",
             selection_marker(settings_pane_state.selected_field_index, 0),
             settings_pane_state.memory_settings.memory_type_none
         ),
         format!(
-            "{} memory_type_private={}",
+            "{} [FLD] memory_type_private={}.",
             selection_marker(settings_pane_state.selected_field_index, 1),
             settings_pane_state.memory_settings.memory_type_private
         ),
         format!(
-            "{} memory_type_image={}",
+            "{} [FLD] memory_type_image={}.",
             selection_marker(settings_pane_state.selected_field_index, 2),
             settings_pane_state.memory_settings.memory_type_image
         ),
         format!(
-            "{} memory_type_mapped={}",
+            "{} [FLD] memory_type_mapped={}.",
             selection_marker(settings_pane_state.selected_field_index, 3),
             settings_pane_state.memory_settings.memory_type_mapped
         ),
         format!(
-            "{} required_write={}",
+            "{} [FLD] required_write={}.",
             selection_marker(settings_pane_state.selected_field_index, 4),
             settings_pane_state.memory_settings.required_write
         ),
         format!(
-            "{} required_execute={}",
+            "{} [FLD] required_execute={}.",
             selection_marker(settings_pane_state.selected_field_index, 5),
             settings_pane_state.memory_settings.required_execute
         ),
         format!(
-            "{} required_copy_on_write={}",
+            "{} [FLD] required_copy_on_write={}.",
             selection_marker(settings_pane_state.selected_field_index, 6),
             settings_pane_state.memory_settings.required_copy_on_write
         ),
         format!(
-            "{} excluded_write={}",
+            "{} [FLD] excluded_write={}.",
             selection_marker(settings_pane_state.selected_field_index, 7),
             settings_pane_state.memory_settings.excluded_write
         ),
         format!(
-            "{} excluded_execute={}",
+            "{} [FLD] excluded_execute={}.",
             selection_marker(settings_pane_state.selected_field_index, 8),
             settings_pane_state.memory_settings.excluded_execute
         ),
         format!(
-            "{} excluded_copy_on_write={}",
+            "{} [FLD] excluded_copy_on_write={}.",
             selection_marker(settings_pane_state.selected_field_index, 9),
             settings_pane_state.memory_settings.excluded_copy_on_write
         ),
         format!(
-            "{} start_address=0x{:X}",
+            "{} [FLD] start_address=0x{:X}.",
             selection_marker(settings_pane_state.selected_field_index, 10),
             settings_pane_state.memory_settings.start_address
         ),
         format!(
-            "{} end_address=0x{:X}",
+            "{} [FLD] end_address=0x{:X}.",
             selection_marker(settings_pane_state.selected_field_index, 11),
             settings_pane_state.memory_settings.end_address
         ),
         format!(
-            "{} only_query_usermode={}",
+            "{} [FLD] only_query_usermode={}.",
             selection_marker(settings_pane_state.selected_field_index, 12),
             settings_pane_state.memory_settings.only_query_usermode
         ),
@@ -110,47 +116,47 @@ fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> 
 fn scan_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![
         format!(
-            "{} results_page_size={}",
+            "{} [FLD] results_page_size={}.",
             selection_marker(settings_pane_state.selected_field_index, 0),
             settings_pane_state.scan_settings.results_page_size
         ),
         format!(
-            "{} freeze_interval_ms={}",
+            "{} [FLD] freeze_interval_ms={}.",
             selection_marker(settings_pane_state.selected_field_index, 1),
             settings_pane_state.scan_settings.freeze_interval_ms
         ),
         format!(
-            "{} project_read_interval_ms={}",
+            "{} [FLD] project_read_interval_ms={}.",
             selection_marker(settings_pane_state.selected_field_index, 2),
             settings_pane_state.scan_settings.project_read_interval_ms
         ),
         format!(
-            "{} results_read_interval_ms={}",
+            "{} [FLD] results_read_interval_ms={}.",
             selection_marker(settings_pane_state.selected_field_index, 3),
             settings_pane_state.scan_settings.results_read_interval_ms
         ),
         format!(
-            "{} memory_alignment={}",
+            "{} [FLD] memory_alignment={}.",
             selection_marker(settings_pane_state.selected_field_index, 4),
             memory_alignment_label(settings_pane_state.scan_settings.memory_alignment)
         ),
         format!(
-            "{} memory_read_mode={}",
+            "{} [FLD] memory_read_mode={}.",
             selection_marker(settings_pane_state.selected_field_index, 5),
             memory_read_mode_label(settings_pane_state.scan_settings.memory_read_mode)
         ),
         format!(
-            "{} floating_point_tolerance={}",
+            "{} [FLD] floating_point_tolerance={}.",
             selection_marker(settings_pane_state.selected_field_index, 6),
             floating_point_tolerance_label(settings_pane_state.scan_settings.floating_point_tolerance)
         ),
         format!(
-            "{} is_single_threaded_scan={}",
+            "{} [FLD] is_single_threaded_scan={}.",
             selection_marker(settings_pane_state.selected_field_index, 7),
             settings_pane_state.scan_settings.is_single_threaded_scan
         ),
         format!(
-            "{} debug_perform_validation_scan={}",
+            "{} [FLD] debug_perform_validation_scan={}.",
             selection_marker(settings_pane_state.selected_field_index, 8),
             settings_pane_state.scan_settings.debug_perform_validation_scan
         ),

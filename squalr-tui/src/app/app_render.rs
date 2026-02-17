@@ -84,9 +84,9 @@ impl AppShell {
             title.push_str(" *");
         }
 
+        let pane_content_width = pane_area.width.saturating_sub(2) as usize;
         let pane_lines: Vec<Line<'static>> = self
-            .app_state
-            .pane_summary_lines(pane)
+            .fit_summary_lines_to_width(self.app_state.pane_summary_lines(pane), pane_content_width)
             .into_iter()
             .map(Line::from)
             .collect();
@@ -139,5 +139,57 @@ impl AppShell {
         }
 
         Line::from(entry_spans)
+    }
+
+    fn fit_summary_lines_to_width(
+        &self,
+        summary_lines: Vec<String>,
+        content_width: usize,
+    ) -> Vec<String> {
+        summary_lines
+            .into_iter()
+            .map(|summary_line| Self::truncate_line_with_ellipsis(summary_line, content_width))
+            .collect()
+    }
+
+    fn truncate_line_with_ellipsis(
+        text: String,
+        max_width: usize,
+    ) -> String {
+        if max_width == 0 {
+            return String::new();
+        }
+
+        let text_character_count = text.chars().count();
+        if text_character_count <= max_width {
+            return text;
+        }
+
+        if max_width == 1 {
+            return "…".to_string();
+        }
+
+        let kept_text: String = text.chars().take(max_width - 1).collect();
+        format!("{}…", kept_text)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::app::AppShell;
+
+    #[test]
+    fn truncation_leaves_short_lines_unchanged() {
+        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT] ready.".to_string(), 64), "[STAT] ready.");
+    }
+
+    #[test]
+    fn truncation_adds_ellipsis_for_narrow_width() {
+        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT] long status text".to_string(), 10), "[STAT] lo…");
+    }
+
+    #[test]
+    fn truncation_handles_single_character_width() {
+        assert_eq!(AppShell::truncate_line_with_ellipsis("[STAT]".to_string(), 1), "…");
     }
 }

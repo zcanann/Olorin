@@ -11,10 +11,10 @@ Our current task, from `README.md`, is:
 - From owner: The current state of the TUI is essentially unacceptable. The whole point of ratatui is that you can get insanely good visuals. This means the panels should actually look like panels. There can actually be a theme file. The panels can be much larger and have real UIs behind them. You can absolutely display icons for processes (probably?).
     - This means there can be the concept of entries
     - This means you arent being aggressive enough with folder structure. views/* is the wrong place to dump panes. Sub folders.
-    - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
+    - Again, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit summary metrics/body lines (non-legend state/status rows) for the same marker-group density treatment and tighten wrapping/truncation behavior to preserve readability on narrow terminals.
+- Concrete next subtask: audit pane entry-row rendering (primary/secondary text and marker alignment) for width-aware truncation so focused selection semantics remain readable on narrow terminals.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -168,3 +168,6 @@ Information discovered during iteration:
 - Added focused app-shell regression coverage for footer marker-line text (`footer_control_lines_use_condensed_marker_groups`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (62 passed).
 - Per-pane legend density pass: all `views/*/summary.rs` lead lines now use condensed marker groups (for example `[ACT]`, `[NAV]`, `[EDIT]`, `[MODE]`, `[LIST]`, `[TREE]`, `[MOVE]`, `[INPUT]`, `[CAT]`, `[FMT]`) and aligned short-form keybinding phrasing across process selector, element scanner, scan results, project explorer, struct viewer, settings, and output panes.
 - Added summary-module regression tests asserting marker-group lead lines in each pane summary builder and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (69 passed).
+- TUI non-legend summary density pass: state/metrics/status body lines in all pane summary builders now use condensed marker groups (for example `[MODE]`, `[LIST]`, `[META]`, `[OPS]`, `[STAT]`, `[FLD]`) instead of raw `key=value` rows.
+- TUI narrow-terminal readability pass: pane summary rendering now applies width-aware truncation with ellipsis in `app_render` before paragraph composition, reducing hard clipping/wrap churn in narrow pane widths.
+- Added `app_render` unit coverage for truncation behavior (`unchanged short`, `ellipsis narrow`, `single-width fallback`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (72 passed).

@@ -9,14 +9,19 @@ pub fn build_element_scanner_summary_lines(element_scanner_pane_state: &ElementS
         "[ACT] s scan | n new/reset | c collect | a add | x remove.".to_string(),
         "[TYPE] t next | T prev data type.".to_string(),
         "[EDIT] j/k row | m/M compare | digits - . append | Backspace | Ctrl+u clear.".to_string(),
-        format!("data_type={}", element_scanner_pane_state.selected_data_type_name()),
-        format!("constraints={}", element_scanner_pane_state.active_constraint_count()),
-        format!("selected_constraint={}", element_scanner_pane_state.selected_constraint_row_index + 1),
-        format!("pending_scan={}", element_scanner_pane_state.has_pending_scan_request),
-        format!("has_results={}", element_scanner_pane_state.has_scan_results),
-        format!("last_result_count={}", element_scanner_pane_state.last_result_count),
-        format!("last_total_bytes={}", element_scanner_pane_state.last_total_size_in_bytes),
-        format!("status={}", element_scanner_pane_state.status_message),
+        format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()),
+        format!(
+            "[META] constraints={} | selected_row={} | pending_scan={} | has_results={}.",
+            element_scanner_pane_state.active_constraint_count(),
+            element_scanner_pane_state.selected_constraint_row_index + 1,
+            element_scanner_pane_state.has_pending_scan_request,
+            element_scanner_pane_state.has_scan_results
+        ),
+        format!(
+            "[LAST] result_count={} | total_bytes={}.",
+            element_scanner_pane_state.last_result_count, element_scanner_pane_state.last_total_size_in_bytes
+        ),
+        format!("[STAT] {}.", element_scanner_pane_state.status_message),
     ];
 
     for (constraint_row_index, constraint_row) in element_scanner_pane_state.constraint_rows.iter().enumerate() {
@@ -26,7 +31,7 @@ pub fn build_element_scanner_summary_lines(element_scanner_pane_state: &ElementS
             " "
         };
         summary_lines.push(format!(
-            "{} {} {}",
+            "{} [ROW] {} {}.",
             selected_marker,
             scan_compare_type_label(constraint_row.scan_compare_type),
             constraint_row.scan_value_text

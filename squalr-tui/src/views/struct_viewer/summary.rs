@@ -9,29 +9,36 @@ pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewer
         "[NAV] Up/Down or j/k select field.".to_string(),
         "[FMT] [ prev | ] next display format (blocked on uncommitted edit).".to_string(),
         "[EDIT] type | Backspace | Ctrl+u clear (value fields only).".to_string(),
-        format!("source={:?}", struct_viewer_pane_state.source),
-        format!("selected_struct={:?}", struct_viewer_pane_state.selected_struct_name),
-        format!("field_count={}", struct_viewer_pane_state.focused_field_count()),
-        format!("selected_field={:?}", struct_viewer_pane_state.selected_field_name),
-        format!("selected_field_edit_state={}", selected_field_edit_state),
         format!(
-            "selected_field_format={}",
-            selected_field_display_format
-                .map(|active_display_format| active_display_format.to_string())
-                .unwrap_or_else(|| "none".to_string())
+            "[SRC] source={:?} | selected_struct={} | field_count={}.",
+            struct_viewer_pane_state.source,
+            option_to_compact_text(struct_viewer_pane_state.selected_struct_name.as_deref()),
+            struct_viewer_pane_state.focused_field_count()
         ),
         format!(
-            "selected_field_format_index={}",
+            "[SEL] field={} | edit_state={}.",
+            option_to_compact_text(struct_viewer_pane_state.selected_field_name.as_deref()),
+            selected_field_edit_state
+        ),
+        format!(
+            "[FMT] active={} | index={}.",
+            selected_field_display_format
+                .map(|active_display_format| active_display_format.to_string())
+                .unwrap_or_else(|| "none".to_string()),
             selected_field_display_format_progress
                 .map(|(active_display_value_index, display_value_count)| { format!("{}/{}", active_display_value_index + 1, display_value_count) })
                 .unwrap_or_else(|| "0/0".to_string())
         ),
-        format!("pending_edit={}", struct_viewer_pane_state.pending_edit_text),
-        format!("uncommitted_edit={}", struct_viewer_pane_state.has_uncommitted_edit),
-        format!("selected_scan_results={}", struct_viewer_pane_state.selected_scan_result_refs.len()),
-        format!("selected_project_items={}", struct_viewer_pane_state.selected_project_item_paths.len()),
-        format!("committing={}", struct_viewer_pane_state.is_committing_edit),
-        format!("status={}", struct_viewer_pane_state.status_message),
+        format!(
+            "[EDIT] pending={} | uncommitted={} | committing={}.",
+            struct_viewer_pane_state.pending_edit_text, struct_viewer_pane_state.has_uncommitted_edit, struct_viewer_pane_state.is_committing_edit
+        ),
+        format!(
+            "[LINK] selected_scan_results={} | selected_project_items={}.",
+            struct_viewer_pane_state.selected_scan_result_refs.len(),
+            struct_viewer_pane_state.selected_project_item_paths.len()
+        ),
+        format!("[STAT] {}.", struct_viewer_pane_state.status_message),
     ];
 
     let visible_field_count = struct_viewer_pane_state.focused_field_count().min(5);
@@ -58,13 +65,19 @@ pub fn build_struct_viewer_summary_lines(struct_viewer_pane_state: &StructViewer
                 .map(|active_display_value| active_display_value.get_anonymous_value_string().to_string())
                 .unwrap_or_else(|| "<nested>".to_string());
             summary_lines.push(format!(
-                "{} [{}|{}] {}{} = {}",
+                "{} [FLD {}|{}] {}{} = {}.",
                 selected_marker, field_kind_marker, editability_marker, field_name, format_suffix, value_preview
             ));
         }
     }
 
     summary_lines
+}
+
+fn option_to_compact_text(option_text: Option<&str>) -> String {
+    option_text
+        .map(|text| format!("\"{}\"", text))
+        .unwrap_or_else(|| "none".to_string())
 }
 
 #[cfg(test)]
