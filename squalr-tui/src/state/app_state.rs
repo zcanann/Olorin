@@ -1,7 +1,7 @@
 use crate::state::pane::TuiPane;
 use crate::state::pane_entry_row::PaneEntryRow;
 use crate::state::pane_layout_state::PaneLayoutState;
-use crate::views::element_scanner_pane_state::ElementScannerPaneState;
+use crate::views::element_scanner::pane_state::ElementScannerPaneState;
 use crate::views::output_pane_state::OutputPaneState;
 use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;

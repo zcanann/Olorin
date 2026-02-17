@@ -1,5 +1,4 @@
 pub mod element_scanner;
-pub mod element_scanner_pane_state;
 pub mod output;
 pub mod output_pane_state;
 pub mod process_selector;

@@ -227,7 +227,7 @@ impl Default for ElementScannerPaneState {
 
 #[cfg(test)]
 mod tests {
-    use crate::views::element_scanner_pane_state::ElementScannerPaneState;
+    use crate::views::element_scanner::pane_state::ElementScannerPaneState;
     use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
     use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 
