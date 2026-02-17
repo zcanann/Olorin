@@ -5,7 +5,7 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 - [x] Audit the GUI project and produce a ratatui-first TUI parity plan.
-- [ ] Implement ratatui app shell in `squalr-tui` (terminal init/restore, tick loop, input loop, graceful shutdown).
+- [x] Implement ratatui app shell in `squalr-tui` (terminal init/restore, tick loop, input loop, graceful shutdown).
 - [ ] Add TUI state model split by pane: process selector, element scanner, scan results, project explorer, struct viewer, output, settings.
 - [ ] Implement top-level layout and pane focus navigation (tab cycling, global shortcuts, visible pane toggles, non-mouse workflow).
 - [ ] Implement process selector pane with command parity: `ProcessListRequest` (windowed/full) + `ProcessOpenRequest`.
@@ -37,3 +37,5 @@ Information discovered during iteration:
 - Project hierarchy command parity requirements identified: `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, `ProjectItemsReorderRequest`, plus edit side effects (`ProjectSaveRequest`, `ProjectItemsRenameRequest`, `MemoryWriteRequest`).
 - Settings command parity requirements identified: list/set pairs for general, memory, and scan settings.
 - Existing GUI view-data modules already encapsulate most command logic and are a strong extraction target for shared UI-agnostic state/actions to reduce duplication between egui and ratatui.
+- `squalr-tui` now has a working ratatui+crossterm shell with alternate-screen setup/restore, raw-mode guard via `Drop`, tick-based redraw loop, and keyboard exit handling (`q`, `Esc`, `Ctrl+C`).
+- `ratatui` is pinned to `0.30.0` with `crossterm_0_29` feature to avoid workspace dependency resolution conflicts seen with `0.29.0`.
