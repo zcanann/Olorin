@@ -8,7 +8,13 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Logging subsystem still emits repeated `attempted to set a logger after the logging system was already initialized` errors when multiple `SqualrEngine`/`EngineUnprivilegedState` instances are created in one process (notably tests). Make logger initialization idempotent/singleton-safe without losing output-pane log history behavior.
+- From owner: The current state of the TUI is essentially unacceptable. The whole point of ratatui is that you can get insanely good visuals. This means the panels should actually look like panels. There can actually be a theme file. The panels can be much larger and have real UIs behind them. You can absolutely display icons for processes (probably?).
+    - This means there can be the concept of entries
+    - This means you arent being aggressive enough with folder structure. views/* is the wrong place to dump panes. Sub folders.
+    - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
+    - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
+^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
+- Concrete next subtask: introduce a dedicated TUI theme module (color tokens + panel border/background styles) and apply it consistently across the 7 core panes to establish non-default visual hierarchy before deeper pane UX expansion.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -116,3 +122,7 @@ Information discovered during iteration:
 - TUI logging bleed fix: `squalr-engine-session` logger now supports optional console sink (`LogDispatcherOptions`), `squalr-engine` exposes passthrough options (`SqualrEngineOptions`), and `squalr-tui` disables unprivileged console logging so logs flow to file + output pane instead of the terminal surface.
 - Removed direct terminal output from project manager watcher startup (`println!` -> `log::info!`) to prevent non-logger writes from corrupting the ratatui alternate screen.
 - Validation pass for logging bleed fix: `cargo test -p squalr-tui` (57 passed).
+- Logger idempotency fix: `squalr-engine-session/src/logging/log_dispatcher.rs` now uses process-wide singleton logger state (`OnceLock<log4rs::Handle>` + init mutex) and shared in-memory log history (`LazyLock<Arc<RwLock<VecDeque<LogEvent>>>>`) so repeated `EngineUnprivilegedState` creation no longer reinitializes the global logger.
+- Added unit coverage for repeated `LogDispatcher` initialization sharing history without reinit errors (`logging::log_dispatcher::tests::repeated_initialization_uses_shared_log_history`).
+- Validation pass for logger idempotency + TUI regression: `cargo test -p squalr-engine-session` (1 passed), `cargo test -p squalr-tui` (57 passed).
+- Checkpoint commit for logger idempotency fix: `<pending>`.
