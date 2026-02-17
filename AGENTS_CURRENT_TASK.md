@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Again, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit pane entry-row viewport behavior (top-of-list pinning vs selection-relative windowing) so keyboard navigation remains context-rich beyond the first visible rows.
+- Concrete next subtask: audit pane-entry viewport sizing against real pane height (remove fixed row-cap constants where practical) so visible list density scales with layout changes/focus boosts.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -174,3 +174,6 @@ Information discovered during iteration:
 - Checkpoint commit for summary density + narrow-width truncation pass: `1c006ca7` (`Densify TUI summary body markers and clamp narrow-width lines`).
 - TUI pane-entry row truncation parity pass: `app_render` now applies width-aware fitting for entry rows with a fixed marker column, bounded primary/secondary allocation, and narrow-width secondary omission to keep selection markers and leading context readable on constrained pane widths.
 - Added focused `app_render` unit coverage for marker alignment and entry-row truncation/splitting behavior (including fixed marker-width rendering assertions); validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (76 passed).
+- GUI vs TUI parity audit (this pass): pane entry-row builders were hard-pinned to top-of-list slices (`0..min(capacity)`), causing keyboard navigation context loss once selections moved beyond initial visible rows.
+- TUI pane-entry viewport behavior update: added shared selection-relative viewport helper (`views/entry_row_viewport.rs`) and switched process/project/scan entry-row builders to centered/clamped selection windowing instead of top-pinned slicing.
+- Added focused viewport tests (shared helper + process/project/project-item/scan entry-row builders) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (84 passed).

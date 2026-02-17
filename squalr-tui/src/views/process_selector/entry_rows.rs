@@ -1,11 +1,17 @@
 use crate::state::pane_entry_row::PaneEntryRow;
+use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
 
 pub fn build_visible_process_entry_rows(process_selector_pane_state: &ProcessSelectorPaneState) -> Vec<PaneEntryRow> {
-    let visible_process_count = process_selector_pane_state.process_list_entries.len().min(5);
-    let mut entry_rows = Vec::with_capacity(visible_process_count);
+    const PROCESS_VIEWPORT_CAPACITY: usize = 5;
+    let visible_process_range = build_selection_relative_viewport_range(
+        process_selector_pane_state.process_list_entries.len(),
+        process_selector_pane_state.selected_process_list_index,
+        PROCESS_VIEWPORT_CAPACITY,
+    );
+    let mut entry_rows = Vec::with_capacity(visible_process_range.len());
 
-    for visible_process_position in 0..visible_process_count {
+    for visible_process_position in visible_process_range {
         if let Some(process_entry) = process_selector_pane_state
             .process_list_entries
             .get(visible_process_position)
@@ -25,4 +31,37 @@ pub fn build_visible_process_entry_rows(process_selector_pane_state: &ProcessSel
     }
 
     entry_rows
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::views::process_selector::entry_rows::build_visible_process_entry_rows;
+    use crate::views::process_selector::pane_state::ProcessSelectorPaneState;
+    use squalr_engine_api::structures::processes::process_info::ProcessInfo;
+
+    #[test]
+    fn process_rows_window_tracks_selected_process_position() {
+        let mut process_selector_pane_state = ProcessSelectorPaneState::default();
+        process_selector_pane_state.process_list_entries = (0..10)
+            .map(|process_position| ProcessInfo::new(1000 + process_position, format!("proc-{process_position}.exe"), true, None))
+            .collect();
+        process_selector_pane_state.selected_process_list_index = Some(7);
+
+        let entry_rows = build_visible_process_entry_rows(&process_selector_pane_state);
+        let entry_names: Vec<&str> = entry_rows
+            .iter()
+            .map(|entry_row| entry_row.primary_text.as_str())
+            .collect();
+
+        assert_eq!(
+            entry_names,
+            vec![
+                "proc-5.exe",
+                "proc-6.exe",
+                "proc-7.exe",
+                "proc-8.exe",
+                "proc-9.exe"
+            ]
+        );
+    }
 }
