@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: split pane-entry rendering into focused submodules under `squalr-tui/src/views/` (for process/scan/project entry builders) so `*_pane_state` files stop carrying both reducer logic and display-row assembly details.
+- Concrete next subtask: continue folderization by extracting remaining pane-specific presentation builders/helpers from `*_pane_state` files into focused `squalr-tui/src/views/*/` submodules where reducer/state and rendering preparation are still mixed.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -132,3 +132,5 @@ Information discovered during iteration:
 - TUI pane-entry primitive pass: added shared `PaneEntryRow`/`PaneEntryRowTone` model in `squalr-tui/src/state/pane_entry_row.rs` and integrated themed selected/normal/disabled row styles through `TuiTheme`.
 - Migrated Process Selector, Scan Results, and Project Explorer list-heavy summaries to produce structured entry rows (instead of inline marker-formatted strings), and wired rendering in `app_render` to draw these rows with marker/primary/secondary styling.
 - Validation pass for pane-entry primitive migration: `cargo test -p squalr-tui` (57 passed).
+- TUI pane-entry folderization pass: extracted process/scan/project pane-entry row builders into focused modules under `squalr-tui/src/views/process_selector/entry_rows.rs`, `squalr-tui/src/views/scan_results/entry_rows.rs`, and `squalr-tui/src/views/project_explorer/entry_rows.rs`; pane-state files now delegate entry-row assembly to these submodules.
+- Validation pass for pane-entry folderization: `cargo test -p squalr-tui` (57 passed).

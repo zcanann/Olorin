@@ -1,0 +1,63 @@
+use crate::state::pane_entry_row::PaneEntryRow;
+use crate::views::scan_results_pane_state::ScanResultsPaneState;
+use std::ops::RangeInclusive;
+
+pub fn build_visible_scan_result_rows(scan_results_pane_state: &ScanResultsPaneState) -> Vec<PaneEntryRow> {
+    let selected_result_range = build_selected_result_range(scan_results_pane_state);
+    let visible_scan_result_count = scan_results_pane_state.scan_results.len().min(5);
+    let mut entry_rows = Vec::with_capacity(visible_scan_result_count);
+
+    for visible_scan_result_position in 0..visible_scan_result_count {
+        if let Some(scan_result) = scan_results_pane_state
+            .scan_results
+            .get(visible_scan_result_position)
+        {
+            let is_selected_scan_result = scan_results_pane_state.selected_result_index == Some(visible_scan_result_position);
+            let is_in_selected_range = selected_result_range
+                .as_ref()
+                .map(|selected_range| selected_range.contains(&visible_scan_result_position))
+                .unwrap_or(false);
+            let freeze_marker = if scan_result.get_is_frozen() { "F" } else { " " };
+            let value_preview = scan_result
+                .get_current_display_values()
+                .first()
+                .map(|display_value| display_value.get_anonymous_value_string().to_string())
+                .unwrap_or_else(|| "?".to_string());
+            let marker_text = format!("{}{}", if is_in_selected_range { "*" } else { " " }, freeze_marker);
+            let primary_text = format!(
+                "idx={} global={} addr=0x{:X}",
+                visible_scan_result_position,
+                scan_result
+                    .get_base_result()
+                    .get_scan_result_ref()
+                    .get_scan_result_global_index(),
+                scan_result.get_address()
+            );
+            let secondary_text = Some(format!("type={} value={}", scan_result.get_data_type_ref().get_data_type_id(), value_preview));
+
+            if is_selected_scan_result {
+                entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
+            } else if value_preview == "?" {
+                entry_rows.push(PaneEntryRow::disabled(marker_text, primary_text, secondary_text));
+            } else {
+                entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
+            }
+        }
+    }
+
+    entry_rows
+}
+
+fn build_selected_result_range(scan_results_pane_state: &ScanResultsPaneState) -> Option<RangeInclusive<usize>> {
+    let selection_anchor_position = scan_results_pane_state.selected_result_index?;
+    let selection_end_position = scan_results_pane_state
+        .selected_range_end_index
+        .unwrap_or(selection_anchor_position);
+    let (range_start_position, range_end_position) = if selection_anchor_position <= selection_end_position {
+        (selection_anchor_position, selection_end_position)
+    } else {
+        (selection_end_position, selection_anchor_position)
+    };
+
+    Some(range_start_position..=range_end_position)
+}

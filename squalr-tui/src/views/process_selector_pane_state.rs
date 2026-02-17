@@ -1,4 +1,5 @@
 use crate::state::pane_entry_row::PaneEntryRow;
+use crate::views::process_selector::entry_rows::build_visible_process_entry_rows;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use squalr_engine_api::structures::processes::process_info::ProcessInfo;
 
@@ -112,26 +113,7 @@ impl ProcessSelectorPaneState {
     }
 
     pub fn visible_process_entry_rows(&self) -> Vec<PaneEntryRow> {
-        let visible_entry_count = self.process_list_entries.len().min(5);
-        let mut entry_rows = Vec::with_capacity(visible_entry_count);
-
-        for visible_process_index in 0..visible_entry_count {
-            if let Some(process_entry) = self.process_list_entries.get(visible_process_index) {
-                let is_selected_process = self.selected_process_list_index == Some(visible_process_index);
-                let is_opened_process = self.opened_process_identifier == Some(process_entry.get_process_id_raw());
-                let marker_text = if is_opened_process { "*".to_string() } else { String::new() };
-                let primary_text = process_entry.get_name().to_string();
-                let secondary_text = Some(format!("pid={}", process_entry.get_process_id_raw()));
-
-                if is_selected_process {
-                    entry_rows.push(PaneEntryRow::selected(marker_text, primary_text, secondary_text));
-                } else {
-                    entry_rows.push(PaneEntryRow::normal(marker_text, primary_text, secondary_text));
-                }
-            }
-        }
-
-        entry_rows
+        build_visible_process_entry_rows(self)
     }
 
     fn update_selected_process_fields(&mut self) {
