@@ -8,13 +8,13 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI project parity against TUI and identify next concrete UX/feature gaps.
+- Audit GUI project against the TUI and identify remaining high-value parity gaps.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
 
 - TUI now runs as three fixed workspace pages with persistent Output pane and in-page `Tab`/`Shift+Tab` focus loops.
-- Workspace switching is mapped to `F2/F3/F4`; `F1` toggles Project workspace context between Process Selector and Project Explorer when a process is open.
+- Workspace switching is mapped to `F1/F2/F3/F4` with explicit behavior: `F1` always enters Project Explorer context and `F4` always enters Process Selector context (no toggle behavior).
 - Global key routing is top-level first (`handle_global_key_event`) before pane-local handlers.
 - App exit is intentionally restricted to `Ctrl+Q` or `Ctrl+C`; plain `q` and `Esc` are not global quit keys (covered by `AppShell` tests).
 - Project Explorer is context-driven (no manual `p/i` mode switch); open/activate project enters hierarchy mode, close active project returns to list mode.
