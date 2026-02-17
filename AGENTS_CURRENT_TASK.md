@@ -51,5 +51,6 @@ Information discovered during iteration:
 - Checkpoint commit for process selector parity: `92cad535` (`Implement TUI process selector command parity`).
 - TUI element scanner now dispatches `ScanResetRequest`, `ScanCollectValuesRequest`, `ScanNewRequest`, and `ElementScanRequest` with keyboard-first controls (`n`, `c`, `s`, `t`/`T`, `a`, `x`, `j`/`k`, `m`/`M`) and per-pane status/result metadata updates.
 - Added `element_scanner_pane_state` reducer tests for constraint cap/retention, data type cycling, and relative constraint serialization behavior.
+- Checkpoint commit for element scanner parity: `55a6a38f` (`Implement TUI element scanner command parity`).
 
 
