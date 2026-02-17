@@ -3,7 +3,7 @@ use crate::views::scan_results::pane_state::ScanResultsPaneState;
 pub fn build_scan_results_summary_lines(scan_results_pane_state: &ScanResultsPaneState) -> Vec<String> {
     let mut summary_lines = vec![
         "[ACT] r query | R refresh-page | [/] page | f freeze | a add | x delete.".to_string(),
-        "[NAV] Up/Down/j/k move | Shift+Up/Down range | Home/End.".to_string(),
+        "[NAV] Up/Down move | Shift+Up/Down range | Home/End.".to_string(),
         "[EDIT] y pull | type value | Enter commit.".to_string(),
         format!(
             "[PAGE] {}/{} | size={} | results={}.",

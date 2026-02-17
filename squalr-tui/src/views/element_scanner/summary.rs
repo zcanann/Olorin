@@ -13,15 +13,16 @@ pub fn build_element_scanner_summary_lines_with_capacity(
         return Vec::new();
     }
 
+    let data_type_grid_lines = build_data_type_grid_lines(element_scanner_pane_state);
     let constraint_row_lines = build_constraint_row_lines(element_scanner_pane_state);
-    let constraint_line_capacity = line_capacity.saturating_sub(6);
+    let constraint_line_capacity = line_capacity.saturating_sub(4 + data_type_grid_lines.len());
     let visible_constraint_lines = selected_constraint_window_lines(element_scanner_pane_state, &constraint_row_lines, constraint_line_capacity);
 
     let mut prioritized_lines = vec![
         "[ACT] s scan | n reset | c collect | a add | x remove.".to_string(),
-        "[CTRL] t/T type | m/M compare | j/k row | type value.".to_string(),
-        format!("[DATA] type={}.", element_scanner_pane_state.selected_data_type_name()),
+        "[CTRL] arrows type-grid | [/] row | m/M compare | type value.".to_string(),
     ];
+    prioritized_lines.extend(data_type_grid_lines);
     prioritized_lines.extend(visible_constraint_lines);
     prioritized_lines.push(format!(
         "[SCAN] constraints={} | selected_row={} | pending={} | has_results={}.",
@@ -37,6 +38,31 @@ pub fn build_element_scanner_summary_lines_with_capacity(
     ));
 
     prioritized_lines.into_iter().take(line_capacity).collect()
+}
+
+fn build_data_type_grid_lines(element_scanner_pane_state: &ElementScannerPaneState) -> Vec<String> {
+    let supported_data_type_names = ElementScannerPaneState::supported_data_type_names();
+    let grid_column_count = ElementScannerPaneState::data_type_grid_column_count();
+    let mut data_type_grid_lines = vec![format!(
+        "[DATA] selected={} | grid={}x{}.",
+        element_scanner_pane_state.selected_data_type_name(),
+        supported_data_type_names.len().div_ceil(grid_column_count),
+        grid_column_count
+    )];
+
+    for (data_type_row_index, data_type_name_row) in supported_data_type_names.chunks(grid_column_count).enumerate() {
+        let mut row_cells = Vec::with_capacity(data_type_name_row.len());
+        for (data_type_name_column_index, data_type_name) in data_type_name_row.iter().enumerate() {
+            let data_type_index = (data_type_row_index * grid_column_count) + data_type_name_column_index;
+            let is_selected_data_type = data_type_index == element_scanner_pane_state.selected_data_type_index;
+            let data_type_selection_marker = if is_selected_data_type { "[x]" } else { "[ ]" };
+            row_cells.push(format!("{} {}", data_type_selection_marker, data_type_name));
+        }
+
+        data_type_grid_lines.push(format!("      {}.", row_cells.join("  ")));
+    }
+
+    data_type_grid_lines
 }
 
 fn build_constraint_row_lines(element_scanner_pane_state: &ElementScannerPaneState) -> Vec<String> {

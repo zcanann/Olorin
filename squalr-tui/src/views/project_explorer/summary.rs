@@ -12,8 +12,8 @@ pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &Projec
 
     vec![
         format!("[MODE] {}.", mode_label),
-        "[ACT] / search | j/k move | Home/End jump | n create | Enter/o open | e rename | c close | x delete | r refresh.".to_string(),
-        "[TREE] j/k move | Home/End jump | l/Right expand | h/Left collapse | Space activate.".to_string(),
+        "[ACT] / search | Up/Down move | Home/End jump | n create | Enter/o open | e rename | c close | x delete | r refresh.".to_string(),
+        "[TREE] Up/Down move | Home/End jump | l/Right expand | h/Left collapse | Space activate.".to_string(),
         "[MOVE] m stage | b move | [/] reorder | u clear-stage.".to_string(),
         format!(
             "[PROJ] selected={} | active={} | dir={}.",

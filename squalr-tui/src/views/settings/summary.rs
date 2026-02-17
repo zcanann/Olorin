@@ -17,7 +17,7 @@ pub fn build_settings_summary_lines_with_capacity(
     let additional_field_capacity = line_capacity.saturating_sub(6);
     let additional_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, additional_field_capacity);
 
-    let mut prioritized_lines = vec!["[ACT] [/] category | j/k move | Home/End jump | Space toggle | +/- step | </> enum | Enter apply.".to_string()];
+    let mut prioritized_lines = vec!["[ACT] [/] category | Up/Down move | Home/End jump | Space toggle | +/- step | </> enum | Enter apply.".to_string()];
     prioritized_lines.extend(selected_field_lines);
     prioritized_lines.push(format!(
         "[CAT] {} | field={}.",

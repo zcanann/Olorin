@@ -45,8 +45,8 @@ impl AppShell {
             KeyCode::Char('r') => self.refresh_all_settings_categories_with_feedback(squalr_engine, true),
             KeyCode::Char(']') => self.app_state.settings_pane_state.cycle_category_forward(),
             KeyCode::Char('[') => self.app_state.settings_pane_state.cycle_category_backward(),
-            KeyCode::Down | KeyCode::Char('j') => self.app_state.settings_pane_state.select_next_field(),
-            KeyCode::Up | KeyCode::Char('k') => self.app_state.settings_pane_state.select_previous_field(),
+            KeyCode::Down => self.app_state.settings_pane_state.select_next_field(),
+            KeyCode::Up => self.app_state.settings_pane_state.select_previous_field(),
             KeyCode::Home => self.app_state.settings_pane_state.select_first_field(),
             KeyCode::End => self.app_state.settings_pane_state.select_last_field(),
             KeyCode::Char(' ') => {
@@ -122,7 +122,7 @@ impl AppShell {
                         .process_selector_pane_state
                         .clear_pending_search_name();
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
+                KeyCode::Down => {
                     self.app_state.process_selector_pane_state.commit_search_input();
                 }
                 KeyCode::Char(search_character) => {
@@ -149,8 +149,8 @@ impl AppShell {
                 self.refresh_process_list(squalr_engine);
             }
             KeyCode::Char('/') => self.app_state.process_selector_pane_state.begin_search_input(),
-            KeyCode::Down | KeyCode::Char('j') => self.app_state.process_selector_pane_state.select_next_process(),
-            KeyCode::Up | KeyCode::Char('k') => {
+            KeyCode::Down => self.app_state.process_selector_pane_state.select_next_process(),
+            KeyCode::Up => {
                 if self
                     .app_state
                     .process_selector_pane_state
@@ -183,19 +183,24 @@ impl AppShell {
             KeyCode::Char('s') => self.start_element_scan(squalr_engine),
             KeyCode::Char('n') => self.reset_scan_state(squalr_engine),
             KeyCode::Char('c') => self.collect_scan_values(squalr_engine),
-            KeyCode::Char('t') => self
+            KeyCode::Right => self
                 .app_state
                 .element_scanner_pane_state
-                .cycle_data_type_forward(),
-            KeyCode::Char('T') => self
+                .select_data_type_right(),
+            KeyCode::Left => self
                 .app_state
                 .element_scanner_pane_state
-                .cycle_data_type_backward(),
-            KeyCode::Char('j') | KeyCode::Down => self
+                .select_data_type_left(),
+            KeyCode::Down => self
+                .app_state
+                .element_scanner_pane_state
+                .select_data_type_down(),
+            KeyCode::Up => self.app_state.element_scanner_pane_state.select_data_type_up(),
+            KeyCode::Char(']') => self
                 .app_state
                 .element_scanner_pane_state
                 .select_next_constraint(),
-            KeyCode::Char('k') | KeyCode::Up => self
+            KeyCode::Char('[') => self
                 .app_state
                 .element_scanner_pane_state
                 .select_previous_constraint(),
@@ -251,7 +256,7 @@ impl AppShell {
             KeyCode::Char('R') => self.refresh_scan_results_page(squalr_engine),
             KeyCode::Char(']') => self.query_next_scan_results_page(squalr_engine),
             KeyCode::Char('[') => self.query_previous_scan_results_page(squalr_engine),
-            KeyCode::Down | KeyCode::Char('j') => {
+            KeyCode::Down => {
                 if is_range_extend_modifier_active {
                     self.app_state
                         .scan_results_pane_state
@@ -261,7 +266,7 @@ impl AppShell {
                     .scan_results_pane_state
                     .select_next_result(is_range_extend_modifier_active);
             }
-            KeyCode::Up | KeyCode::Char('k') => {
+            KeyCode::Up => {
                 if is_range_extend_modifier_active {
                     self.app_state
                         .scan_results_pane_state
@@ -335,7 +340,7 @@ impl AppShell {
                             .project_explorer_pane_state
                             .clear_pending_search_name();
                     }
-                    KeyCode::Down | KeyCode::Char('j') => {
+                    KeyCode::Down => {
                         self.app_state.project_explorer_pane_state.commit_search_input();
                     }
                     KeyCode::Char(search_character) => {
@@ -389,8 +394,8 @@ impl AppShell {
         match key_code {
             KeyCode::Char('r') => self.refresh_project_list(squalr_engine),
             KeyCode::Char('/') => self.app_state.project_explorer_pane_state.begin_search_input(),
-            KeyCode::Down | KeyCode::Char('j') => self.app_state.project_explorer_pane_state.select_next_project(),
-            KeyCode::Up | KeyCode::Char('k') => self
+            KeyCode::Down => self.app_state.project_explorer_pane_state.select_next_project(),
+            KeyCode::Up => self
                 .app_state
                 .project_explorer_pane_state
                 .select_previous_project(),
@@ -426,12 +431,12 @@ impl AppShell {
     ) {
         match key_code {
             KeyCode::Char('r') => self.refresh_project_items_list(squalr_engine),
-            KeyCode::Down | KeyCode::Char('j') => {
+            KeyCode::Down => {
                 self.app_state
                     .project_explorer_pane_state
                     .select_next_project_item();
             }
-            KeyCode::Up | KeyCode::Char('k') => {
+            KeyCode::Up => {
                 self.app_state
                     .project_explorer_pane_state
                     .select_previous_project_item();
@@ -514,8 +519,8 @@ impl AppShell {
         };
         match key_event.code {
             KeyCode::Char('r') => self.refresh_struct_viewer_focus_from_source(),
-            KeyCode::Down | KeyCode::Char('j') => self.app_state.struct_viewer_pane_state.select_next_field(),
-            KeyCode::Up | KeyCode::Char('k') => self.app_state.struct_viewer_pane_state.select_previous_field(),
+            KeyCode::Down => self.app_state.struct_viewer_pane_state.select_next_field(),
+            KeyCode::Up => self.app_state.struct_viewer_pane_state.select_previous_field(),
             KeyCode::Char('[') => {
                 let selected_field_name = self
                     .app_state

@@ -11,7 +11,7 @@ pub fn build_struct_viewer_summary_lines(
     let selected_field_edit_state = struct_viewer_pane_state.selected_field_edit_state_label();
     let mut summary_lines = vec![
         "[ACT] r refresh-source | Enter commit edit.".to_string(),
-        "[NAV] Up/Down or j/k select field.".to_string(),
+        "[NAV] Up/Down select field.".to_string(),
         "[FMT] [ prev | ] next display format (blocked on uncommitted edit).".to_string(),
         "[EDIT] type | Backspace | Ctrl+u clear (value fields only).".to_string(),
         format!(

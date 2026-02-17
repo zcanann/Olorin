@@ -40,6 +40,7 @@ pub struct ElementScannerPaneState {
 
 impl ElementScannerPaneState {
     const MAX_CONSTRAINT_COUNT: usize = 5;
+    const DATA_TYPE_GRID_COLUMN_COUNT: usize = 5;
     const SUPPORTED_DATA_TYPE_IDS: [&'static str; 10] = [
         "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64",
     ];
@@ -74,20 +75,36 @@ impl ElementScannerPaneState {
         DataTypeRef::new(self.selected_data_type_name())
     }
 
+    pub fn supported_data_type_names() -> &'static [&'static str] {
+        &Self::SUPPORTED_DATA_TYPE_IDS
+    }
+
+    pub fn data_type_grid_column_count() -> usize {
+        Self::DATA_TYPE_GRID_COLUMN_COUNT
+    }
+
     pub fn active_constraint_count(&self) -> usize {
         self.constraint_rows.len()
     }
 
-    pub fn cycle_data_type_forward(&mut self) {
+    pub fn select_data_type_right(&mut self) {
         self.selected_data_type_index = (self.selected_data_type_index + 1) % Self::SUPPORTED_DATA_TYPE_IDS.len();
     }
 
-    pub fn cycle_data_type_backward(&mut self) {
+    pub fn select_data_type_left(&mut self) {
         self.selected_data_type_index = if self.selected_data_type_index == 0 {
             Self::SUPPORTED_DATA_TYPE_IDS.len() - 1
         } else {
             self.selected_data_type_index - 1
         };
+    }
+
+    pub fn select_data_type_down(&mut self) {
+        self.select_data_type_vertical(true);
+    }
+
+    pub fn select_data_type_up(&mut self) {
+        self.select_data_type_vertical(false);
     }
 
     pub fn select_next_constraint(&mut self) {
@@ -211,6 +228,31 @@ impl ElementScannerPaneState {
     fn is_supported_value_character(value_character: char) -> bool {
         value_character.is_ascii_digit() || value_character == '-' || value_character == '.'
     }
+
+    fn select_data_type_vertical(
+        &mut self,
+        move_down: bool,
+    ) {
+        let data_type_count = Self::SUPPORTED_DATA_TYPE_IDS.len();
+        let column_count = Self::DATA_TYPE_GRID_COLUMN_COUNT;
+        let row_count = data_type_count.div_ceil(column_count);
+        if row_count <= 1 {
+            return;
+        }
+
+        let selected_row_index = self.selected_data_type_index / column_count;
+        let selected_column_index = self.selected_data_type_index % column_count;
+        let target_row_index = if move_down {
+            (selected_row_index + 1) % row_count
+        } else if selected_row_index == 0 {
+            row_count - 1
+        } else {
+            selected_row_index - 1
+        };
+
+        let tentative_target_data_type_index = target_row_index * column_count + selected_column_index;
+        self.selected_data_type_index = tentative_target_data_type_index.min(data_type_count - 1);
+    }
 }
 
 impl Default for ElementScannerPaneState {
@@ -225,5 +267,47 @@ impl Default for ElementScannerPaneState {
             last_total_size_in_bytes: 0,
             status_message: "Ready.".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ElementScannerPaneState;
+
+    #[test]
+    fn data_type_horizontal_navigation_wraps() {
+        let mut element_scanner_pane_state = ElementScannerPaneState::default();
+        element_scanner_pane_state.selected_data_type_index = 0;
+
+        element_scanner_pane_state.select_data_type_left();
+        assert_eq!(element_scanner_pane_state.selected_data_type_index, 9);
+
+        element_scanner_pane_state.select_data_type_right();
+        assert_eq!(element_scanner_pane_state.selected_data_type_index, 0);
+    }
+
+    #[test]
+    fn data_type_vertical_navigation_moves_between_grid_rows() {
+        let mut element_scanner_pane_state = ElementScannerPaneState::default();
+        element_scanner_pane_state.selected_data_type_index = 2;
+
+        element_scanner_pane_state.select_data_type_down();
+        assert_eq!(element_scanner_pane_state.selected_data_type_index, 7);
+
+        element_scanner_pane_state.select_data_type_up();
+        assert_eq!(element_scanner_pane_state.selected_data_type_index, 2);
+    }
+
+    #[test]
+    fn data_type_vertical_navigation_clamps_to_last_valid_cell_on_ragged_row() {
+        let mut element_scanner_pane_state = ElementScannerPaneState::default();
+        element_scanner_pane_state.selected_data_type_index = 3;
+
+        element_scanner_pane_state.select_data_type_down();
+        assert_eq!(element_scanner_pane_state.selected_data_type_index, 8);
+
+        element_scanner_pane_state.selected_data_type_index = 4;
+        element_scanner_pane_state.select_data_type_down();
+        assert_eq!(element_scanner_pane_state.selected_data_type_index, 9);
     }
 }

@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI project against the TUI and identify remaining high-value parity gaps.
+- Audit GUI vs TUI scanner input parity and identify the next concrete behavior gap after the data type grid and keybinding cleanup.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -31,4 +31,6 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Theme logic lives in `theme/tui_theme.rs` and per-pane accent differences were removed for a unified focused-pane accent.
 - Header space was reclaimed by collapsing Session + Controls into a single `Info` block; `[EXIT]` controls are now merged into `[NAV]` to save one line.
 - Workspace layouts now allocate more default height to Output (`40%` of body area).
-- `cargo test -p squalr-tui` currently passes (24 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
+- Element Scanner data types now render as a full `[ ]` / `[x]` grid with all supported types visible at once; navigation uses arrow keys (Left/Right/Up/Down), and constraint-row selection moved to `[` / `]`.
+- `j/k` pane navigation bindings were removed from TUI key handlers and summary hints; list-like navigation is now arrow-key based.
+- `cargo test -p squalr-tui` currently passes (27 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
