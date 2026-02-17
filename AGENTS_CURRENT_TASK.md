@@ -14,7 +14,7 @@ Our current task, from `README.md`, is:
     - Agian, use the fucking GUI as reference. The TUI is meant to be seriously robust.
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit GUI top-surface visual affordances and add richer TUI session metadata presentation (icon-like markers / condensed labels) while preserving keyboard-first readability and app-shell coverage.
+- Concrete next subtask: audit GUI top-surface shortcut affordances and align TUI controls/footer legend density (condensed marker groups + reduced redundancy) while preserving keyboard-first readability.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -161,3 +161,6 @@ Information discovered during iteration:
 - Added unit tests for pane-layout weight behavior (`focused` boost and `unlisted focus` no-op) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (59 passed).
 - TUI app-shell session metadata parity update: header/footer now reserve multi-line space and surface opened-process + active-project context as first-class session lines via dedicated `AppShell` metadata builders (`session_opened_process_metadata_line`, `session_active_project_metadata_line`).
 - Added focused app-shell tests for populated and unset session metadata rendering paths; validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (61 passed).
+- GUI top-surface affordance audit (this pass): GUI main shortcut bar prioritizes compact icon-first status context for process state, while TUI session metadata previously used longer prose labels.
+- TUI session metadata presentation update: `AppShell` header lines now use condensed icon-like markers (`[MODE]`, `[PROC]`, `[PROJ]`) and compact value formatting (including path condensation to `.../<parent>/<leaf>` for active project context).
+- Updated app-shell metadata tests to assert condensed marker-form output and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (61 passed).

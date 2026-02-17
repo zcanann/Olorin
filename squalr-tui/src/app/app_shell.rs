@@ -14,6 +14,7 @@ use squalr_engine::engine_mode::EngineMode;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::structures::processes::opened_process_info::OpenedProcessInfo;
 use std::io::{self, IsTerminal, Stdout};
+use std::path::Path;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -135,10 +136,8 @@ impl AppShell {
             .constraints([Constraint::Length(5), Constraint::Min(0), Constraint::Length(5)])
             .split(frame.area());
 
-        let header_text = Self::engine_mode_header_text(engine_mode);
-
         let header = Paragraph::new(vec![
-            Line::from(header_text),
+            Line::from(Self::engine_mode_header_text(engine_mode)),
             Line::from(self.session_opened_process_metadata_line()),
             Line::from(self.session_active_project_metadata_line()),
         ])
@@ -160,9 +159,9 @@ impl AppShell {
 
     fn engine_mode_header_text(engine_mode: EngineMode) -> &'static str {
         match engine_mode {
-            EngineMode::Standalone => "Squalr TUI (Standalone)",
-            EngineMode::UnprivilegedHost => "Squalr TUI (Unprivileged Host)",
-            EngineMode::PrivilegedShell => "Squalr TUI (Privileged Shell)",
+            EngineMode::Standalone => "[MODE] Squalr TUI | Standalone.",
+            EngineMode::UnprivilegedHost => "[MODE] Squalr TUI | Unprivileged Host.",
+            EngineMode::PrivilegedShell => "[MODE] Squalr TUI | Privileged Shell.",
         }
     }
 
@@ -177,11 +176,11 @@ impl AppShell {
                 .opened_process_identifier,
         ) {
             (Some(opened_process_name), Some(opened_process_identifier)) => {
-                format!("Opened process: {} (PID {}).", opened_process_name, opened_process_identifier)
+                format!("[PROC] {} | PID {}.", opened_process_name, opened_process_identifier)
             }
-            (Some(opened_process_name), None) => format!("Opened process: {}.", opened_process_name),
-            (None, Some(opened_process_identifier)) => format!("Opened process: PID {}.", opened_process_identifier),
-            (None, None) => "Opened process: none.".to_string(),
+            (Some(opened_process_name), None) => format!("[PROC] {}.", opened_process_name),
+            (None, Some(opened_process_identifier)) => format!("[PROC] PID {}.", opened_process_identifier),
+            (None, None) => "[PROC] none.".to_string(),
         }
     }
 
@@ -197,14 +196,34 @@ impl AppShell {
                 .as_ref(),
         ) {
             (Some(active_project_name), Some(active_project_directory_path)) => {
-                format!("Active project: {} ({}).", active_project_name, active_project_directory_path.display())
+                format!(
+                    "[PROJ] {} | {}.",
+                    active_project_name,
+                    Self::condense_path_for_session(active_project_directory_path)
+                )
             }
-            (Some(active_project_name), None) => format!("Active project: {}.", active_project_name),
+            (Some(active_project_name), None) => format!("[PROJ] {}.", active_project_name),
             (None, Some(active_project_directory_path)) => {
-                format!("Active project: {}.", active_project_directory_path.display())
+                format!("[PROJ] {}.", Self::condense_path_for_session(active_project_directory_path))
             }
-            (None, None) => "Active project: none.".to_string(),
+            (None, None) => "[PROJ] none.".to_string(),
         }
+    }
+
+    fn condense_path_for_session(path: &Path) -> String {
+        let normalized_path = path.to_string_lossy().replace('\\', "/");
+        let path_segments: Vec<&str> = normalized_path
+            .split('/')
+            .filter(|path_segment| !path_segment.is_empty())
+            .collect();
+
+        if path_segments.len() <= 2 {
+            return normalized_path;
+        }
+
+        let second_last_segment = path_segments[path_segments.len() - 2];
+        let last_segment = path_segments[path_segments.len() - 1];
+        format!(".../{}/{}", second_last_segment, last_segment)
     }
 
     fn handle_event(
@@ -508,19 +527,16 @@ mod tests {
             .project_explorer_pane_state
             .active_project_directory_path = Some(PathBuf::from("C:/Projects/Alpha/project"));
 
-        assert_eq!(app_shell.session_opened_process_metadata_line(), "Opened process: target.exe (PID 31337).");
-        assert_eq!(
-            app_shell.session_active_project_metadata_line(),
-            "Active project: Alpha (C:/Projects/Alpha/project)."
-        );
+        assert_eq!(app_shell.session_opened_process_metadata_line(), "[PROC] target.exe | PID 31337.");
+        assert_eq!(app_shell.session_active_project_metadata_line(), "[PROJ] Alpha | .../Alpha/project.");
     }
 
     #[test]
     fn session_metadata_lines_fallback_to_none_when_context_is_unset() {
         let app_shell = AppShell::new(Duration::from_millis(100));
 
-        assert_eq!(app_shell.session_opened_process_metadata_line(), "Opened process: none.");
-        assert_eq!(app_shell.session_active_project_metadata_line(), "Active project: none.");
+        assert_eq!(app_shell.session_opened_process_metadata_line(), "[PROC] none.");
+        assert_eq!(app_shell.session_active_project_metadata_line(), "[PROJ] none.");
     }
 
     #[test]
