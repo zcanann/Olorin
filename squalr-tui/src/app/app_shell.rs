@@ -2,7 +2,7 @@ use crate::state::TuiAppState;
 use crate::state::workspace_page::TuiWorkspacePage;
 use crate::theme::TuiTheme;
 use anyhow::{Context, Result, bail};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use crossterm::terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode};
 use crossterm::{cursor, execute};
 use ratatui::Terminal;
@@ -219,7 +219,12 @@ impl AppShell {
     }
 
     fn session_active_workspace_metadata_line(&self) -> String {
-        format!("[PAGE] {}.", self.app_state.active_workspace_page().title())
+        let active_workspace_page = self.app_state.active_workspace_page();
+        format!(
+            "[PAGE] {} | [FOCUS] {}.",
+            active_workspace_page.title(),
+            active_workspace_page.focus_cycle_hint()
+        )
     }
 
     fn condense_path_for_session(path: &Path) -> String {
@@ -248,23 +253,42 @@ impl AppShell {
                 return;
             }
 
-            let mut was_handled_by_global_shortcut = true;
-            match key_event.code {
-                KeyCode::Char('q') | KeyCode::Esc => self.should_exit = true,
-                KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => self.should_exit = true,
-                KeyCode::Tab => self.app_state.cycle_focus_forward(),
-                KeyCode::BackTab => self.app_state.cycle_focus_backward(),
-                KeyCode::Char(shortcut_digit) => {
-                    if let Some(target_workspace_page) = TuiWorkspacePage::from_shortcut_digit(shortcut_digit) {
-                        self.app_state.set_active_workspace_page(target_workspace_page);
-                    }
-                }
-                _ => was_handled_by_global_shortcut = false,
-            }
-
-            if !was_handled_by_global_shortcut {
+            if !self.handle_global_key_event(key_event) {
                 self.handle_focused_pane_event(key_event, squalr_engine);
             }
+        }
+    }
+
+    fn handle_global_key_event(
+        &mut self,
+        key_event: KeyEvent,
+    ) -> bool {
+        match key_event.code {
+            KeyCode::Char('q') | KeyCode::Esc => {
+                self.should_exit = true;
+                true
+            }
+            KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.should_exit = true;
+                true
+            }
+            KeyCode::Tab => {
+                self.app_state.cycle_focus_forward();
+                true
+            }
+            KeyCode::BackTab => {
+                self.app_state.cycle_focus_backward();
+                true
+            }
+            KeyCode::Char(shortcut_digit) => {
+                if let Some(target_workspace_page) = TuiWorkspacePage::from_shortcut_digit(shortcut_digit) {
+                    self.app_state.set_active_workspace_page(target_workspace_page);
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
         }
     }
 }

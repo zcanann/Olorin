@@ -26,6 +26,14 @@ impl TuiWorkspacePage {
         }
     }
 
+    pub fn focus_cycle_hint(self) -> &'static str {
+        match self {
+            Self::ProjectWorkspace => "Tab/Shift+Tab: Process Selector -> Project Explorer -> Output",
+            Self::ScannerWorkspace => "Tab/Shift+Tab: Element Scanner -> Scan Results -> Output",
+            Self::SettingsWorkspace => "Tab/Shift+Tab: Settings -> Output",
+        }
+    }
+
     pub fn visible_panes(self) -> &'static [TuiPane] {
         match self {
             Self::ProjectWorkspace => &[
@@ -42,5 +50,36 @@ impl TuiWorkspacePage {
 impl Default for TuiWorkspacePage {
     fn default() -> Self {
         Self::ProjectWorkspace
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TuiWorkspacePage;
+    use crate::state::pane::TuiPane;
+
+    #[test]
+    fn shortcut_digits_map_to_workspace_pages() {
+        assert_eq!(TuiWorkspacePage::from_shortcut_digit('1'), Some(TuiWorkspacePage::ProjectWorkspace));
+        assert_eq!(TuiWorkspacePage::from_shortcut_digit('2'), Some(TuiWorkspacePage::ScannerWorkspace));
+        assert_eq!(TuiWorkspacePage::from_shortcut_digit('3'), Some(TuiWorkspacePage::SettingsWorkspace));
+        assert_eq!(TuiWorkspacePage::from_shortcut_digit('4'), None);
+    }
+
+    #[test]
+    fn visible_panes_are_defined_per_workspace_page() {
+        assert_eq!(
+            TuiWorkspacePage::ProjectWorkspace.visible_panes(),
+            &[
+                TuiPane::ProcessSelector,
+                TuiPane::ProjectExplorer,
+                TuiPane::Output
+            ]
+        );
+        assert_eq!(
+            TuiWorkspacePage::ScannerWorkspace.visible_panes(),
+            &[TuiPane::ElementScanner, TuiPane::ScanResults, TuiPane::Output]
+        );
+        assert_eq!(TuiWorkspacePage::SettingsWorkspace.visible_panes(), &[TuiPane::Settings, TuiPane::Output]);
     }
 }

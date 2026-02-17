@@ -32,10 +32,7 @@ impl PaneLayoutState {
     }
 
     pub fn visible_panes_in_order(&self) -> Vec<TuiPane> {
-        TuiPane::all_panes()
-            .into_iter()
-            .filter(|pane| self.is_pane_visible(*pane))
-            .collect()
+        self.active_workspace_page.visible_panes().to_vec()
     }
 }
 

@@ -200,3 +200,80 @@ impl TuiAppState {
         self.pane_layout_state.focused_pane = visible_panes[next_visible_index];
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TuiAppState;
+    use crate::state::pane::TuiPane;
+    use crate::state::workspace_page::TuiWorkspacePage;
+
+    #[test]
+    fn switching_workspace_page_rehomes_focus_if_current_pane_is_hidden() {
+        let mut tui_app_state = TuiAppState::default();
+        tui_app_state.set_focused_pane(TuiPane::ProjectExplorer);
+
+        tui_app_state.set_active_workspace_page(TuiWorkspacePage::ScannerWorkspace);
+
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ElementScanner);
+    }
+
+    #[test]
+    fn switching_workspace_page_keeps_focus_for_shared_output_pane() {
+        let mut tui_app_state = TuiAppState::default();
+        tui_app_state.set_focused_pane(TuiPane::Output);
+
+        tui_app_state.set_active_workspace_page(TuiWorkspacePage::ScannerWorkspace);
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+
+        tui_app_state.set_active_workspace_page(TuiWorkspacePage::SettingsWorkspace);
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+    }
+
+    #[test]
+    fn project_workspace_focus_cycle_loops_in_page_order() {
+        let mut tui_app_state = TuiAppState::default();
+
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ProcessSelector);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ProjectExplorer);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ProcessSelector);
+
+        tui_app_state.cycle_focus_backward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+    }
+
+    #[test]
+    fn scanner_workspace_focus_cycle_loops_in_page_order() {
+        let mut tui_app_state = TuiAppState::default();
+        tui_app_state.set_active_workspace_page(TuiWorkspacePage::ScannerWorkspace);
+
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ElementScanner);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ScanResults);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::ElementScanner);
+
+        tui_app_state.cycle_focus_backward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+    }
+
+    #[test]
+    fn settings_workspace_focus_cycle_loops_in_page_order() {
+        let mut tui_app_state = TuiAppState::default();
+        tui_app_state.set_active_workspace_page(TuiWorkspacePage::SettingsWorkspace);
+
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Settings);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+        tui_app_state.cycle_focus_forward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Settings);
+
+        tui_app_state.cycle_focus_backward();
+        assert_eq!(tui_app_state.focused_pane(), TuiPane::Output);
+    }
+}

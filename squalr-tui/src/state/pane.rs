@@ -11,18 +11,6 @@ pub enum TuiPane {
 }
 
 impl TuiPane {
-    pub fn all_panes() -> [TuiPane; 7] {
-        [
-            TuiPane::ProcessSelector,
-            TuiPane::ElementScanner,
-            TuiPane::ScanResults,
-            TuiPane::ProjectExplorer,
-            TuiPane::StructViewer,
-            TuiPane::Output,
-            TuiPane::Settings,
-        ]
-    }
-
     pub fn title(self) -> &'static str {
         match self {
             TuiPane::ProcessSelector => "Process Selector",
