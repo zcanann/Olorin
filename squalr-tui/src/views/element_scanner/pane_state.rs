@@ -8,6 +8,7 @@ use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_delt
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_immediate::ScanCompareTypeImmediate;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_relative::ScanCompareTypeRelative;
 use squalr_engine_api::structures::scanning::constraints::anonymous_scan_constraint::AnonymousScanConstraint;
+use std::collections::BTreeSet;
 
 /// Stores one editable scanner constraint row.
 #[derive(Clone, Debug)]
@@ -29,6 +30,7 @@ impl Default for ElementScannerConstraintState {
 #[derive(Clone, Debug)]
 pub struct ElementScannerPaneState {
     pub selected_data_type_index: usize,
+    pub selected_data_type_indices: BTreeSet<usize>,
     pub constraint_rows: Vec<ElementScannerConstraintState>,
     pub selected_constraint_row_index: usize,
     pub has_pending_scan_request: bool,
@@ -71,8 +73,61 @@ impl ElementScannerPaneState {
         Self::SUPPORTED_DATA_TYPE_IDS[self.selected_data_type_index]
     }
 
-    pub fn selected_data_type_ref(&self) -> DataTypeRef {
-        DataTypeRef::new(self.selected_data_type_name())
+    pub fn selected_data_type_refs(&self) -> Vec<DataTypeRef> {
+        self.selected_data_type_ids()
+            .iter()
+            .map(|data_type_id| DataTypeRef::new(data_type_id))
+            .collect()
+    }
+
+    pub fn selected_data_type_ids(&self) -> Vec<&'static str> {
+        let mut selected_data_type_ids: Vec<&'static str> = self
+            .selected_data_type_indices
+            .iter()
+            .filter_map(|selected_data_type_index| {
+                Self::SUPPORTED_DATA_TYPE_IDS
+                    .get(*selected_data_type_index)
+                    .copied()
+            })
+            .collect();
+        if selected_data_type_ids.is_empty() {
+            selected_data_type_ids.push(self.selected_data_type_name());
+        }
+
+        selected_data_type_ids
+    }
+
+    pub fn is_data_type_selected(
+        &self,
+        data_type_index: usize,
+    ) -> bool {
+        self.selected_data_type_indices.contains(&data_type_index)
+    }
+
+    pub fn is_data_type_hovered(
+        &self,
+        data_type_index: usize,
+    ) -> bool {
+        self.selected_data_type_index == data_type_index
+    }
+
+    pub fn toggle_hovered_data_type_selection(&mut self) -> bool {
+        if self
+            .selected_data_type_indices
+            .contains(&self.selected_data_type_index)
+        {
+            if self.selected_data_type_indices.len() == 1 {
+                return false;
+            }
+
+            self.selected_data_type_indices
+                .remove(&self.selected_data_type_index);
+            true
+        } else {
+            self.selected_data_type_indices
+                .insert(self.selected_data_type_index);
+            true
+        }
     }
 
     pub fn supported_data_type_names() -> &'static [&'static str] {
@@ -259,6 +314,7 @@ impl Default for ElementScannerPaneState {
     fn default() -> Self {
         Self {
             selected_data_type_index: 2,
+            selected_data_type_indices: BTreeSet::from([2]),
             constraint_rows: vec![ElementScannerConstraintState::default()],
             selected_constraint_row_index: 0,
             has_pending_scan_request: false,
@@ -309,5 +365,37 @@ mod tests {
         element_scanner_pane_state.selected_data_type_index = 4;
         element_scanner_pane_state.select_data_type_down();
         assert_eq!(element_scanner_pane_state.selected_data_type_index, 9);
+    }
+
+    #[test]
+    fn toggling_hovered_data_type_selection_supports_multi_select() {
+        let mut element_scanner_pane_state = ElementScannerPaneState::default();
+        element_scanner_pane_state.selected_data_type_index = 1;
+
+        assert!(element_scanner_pane_state.toggle_hovered_data_type_selection());
+        assert!(
+            element_scanner_pane_state
+                .selected_data_type_indices
+                .contains(&1)
+        );
+        assert!(
+            element_scanner_pane_state
+                .selected_data_type_indices
+                .contains(&2)
+        );
+    }
+
+    #[test]
+    fn toggling_last_selected_data_type_is_rejected() {
+        let mut element_scanner_pane_state = ElementScannerPaneState::default();
+        element_scanner_pane_state.selected_data_type_index = 2;
+
+        assert!(!element_scanner_pane_state.toggle_hovered_data_type_selection());
+        assert_eq!(element_scanner_pane_state.selected_data_type_indices.len(), 1);
+        assert!(
+            element_scanner_pane_state
+                .selected_data_type_indices
+                .contains(&2)
+        );
     }
 }

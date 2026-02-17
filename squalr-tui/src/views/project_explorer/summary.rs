@@ -1,4 +1,4 @@
-use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
+use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectExplorerPaneState};
 
 pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<String> {
     let mode_label = if project_explorer_pane_state
@@ -10,12 +10,14 @@ pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &Projec
         "Projects"
     };
 
-    vec![
-        format!("[MODE] {}.", mode_label),
-        "[ACT] / search | Up/Down move | Home/End jump | n create | Enter/o open | e rename | c close | x delete | r refresh.".to_string(),
-        "[TREE] Up/Down move | Home/End jump | l/Right expand | h/Left collapse | Space activate.".to_string(),
-        "[MOVE] m stage | b move | [/] reorder | u clear-stage.".to_string(),
-        format!(
+    let mut summary_lines = vec![format!("[MODE] {}.", mode_label)];
+
+    if project_explorer_pane_state.focus_target == ProjectExplorerFocusTarget::ProjectList {
+        summary_lines.push("[ACT] / search | Up/Down move | Home/End jump | n create | Enter/o open | e rename | c close | x delete | r refresh.".to_string());
+    } else {
+        summary_lines.push("[TREE] Up/Down move | Home/End jump | l/Right expand | h/Left collapse | Space activate.".to_string());
+        summary_lines.push("[MOVE] m stage | b move | [/] reorder | u clear-stage.".to_string());
+        summary_lines.push(format!(
             "[PROJ] selected={} | active={} | dir={}.",
             option_to_compact_text(project_explorer_pane_state.selected_project_name.as_deref()),
             option_to_compact_text(project_explorer_pane_state.active_project_name.as_deref()),
@@ -24,7 +26,10 @@ pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &Projec
                     .active_project_directory_path
                     .as_deref()
             )
-        ),
+        ));
+    }
+
+    summary_lines.extend([
         format!(
             "[ITEM] selected={} | pending_name={}.",
             option_to_compact_text(project_explorer_pane_state.selected_item_path.as_deref()),
@@ -44,8 +49,9 @@ pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &Projec
             project_explorer_pane_state.project_item_visible_entries.len()
         ),
         format!("[STAT] {}.", project_explorer_pane_state.status_message),
-        "[ROWS] projects=5 | hierarchy=10.".to_string(),
-    ]
+    ]);
+
+    summary_lines
 }
 
 fn option_to_compact_text(option_text: Option<&str>) -> String {

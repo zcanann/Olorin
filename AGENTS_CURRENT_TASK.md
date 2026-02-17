@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Audit GUI vs TUI scanner input parity and identify the next concrete behavior gap after the data type grid and keybinding cleanup.
+- Audit GUI project against TUI for next concrete functionality gap now that scanner/project-explorer summary + multi-type workflow parity pass landed.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -33,4 +33,9 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Workspace layouts now allocate more default height to Output (`40%` of body area).
 - Element Scanner data types now render as a full `[ ]` / `[x]` grid with all supported types visible at once; navigation uses arrow keys (Left/Right/Up/Down), and constraint-row selection moved to `[` / `]`.
 - `j/k` pane navigation bindings were removed from TUI key handlers and summary hints; list-like navigation is now arrow-key based.
-- `cargo test -p squalr-tui` currently passes (27 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
+- Element Scanner now supports multi-select data types via `Space`/`Enter`; hovered type is rendered with `>` and selected state remains `[ ]` / `[x]`.
+- Element Scanner summary now prioritizes `[SCAN]` / `[STAT]` above type/constraint rows, renders constraints as `[CONSTRAINT #n]`, and immediate comparisons as `x <op> value`.
+- Project Explorer summary is context-aware: project-list controls render only in list mode, hierarchy controls + `[PROJ]` render only in hierarchy mode.
+- Scan Results now mirror selected scanner data types as active client-side filters over the current page, with summary lines for active/available type ids.
+- Element Scanner removed `[LAST]`; result count/bytes now show in Scan Results summary.
+- `cargo test -p squalr-tui` currently passes (30 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.

@@ -5,6 +5,7 @@ use squalr_engine_api::commands::scan_results::query::scan_results_query_respons
 use squalr_engine_api::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
 use squalr_engine_api::structures::scan_results::scan_result::ScanResult;
 use squalr_engine_api::structures::scan_results::scan_result_ref::ScanResultRef;
+use std::collections::BTreeSet;
 use std::ops::RangeInclusive;
 
 /// Stores pagination and selection state for scan results.
@@ -15,7 +16,10 @@ pub struct ScanResultsPaneState {
     pub results_per_page: u64,
     pub total_result_count: u64,
     pub total_size_in_bytes: u64,
+    pub all_scan_results: Vec<ScanResult>,
     pub scan_results: Vec<ScanResult>,
+    pub filtered_data_type_ids: BTreeSet<String>,
+    pub available_data_type_ids: Vec<String>,
     pub selected_result_index: Option<usize>,
     pub selected_range_end_index: Option<usize>,
     pub pending_value_edit_text: String,
@@ -35,7 +39,10 @@ impl ScanResultsPaneState {
         self.results_per_page = 50;
         self.total_result_count = 0;
         self.total_size_in_bytes = 0;
+        self.all_scan_results.clear();
         self.scan_results.clear();
+        self.filtered_data_type_ids.clear();
+        self.available_data_type_ids.clear();
         self.selected_result_index = None;
         self.selected_range_end_index = None;
         self.pending_value_edit_text = "0".to_string();
@@ -78,7 +85,9 @@ impl ScanResultsPaneState {
         self.results_per_page = scan_results_query_response.page_size;
         self.total_result_count = scan_results_query_response.result_count;
         self.total_size_in_bytes = scan_results_query_response.total_size_in_bytes;
-        self.scan_results = scan_results_query_response.scan_results;
+        self.all_scan_results = scan_results_query_response.scan_results;
+        self.rebuild_available_data_type_ids();
+        self.rebuild_filtered_scan_results();
         self.selected_result_index = selected_scan_result_global_index_before_refresh
             .and_then(|selected_scan_result_global_index| {
                 self.scan_results.iter().position(|scan_result| {
@@ -110,7 +119,19 @@ impl ScanResultsPaneState {
         &mut self,
         refreshed_scan_results: Vec<ScanResult>,
     ) {
-        self.scan_results = refreshed_scan_results;
+        self.all_scan_results = refreshed_scan_results;
+        self.rebuild_available_data_type_ids();
+        self.rebuild_filtered_scan_results();
+        self.clamp_selection_to_bounds();
+        self.sync_pending_value_edit_from_selection();
+    }
+
+    pub fn set_filtered_data_type_ids(
+        &mut self,
+        filtered_data_type_ids: Vec<String>,
+    ) {
+        self.filtered_data_type_ids = filtered_data_type_ids.into_iter().collect();
+        self.rebuild_filtered_scan_results();
         self.clamp_selection_to_bounds();
         self.sync_pending_value_edit_from_selection();
     }
@@ -359,6 +380,32 @@ impl ScanResultsPaneState {
     fn is_supported_value_edit_character(value_character: char) -> bool {
         value_character.is_ascii_digit() || value_character == '-' || value_character == '.'
     }
+
+    fn rebuild_available_data_type_ids(&mut self) {
+        let mut available_data_type_id_set = BTreeSet::new();
+        for scan_result in &self.all_scan_results {
+            available_data_type_id_set.insert(scan_result.get_data_type_ref().get_data_type_id().to_string());
+        }
+
+        self.available_data_type_ids = available_data_type_id_set.into_iter().collect();
+    }
+
+    fn rebuild_filtered_scan_results(&mut self) {
+        if self.filtered_data_type_ids.is_empty() {
+            self.scan_results = self.all_scan_results.clone();
+            return;
+        }
+
+        self.scan_results = self
+            .all_scan_results
+            .iter()
+            .filter(|scan_result| {
+                self.filtered_data_type_ids
+                    .contains(scan_result.get_data_type_ref().get_data_type_id())
+            })
+            .cloned()
+            .collect();
+    }
 }
 
 impl Default for ScanResultsPaneState {
@@ -369,7 +416,10 @@ impl Default for ScanResultsPaneState {
             results_per_page: 50,
             total_result_count: 0,
             total_size_in_bytes: 0,
+            all_scan_results: Vec::new(),
             scan_results: Vec::new(),
+            filtered_data_type_ids: BTreeSet::new(),
+            available_data_type_ids: Vec::new(),
             selected_result_index: None,
             selected_range_end_index: None,
             pending_value_edit_text: "0".to_string(),
@@ -381,5 +431,19 @@ impl Default for ScanResultsPaneState {
             is_committing_value_edit: false,
             status_message: "Ready.".to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScanResultsPaneState;
+
+    #[test]
+    fn setting_filter_on_empty_results_keeps_empty_scan_results() {
+        let mut scan_results_pane_state = ScanResultsPaneState::default();
+        scan_results_pane_state.set_filtered_data_type_ids(vec!["i32".to_string(), "u64".to_string()]);
+
+        assert!(scan_results_pane_state.scan_results.is_empty());
+        assert_eq!(scan_results_pane_state.filtered_data_type_ids.len(), 2);
     }
 }

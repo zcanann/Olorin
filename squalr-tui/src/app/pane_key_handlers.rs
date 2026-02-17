@@ -196,6 +196,17 @@ impl AppShell {
                 .element_scanner_pane_state
                 .select_data_type_down(),
             KeyCode::Up => self.app_state.element_scanner_pane_state.select_data_type_up(),
+            KeyCode::Char(' ') | KeyCode::Enter => {
+                if self
+                    .app_state
+                    .element_scanner_pane_state
+                    .toggle_hovered_data_type_selection()
+                {
+                    self.sync_scan_results_type_filters_from_element_scanner();
+                } else {
+                    self.app_state.element_scanner_pane_state.status_message = "At least one data type must remain selected.".to_string();
+                }
+            }
             KeyCode::Char(']') => self
                 .app_state
                 .element_scanner_pane_state

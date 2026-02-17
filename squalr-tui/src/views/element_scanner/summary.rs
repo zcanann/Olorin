@@ -20,22 +20,18 @@ pub fn build_element_scanner_summary_lines_with_capacity(
 
     let mut prioritized_lines = vec![
         "[ACT] s scan | n reset | c collect | a add | x remove.".to_string(),
-        "[CTRL] arrows type-grid | [/] row | m/M compare | type value.".to_string(),
+        "[CTRL] arrows hover-type | Space/Enter toggle-type | [/] row | m/M compare | type value.".to_string(),
+        format!(
+            "[SCAN] constraints={} | selected_row={} | pending={} | has_results={}.",
+            element_scanner_pane_state.active_constraint_count(),
+            element_scanner_pane_state.selected_constraint_row_index + 1,
+            element_scanner_pane_state.has_pending_scan_request,
+            element_scanner_pane_state.has_scan_results
+        ),
+        format!("[STAT] {}.", element_scanner_pane_state.status_message),
     ];
     prioritized_lines.extend(data_type_grid_lines);
     prioritized_lines.extend(visible_constraint_lines);
-    prioritized_lines.push(format!(
-        "[SCAN] constraints={} | selected_row={} | pending={} | has_results={}.",
-        element_scanner_pane_state.active_constraint_count(),
-        element_scanner_pane_state.selected_constraint_row_index + 1,
-        element_scanner_pane_state.has_pending_scan_request,
-        element_scanner_pane_state.has_scan_results
-    ));
-    prioritized_lines.push(format!("[STAT] {}.", element_scanner_pane_state.status_message));
-    prioritized_lines.push(format!(
-        "[LAST] result_count={} | total_bytes={}.",
-        element_scanner_pane_state.last_result_count, element_scanner_pane_state.last_total_size_in_bytes
-    ));
 
     prioritized_lines.into_iter().take(line_capacity).collect()
 }
@@ -44,19 +40,25 @@ fn build_data_type_grid_lines(element_scanner_pane_state: &ElementScannerPaneSta
     let supported_data_type_names = ElementScannerPaneState::supported_data_type_names();
     let grid_column_count = ElementScannerPaneState::data_type_grid_column_count();
     let mut data_type_grid_lines = vec![format!(
-        "[DATA] selected={} | grid={}x{}.",
-        element_scanner_pane_state.selected_data_type_name(),
-        supported_data_type_names.len().div_ceil(grid_column_count),
-        grid_column_count
+        "[TYPE] selected={}.",
+        element_scanner_pane_state.selected_data_type_ids().join(",")
     )];
 
     for (data_type_row_index, data_type_name_row) in supported_data_type_names.chunks(grid_column_count).enumerate() {
         let mut row_cells = Vec::with_capacity(data_type_name_row.len());
         for (data_type_name_column_index, data_type_name) in data_type_name_row.iter().enumerate() {
             let data_type_index = (data_type_row_index * grid_column_count) + data_type_name_column_index;
-            let is_selected_data_type = data_type_index == element_scanner_pane_state.selected_data_type_index;
-            let data_type_selection_marker = if is_selected_data_type { "[x]" } else { "[ ]" };
-            row_cells.push(format!("{} {}", data_type_selection_marker, data_type_name));
+            let hovered_marker = if element_scanner_pane_state.is_data_type_hovered(data_type_index) {
+                ">"
+            } else {
+                " "
+            };
+            let selected_marker = if element_scanner_pane_state.is_data_type_selected(data_type_index) {
+                "[x]"
+            } else {
+                "[ ]"
+            };
+            row_cells.push(format!("{}{} {}", hovered_marker, selected_marker, data_type_name));
         }
 
         data_type_grid_lines.push(format!("      {}.", row_cells.join("  ")));
@@ -71,22 +73,23 @@ fn build_constraint_row_lines(element_scanner_pane_state: &ElementScannerPaneSta
         .iter()
         .enumerate()
         .map(|(constraint_row_index, constraint_row)| {
-            build_constraint_row_line(constraint_row, element_scanner_pane_state.selected_constraint_row_index == constraint_row_index)
+            build_constraint_row_line(
+                constraint_row,
+                constraint_row_index,
+                element_scanner_pane_state.selected_constraint_row_index == constraint_row_index,
+            )
         })
         .collect()
 }
 
 fn build_constraint_row_line(
     constraint_row: &ElementScannerConstraintState,
+    constraint_index: usize,
     is_selected: bool,
 ) -> String {
     let selected_marker = if is_selected { ">" } else { " " };
-    format!(
-        "{} [ROW] {} {}.",
-        selected_marker,
-        scan_compare_type_label(constraint_row.scan_compare_type),
-        constraint_row.scan_value_text
-    )
+    let compare_expression = scan_compare_expression(constraint_row);
+    format!("{} [CONSTRAINT #{}] {}.", selected_marker, constraint_index + 1, compare_expression)
 }
 
 fn selected_constraint_window_lines(
@@ -128,5 +131,14 @@ fn scan_compare_type_label(scan_compare_type: ScanCompareType) -> &'static str {
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalAndByX) => "&x",
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalOrByX) => "|x",
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalXorByX) => "^x",
+    }
+}
+
+fn scan_compare_expression(constraint_row: &ElementScannerConstraintState) -> String {
+    let compare_label = scan_compare_type_label(constraint_row.scan_compare_type);
+    if matches!(constraint_row.scan_compare_type, ScanCompareType::Immediate(_)) {
+        format!("x {} {}", compare_label, constraint_row.scan_value_text)
+    } else {
+        format!("{} {}", compare_label, constraint_row.scan_value_text)
     }
 }

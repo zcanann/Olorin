@@ -328,7 +328,12 @@ impl AppShell {
         if !self.app_state.is_pane_visible(TuiPane::ScanResults) {
             return false;
         }
-        if self.app_state.scan_results_pane_state.scan_results.is_empty() {
+        if self
+            .app_state
+            .scan_results_pane_state
+            .all_scan_results
+            .is_empty()
+        {
             return false;
         }
         if self.app_state.scan_results_pane_state.is_querying_scan_results

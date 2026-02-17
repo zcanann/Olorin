@@ -206,11 +206,10 @@ impl AppShell {
                 .app_state
                 .element_scanner_pane_state
                 .build_anonymous_scan_constraints(),
-            data_type_refs: vec![
-                self.app_state
-                    .element_scanner_pane_state
-                    .selected_data_type_ref(),
-            ],
+            data_type_refs: self
+                .app_state
+                .element_scanner_pane_state
+                .selected_data_type_refs(),
         };
 
         let (response_sender, response_receiver) = mpsc::sync_channel(1);
@@ -283,6 +282,7 @@ impl AppShell {
         }
 
         let page_index = self.app_state.scan_results_pane_state.current_page_index;
+        self.sync_scan_results_type_filters_from_element_scanner();
         let scan_results_query_request = ScanResultsQueryRequest { page_index };
         let (response_sender, response_receiver) = mpsc::sync_channel(1);
         let request_dispatched = scan_results_query_request.send(engine_unprivileged_state, move |scan_results_query_response| {
@@ -370,7 +370,7 @@ impl AppShell {
         let scan_result_refs_for_current_page = self
             .app_state
             .scan_results_pane_state
-            .scan_results
+            .all_scan_results
             .iter()
             .map(|scan_result| scan_result.get_base_result().get_scan_result_ref().clone())
             .collect::<Vec<_>>();
@@ -724,6 +724,19 @@ impl AppShell {
         if should_update_status_message {
             self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
         }
+    }
+
+    pub(super) fn sync_scan_results_type_filters_from_element_scanner(&mut self) {
+        let selected_data_type_ids = self
+            .app_state
+            .element_scanner_pane_state
+            .selected_data_type_ids()
+            .iter()
+            .map(|selected_data_type_id| (*selected_data_type_id).to_string())
+            .collect();
+        self.app_state
+            .scan_results_pane_state
+            .set_filtered_data_type_ids(selected_data_type_ids);
     }
 
     pub(super) fn refresh_process_list(
