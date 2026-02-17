@@ -1,4 +1,4 @@
-use crate::views::settings_pane_state::{SettingsCategory, SettingsPaneState};
+use crate::views::settings::pane_state::{SettingsCategory, SettingsPaneState};
 use squalr_engine_api::structures::data_types::floating_point_tolerance::FloatingPointTolerance;
 use squalr_engine_api::structures::memory::memory_alignment::MemoryAlignment;
 use squalr_engine_api::structures::scanning::memory_read_mode::MemoryReadMode;

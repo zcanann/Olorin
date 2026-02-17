@@ -1,5 +1,5 @@
 use super::app_shell::AppShell;
-use crate::views::settings_pane_state::SettingsCategory;
+use crate::views::settings::pane_state::SettingsCategory;
 use crate::views::struct_viewer_pane_state::StructViewerSource;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::commands::privileged_command_request::PrivilegedCommandRequest;
