@@ -15,7 +15,7 @@ Our current task, from `README.md`, is:
     - The panels dont have to look like shit. You can use squares/rectangle shapes with their own background colors. You can make it follow a nice layout. It doesnt all have to look like windows form groupboxes. This is ugly.
     - Also the CLI has a pretty reasonable pattern for command disaptching
 ^ You can break these up into subtasks, but do not lose the spirit at all of what I am asking,
-- Concrete next subtask: audit project-explorer dual-list (project list + hierarchy) ultra-small width behavior for marker/legend readability tradeoffs now that entry-marker rendering is width-aware at 1-2 columns.
+- Concrete next subtask: audit project-explorer dual-list ultra-small height summary priority so `[MARK]` legend context remains visible when summary lines are heavily clamped.
 
 ## Important Information
 Append important discoveries. Compact regularly.
@@ -207,3 +207,9 @@ Information discovered during iteration:
 - TUI ultra-small marker visibility update: `app_render` marker prefix formatting is now width-aware (`0/1/2/3+` columns), preserving visible markers at tiny widths while keeping fixed marker-column alignment at normal widths; final summary lines are re-fit after telemetry reconciliation to keep post-reconcile telemetry display width-safe.
 - Added focused `app_render` tests for tiny-width marker formatting/rendering (`entry_marker_prefix_preserves_marker_visibility_in_tiny_widths`, `entry_row_render_keeps_marker_visible_at_single_column_width`) and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (103 passed).
 - Checkpoint commit for ultra-small width marker visibility parity: `9c5cf2cd` (`Preserve TUI entry markers at ultra-small pane widths`).
+
+
+- GUI vs TUI parity audit (this pass): project-explorer hierarchy uses two-character markers (`activation + directory`), and width=1 rendering previously collapsed these markers to `.` via generic truncation, obscuring state semantics in ultra-small panes.
+- TUI ultra-small marker readability fix: `app_render` now resolves single-column marker prefixes from the first visible marker character (fallback space), preserving meaningful hierarchy markers (`*`, `+`, `-`) at width=1 instead of `.`.
+- TUI project-explorer legend clarity update: added explicit `[MARK]` summary line documenting project/hierarchy marker semantics to balance dual-list marker readability tradeoffs.
+- Added focused `app_render` test coverage for width=1 two-character marker behavior and validated with `cargo fmt -p squalr-tui`, `cargo test -p squalr-tui` (104 passed).

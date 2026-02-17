@@ -303,7 +303,7 @@ impl AppShell {
         }
 
         if content_width == 1 {
-            return Self::truncate_line_with_ellipsis(marker_text, 1);
+            return Self::single_column_marker(marker_text);
         }
 
         if content_width == 2 {
@@ -313,6 +313,21 @@ impl AppShell {
 
         let truncated_marker = Self::truncate_line_with_ellipsis(marker_text, 2);
         format!("{:>2} ", truncated_marker)
+    }
+
+    fn single_column_marker(marker_text: String) -> String {
+        if marker_text.is_empty() {
+            return String::new();
+        }
+
+        if let Some(first_visible_marker) = marker_text
+            .chars()
+            .find(|marker_character| !marker_character.is_whitespace())
+        {
+            return first_visible_marker.to_string();
+        }
+
+        " ".to_string()
     }
 
     fn fit_entry_row_content(
@@ -413,6 +428,14 @@ mod tests {
     fn entry_marker_prefix_preserves_marker_visibility_in_tiny_widths() {
         assert_eq!(AppShell::format_marker_prefix("*".to_string(), 1), "*");
         assert_eq!(AppShell::format_marker_prefix("*".to_string(), 2), " *");
+    }
+
+    #[test]
+    fn entry_marker_prefix_uses_visible_character_for_two_character_markers_at_single_width() {
+        assert_eq!(AppShell::format_marker_prefix("*+".to_string(), 1), "*");
+        assert_eq!(AppShell::format_marker_prefix(" +".to_string(), 1), "+");
+        assert_eq!(AppShell::format_marker_prefix(" -".to_string(), 1), "-");
+        assert_eq!(AppShell::format_marker_prefix("  ".to_string(), 1), " ");
     }
 
     #[test]

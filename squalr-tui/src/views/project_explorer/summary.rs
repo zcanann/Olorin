@@ -3,6 +3,7 @@ use crate::views::project_explorer::pane_state::ProjectExplorerPaneState;
 pub fn build_project_explorer_summary_lines(project_explorer_pane_state: &ProjectExplorerPaneState) -> Vec<String> {
     vec![
         "[MODE] p project-list | i hierarchy.".to_string(),
+        "[MARK] project=* active | hierarchy=col1 active(*) col2 dir(+/-).".to_string(),
         "[LIST] r refresh | n create | Enter/o open | e rename | x delete | c close.".to_string(),
         "[TREE] h refresh | j/k select | l/Right expand | Left collapse | Space activate.".to_string(),
         "[MOVE] n folder | x delete(confirm) | m stage | b move | [/] reorder | u clear-stage.".to_string(),
@@ -87,9 +88,10 @@ mod tests {
         let summary_lines = build_project_explorer_summary_lines(&project_explorer_pane_state);
 
         assert!(summary_lines[0].starts_with("[MODE]"));
-        assert!(summary_lines[1].starts_with("[LIST]"));
-        assert!(summary_lines[2].starts_with("[TREE]"));
-        assert!(summary_lines[3].starts_with("[MOVE]"));
-        assert!(summary_lines[4].starts_with("[INPUT]"));
+        assert!(summary_lines[1].starts_with("[MARK]"));
+        assert!(summary_lines[2].starts_with("[LIST]"));
+        assert!(summary_lines[3].starts_with("[TREE]"));
+        assert!(summary_lines[4].starts_with("[MOVE]"));
+        assert!(summary_lines[5].starts_with("[INPUT]"));
     }
 }
