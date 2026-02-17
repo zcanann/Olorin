@@ -59,5 +59,6 @@ Information discovered during iteration:
 - Added `project_explorer_pane_state` reducer tests for default selection on list load, wraparound project selection, and rename-input guard behavior.
 - Checkpoint commit for project selector parity: `58e938ef` (`Implement TUI project selector command parity`).
 - TUI project hierarchy now dispatches `ProjectItemsListRequest`, `ProjectItemsCreateRequest`, `ProjectItemsDeleteRequest`, `ProjectItemsActivateRequest`, `ProjectItemsMoveRequest`, and `ProjectItemsReorderRequest` with keyboard-first controls (`i` hierarchy mode, `h` refresh, `j`/`k` select, `l`/`Left` expand-collapse, `Space` activate, `n` create folder, `x` confirm-delete, `m` stage move, `b` move here, `[`/`]` reorder).
+- Checkpoint commit for project hierarchy parity: `7d69407d` (`Implement TUI project hierarchy keyboard command parity`).
 
 
