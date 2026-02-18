@@ -5,10 +5,7 @@ use crate::{
 };
 use eframe::egui::{Align2, Rect, Response, Sense, Ui, Widget, pos2, vec2};
 use epaint::{Color32, CornerRadius, Stroke, StrokeKind};
-use squalr_engine_api::{
-    registries::symbols::symbol_registry::SymbolRegistry,
-    structures::{data_values::anonymous_value_string_format::AnonymousValueStringFormat, scan_results::scan_result::ScanResult},
-};
+use squalr_engine_api::structures::{data_values::anonymous_value_string_format::AnonymousValueStringFormat, scan_results::scan_result::ScanResult};
 use std::sync::Arc;
 
 pub struct ElementScannerResultEntryView<'lifetime> {
@@ -177,46 +174,21 @@ impl<'a> Widget for ElementScannerResultEntryView<'a> {
         let current_value_text_position = pos2(self.value_splitter_position_x + text_left_padding, row_center_y);
         let current_value_string = self
             .scan_result
-            .get_recently_read_display_value(self.active_display_format)
+            .get_recently_read_display_value_resolved(self.active_display_format)
             .map(|recently_read_display_value| {
                 recently_read_display_value
                     .get_anonymous_value_string()
                     .to_string()
             })
             .or_else(|| {
-                let symbol_registry = SymbolRegistry::get_instance();
-
                 self.scan_result
-                    .get_recently_read_value()
-                    .as_ref()
-                    .and_then(|recently_read_value| {
-                        symbol_registry
-                            .anonymize_value(recently_read_value, self.active_display_format)
-                            .ok()
-                    })
+                    .get_recently_read_display_values()
+                    .first()
                     .map(|recently_read_display_value| {
                         recently_read_display_value
                             .get_anonymous_value_string()
                             .to_string()
                     })
-            })
-            .or_else(|| {
-                self.scan_result
-                    .get_current_display_value(self.active_display_format)
-                    .map(|current_display_value| current_display_value.get_anonymous_value_string().to_string())
-            })
-            .or_else(|| {
-                let symbol_registry = SymbolRegistry::get_instance();
-
-                self.scan_result
-                    .get_current_value()
-                    .as_ref()
-                    .and_then(|current_value| {
-                        symbol_registry
-                            .anonymize_value(current_value, self.active_display_format)
-                            .ok()
-                    })
-                    .map(|current_display_value| current_display_value.get_anonymous_value_string().to_string())
             })
             .unwrap_or_else(|| "??".to_string());
 

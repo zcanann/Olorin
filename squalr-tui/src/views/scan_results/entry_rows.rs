@@ -78,11 +78,7 @@ fn build_selected_result_range(scan_results_pane_state: &ScanResultsPaneState) -
 }
 
 fn display_value_text(scan_result: &ScanResult) -> Option<String> {
-    if let Some(display_value) = scan_result.get_recently_read_display_value(AnonymousValueStringFormat::Decimal) {
-        return Some(display_value.get_anonymous_value_string().to_string());
-    }
-
-    if let Some(display_value) = scan_result.get_current_display_value(AnonymousValueStringFormat::Decimal) {
+    if let Some(display_value) = scan_result.get_recently_read_display_value_resolved(AnonymousValueStringFormat::Decimal) {
         return Some(display_value.get_anonymous_value_string().to_string());
     }
 
@@ -90,10 +86,7 @@ fn display_value_text(scan_result: &ScanResult) -> Option<String> {
         return Some(display_value.get_anonymous_value_string().to_string());
     }
 
-    scan_result
-        .get_current_display_values()
-        .first()
-        .map(|display_value| display_value.get_anonymous_value_string().to_string())
+    None
 }
 
 fn previous_display_value_text(scan_result: &ScanResult) -> Option<String> {

@@ -314,16 +314,12 @@ impl ScanResultsPaneState {
         let selected_result_index = self.selected_result_index?;
         let selected_result = self.scan_results.get(selected_result_index)?;
 
-        if let Some(recently_read_display_value) = selected_result.get_recently_read_display_value(AnonymousValueStringFormat::Decimal) {
+        if let Some(recently_read_display_value) = selected_result.get_recently_read_display_value_resolved(AnonymousValueStringFormat::Decimal) {
             return Some(
                 recently_read_display_value
                     .get_anonymous_value_string()
                     .to_string(),
             );
-        }
-
-        if let Some(current_display_value) = selected_result.get_current_display_value(AnonymousValueStringFormat::Decimal) {
-            return Some(current_display_value.get_anonymous_value_string().to_string());
         }
 
         if let Some(recently_read_display_value) = selected_result.get_recently_read_display_values().first() {
@@ -334,10 +330,7 @@ impl ScanResultsPaneState {
             );
         }
 
-        selected_result
-            .get_current_display_values()
-            .first()
-            .map(|current_display_value| current_display_value.get_anonymous_value_string().to_string())
+        None
     }
 
     pub fn sync_pending_value_edit_from_selection(&mut self) {

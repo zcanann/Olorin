@@ -1,3 +1,4 @@
+use crate::registries::symbols::symbol_registry::SymbolRegistry;
 use crate::structures::data_types::built_in_types::string::utf8::data_type_string_utf8::DataTypeStringUtf8;
 use crate::structures::data_types::built_in_types::u64::data_type_u64::DataTypeU64;
 use crate::structures::data_types::data_type_ref::DataTypeRef;
@@ -142,6 +143,24 @@ impl ScanResult {
         }
 
         None
+    }
+
+    pub fn get_recently_read_display_value_resolved(
+        &self,
+        anonymous_value_string_format: AnonymousValueStringFormat,
+    ) -> Option<AnonymousValueString> {
+        if let Some(display_value) = self.get_recently_read_display_value(anonymous_value_string_format) {
+            return Some(display_value.clone());
+        }
+
+        let symbol_registry = SymbolRegistry::get_instance();
+        self.recently_read_value
+            .as_ref()
+            .and_then(|recently_read_value| {
+                symbol_registry
+                    .anonymize_value(recently_read_value, anonymous_value_string_format)
+                    .ok()
+            })
     }
 
     pub fn get_current_value(&self) -> &Option<DataValue> {
@@ -397,6 +416,64 @@ mod tests {
                 .get_recently_read_display_value(AnonymousValueStringFormat::Decimal)
                 .map(|display_value| display_value.get_anonymous_value_string().to_string()),
             Some("44".to_string())
+        );
+    }
+
+    #[test]
+    fn get_recently_read_display_value_resolved_uses_recently_read_value_when_format_missing() {
+        let scan_result = ScanResult::new(
+            ScanResultValued::new(
+                0x1000,
+                DataTypeRef::new("u8"),
+                String::new(),
+                Some(DataTypeU8::get_value_from_primitive(10)),
+                Vec::new(),
+                None,
+                Vec::new(),
+                ScanResultRef::new(1),
+            ),
+            String::new(),
+            0,
+            Some(DataTypeU8::get_value_from_primitive(33)),
+            Vec::new(),
+            false,
+        );
+
+        let resolved_display_value = scan_result
+            .get_recently_read_display_value_resolved(AnonymousValueStringFormat::Decimal)
+            .map(|display_value| display_value.get_anonymous_value_string().to_string());
+
+        assert_eq!(resolved_display_value, Some("33".to_string()));
+    }
+
+    #[test]
+    fn get_recently_read_display_value_resolved_does_not_fall_back_to_current_scan_value() {
+        let scan_result = ScanResult::new(
+            ScanResultValued::new(
+                0x1000,
+                DataTypeRef::new("u8"),
+                String::new(),
+                Some(DataTypeU8::get_value_from_primitive(10)),
+                vec![AnonymousValueString::new(
+                    "10".to_string(),
+                    AnonymousValueStringFormat::Decimal,
+                    ContainerType::None,
+                )],
+                None,
+                Vec::new(),
+                ScanResultRef::new(1),
+            ),
+            String::new(),
+            0,
+            None,
+            Vec::new(),
+            false,
+        );
+
+        assert!(
+            scan_result
+                .get_recently_read_display_value_resolved(AnonymousValueStringFormat::Decimal)
+                .is_none()
         );
     }
 }

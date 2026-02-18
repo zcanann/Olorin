@@ -9,12 +9,14 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 
-- Audit GUI scan-result refresh pending-operation guards against TUI (query/refresh/edit/freeze/delete parity) and add missing guards if needed.
+- Audit GUI/TUI scan-results refresh behavior for any remaining live-read regressions outside the `Value` column rendering path.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
 
 - Completed on 2026-02-18:
+  - GUI and TUI scan-result `Value` rendering now uses recently-read payloads only (with format-resolved conversion from `recently_read_value`); stale scan snapshot values are no longer used as display fallback.
+  - `ScanResult::get_recently_read_display_value_resolved` was added to centralize recently-read display resolution and reduce duplicated conversion logic.
   - Scan results now prefer recently-read decimal values and include `previous=` when available.
   - Manual `[EDIT VAL]` input no longer gets overwritten by periodic result refresh unless user explicitly re-syncs or changes selection.
   - `[ROWS]` telemetry for scan results was folded into `[PAGE] ... | visible_rows=...`.
@@ -30,6 +32,5 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
   - TUI and GUI scan-result query/refresh merges now preserve previously-recently-read value payloads per global result index when incoming responses have no recently-read payload, preventing regressions to stale scanned defaults in client/IPC flows.
   - `MemoryReadRequest` now carries `suppress_logging`; memory-read polling call sites can request silent reads.
   - Project-item polling reads now set `suppress_logging=true`, removing per-read info-log spam from periodic refreshes.
-  - GUI scan-result rows now fall back to scan current-display/current-value text when recently-read payload is temporarily unavailable, preventing persistent `??` display gaps.
   - GUI element-scanner scan-result polling now syncs scan settings every 1s and uses `scan_settings.results_read_interval_ms` (bounded to 50..5000ms) for both refresh loop sleep and `request_repaint_after`.
   - `MemoryReadRequest` no longer logs `No opened process available.` when `suppress_logging=true`, preventing polling log spam when no process is open.
