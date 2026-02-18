@@ -45,6 +45,7 @@ pub struct SettingsPaneState {
     pub general_settings: GeneralSettings,
     pub memory_settings: MemorySettings,
     pub scan_settings: ScanSettings,
+    pub pending_numeric_edit_buffer: Option<String>,
     pub status_message: String,
 }
 
@@ -58,6 +59,7 @@ impl SettingsPaneState {
         let next_category_position = (selected_category_position + 1) % all_categories.len();
         self.selected_category = all_categories[next_category_position];
         self.selected_field_index = 0;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn cycle_category_backward(&mut self) {
@@ -73,6 +75,7 @@ impl SettingsPaneState {
         };
         self.selected_category = all_categories[previous_category_position];
         self.selected_field_index = 0;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn select_next_field(&mut self) {
@@ -83,6 +86,7 @@ impl SettingsPaneState {
         }
 
         self.selected_field_index = (self.selected_field_index + 1) % field_count;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn select_previous_field(&mut self) {
@@ -97,15 +101,18 @@ impl SettingsPaneState {
         } else {
             self.selected_field_index - 1
         };
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn select_first_field(&mut self) {
         self.selected_field_index = 0;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn select_last_field(&mut self) {
         let field_count = self.field_count_for_selected_category();
         self.selected_field_index = field_count.saturating_sub(1);
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn toggle_selected_boolean_field(&mut self) -> bool {
@@ -175,6 +182,7 @@ impl SettingsPaneState {
 
         if did_change_value {
             self.has_pending_changes = true;
+            self.cancel_pending_numeric_edit();
         }
 
         did_change_value
@@ -230,6 +238,7 @@ impl SettingsPaneState {
 
         if did_change_value {
             self.has_pending_changes = true;
+            self.cancel_pending_numeric_edit();
         }
 
         did_change_value
@@ -262,6 +271,7 @@ impl SettingsPaneState {
 
         if did_change_value {
             self.has_pending_changes = true;
+            self.cancel_pending_numeric_edit();
         }
 
         did_change_value
@@ -273,6 +283,7 @@ impl SettingsPaneState {
     ) {
         self.general_settings = general_settings;
         self.has_pending_changes = false;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn apply_memory_settings(
@@ -281,6 +292,7 @@ impl SettingsPaneState {
     ) {
         self.memory_settings = memory_settings;
         self.has_pending_changes = false;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn apply_scan_settings(
@@ -289,6 +301,7 @@ impl SettingsPaneState {
     ) {
         self.scan_settings = scan_settings;
         self.has_pending_changes = false;
+        self.cancel_pending_numeric_edit();
     }
 
     pub fn summary_lines_with_capacity(
@@ -296,6 +309,193 @@ impl SettingsPaneState {
         line_capacity: usize,
     ) -> Vec<String> {
         build_settings_summary_lines_with_capacity(self, line_capacity)
+    }
+
+    pub fn append_pending_numeric_edit_character(
+        &mut self,
+        pending_character: char,
+    ) -> bool {
+        if !self.selected_field_supports_numeric_edit() {
+            return false;
+        }
+        if !Self::is_supported_numeric_edit_character(pending_character) {
+            return false;
+        }
+
+        let pending_numeric_edit_buffer = self.pending_numeric_edit_buffer.get_or_insert_with(String::new);
+        pending_numeric_edit_buffer.push(pending_character);
+        true
+    }
+
+    pub fn backspace_pending_numeric_edit(&mut self) -> bool {
+        let Some(pending_numeric_edit_buffer) = self.pending_numeric_edit_buffer.as_mut() else {
+            return false;
+        };
+        pending_numeric_edit_buffer.pop();
+        if pending_numeric_edit_buffer.is_empty() {
+            self.pending_numeric_edit_buffer = None;
+        }
+        true
+    }
+
+    pub fn clear_pending_numeric_edit(&mut self) -> bool {
+        if self.pending_numeric_edit_buffer.is_some() {
+            self.pending_numeric_edit_buffer = Some(String::new());
+            return true;
+        }
+        false
+    }
+
+    pub fn cancel_pending_numeric_edit(&mut self) -> bool {
+        if self.pending_numeric_edit_buffer.is_some() {
+            self.pending_numeric_edit_buffer = None;
+            return true;
+        }
+        false
+    }
+
+    pub fn commit_pending_numeric_edit(&mut self) -> bool {
+        let Some(pending_numeric_edit_buffer) = self.pending_numeric_edit_buffer.clone() else {
+            return false;
+        };
+        let pending_numeric_edit_value = pending_numeric_edit_buffer.trim();
+        if pending_numeric_edit_value.is_empty() {
+            self.pending_numeric_edit_buffer = None;
+            return false;
+        }
+
+        let did_change_value = match self.selected_category {
+            SettingsCategory::General => {
+                if self.selected_field_index == 0 {
+                    if let Some(parsed_value) = Self::parse_u64_numeric_edit(pending_numeric_edit_value) {
+                        let clamped_value = parsed_value.clamp(0, 5_000);
+                        if self.general_settings.engine_request_delay_ms != clamped_value {
+                            self.general_settings.engine_request_delay_ms = clamped_value;
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            SettingsCategory::Memory => match self.selected_field_index {
+                10 => {
+                    if let Some(parsed_value) = Self::parse_u64_numeric_edit(pending_numeric_edit_value) {
+                        if self.memory_settings.start_address != parsed_value {
+                            self.memory_settings.start_address = parsed_value;
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+                11 => {
+                    if let Some(parsed_value) = Self::parse_u64_numeric_edit(pending_numeric_edit_value) {
+                        if self.memory_settings.end_address != parsed_value {
+                            self.memory_settings.end_address = parsed_value;
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            },
+            SettingsCategory::Scan => match self.selected_field_index {
+                0 => {
+                    if let Some(parsed_value) = Self::parse_u32_numeric_edit(pending_numeric_edit_value) {
+                        let clamped_value = parsed_value.clamp(1, 1_024);
+                        if self.scan_settings.results_page_size != clamped_value {
+                            self.scan_settings.results_page_size = clamped_value;
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+                1 => Self::commit_scan_u64_numeric_edit(self.scan_settings.freeze_interval_ms, pending_numeric_edit_value, 0, 5_000)
+                    .map(|committed_value| {
+                        self.scan_settings.freeze_interval_ms = committed_value;
+                    })
+                    .is_some(),
+                2 => Self::commit_scan_u64_numeric_edit(self.scan_settings.project_read_interval_ms, pending_numeric_edit_value, 0, 5_000)
+                    .map(|committed_value| {
+                        self.scan_settings.project_read_interval_ms = committed_value;
+                    })
+                    .is_some(),
+                3 => Self::commit_scan_u64_numeric_edit(self.scan_settings.results_read_interval_ms, pending_numeric_edit_value, 0, 5_000)
+                    .map(|committed_value| {
+                        self.scan_settings.results_read_interval_ms = committed_value;
+                    })
+                    .is_some(),
+                _ => false,
+            },
+        };
+
+        if did_change_value {
+            self.has_pending_changes = true;
+        }
+        self.pending_numeric_edit_buffer = None;
+        did_change_value
+    }
+
+    fn commit_scan_u64_numeric_edit(
+        current_value: u64,
+        pending_numeric_edit_value: &str,
+        minimum_value: u64,
+        maximum_value: u64,
+    ) -> Option<u64> {
+        let parsed_value = Self::parse_u64_numeric_edit(pending_numeric_edit_value)?;
+        let clamped_value = parsed_value.clamp(minimum_value, maximum_value);
+        if clamped_value != current_value { Some(clamped_value) } else { None }
+    }
+
+    fn selected_field_supports_numeric_edit(&self) -> bool {
+        match self.selected_category {
+            SettingsCategory::General => self.selected_field_index == 0,
+            SettingsCategory::Memory => self.selected_field_index == 10 || self.selected_field_index == 11,
+            SettingsCategory::Scan => matches!(self.selected_field_index, 0..=3),
+        }
+    }
+
+    fn is_supported_numeric_edit_character(pending_character: char) -> bool {
+        pending_character.is_ascii_digit()
+            || pending_character == 'x'
+            || pending_character == 'X'
+            || (pending_character >= 'a' && pending_character <= 'f')
+            || (pending_character >= 'A' && pending_character <= 'F')
+    }
+
+    fn parse_u64_numeric_edit(pending_numeric_edit_value: &str) -> Option<u64> {
+        if let Some(hex_text) = pending_numeric_edit_value
+            .strip_prefix("0x")
+            .or_else(|| pending_numeric_edit_value.strip_prefix("0X"))
+        {
+            u64::from_str_radix(hex_text, 16).ok()
+        } else {
+            pending_numeric_edit_value.parse::<u64>().ok()
+        }
+    }
+
+    fn parse_u32_numeric_edit(pending_numeric_edit_value: &str) -> Option<u32> {
+        if let Some(hex_text) = pending_numeric_edit_value
+            .strip_prefix("0x")
+            .or_else(|| pending_numeric_edit_value.strip_prefix("0X"))
+        {
+            u32::from_str_radix(hex_text, 16).ok()
+        } else {
+            pending_numeric_edit_value.parse::<u32>().ok()
+        }
     }
 
     fn field_count_for_selected_category(&self) -> usize {
@@ -427,6 +627,7 @@ impl Default for SettingsPaneState {
             general_settings: GeneralSettings::default(),
             memory_settings: MemorySettings::default(),
             scan_settings: ScanSettings::default(),
+            pending_numeric_edit_buffer: None,
             status_message: "Ready.".to_string(),
         }
     }
@@ -460,5 +661,56 @@ mod tests {
         settings_pane_state.select_last_field();
 
         assert_eq!(settings_pane_state.selected_field_index, 8);
+    }
+
+    #[test]
+    fn commit_pending_numeric_edit_applies_decimal_value() {
+        let mut settings_pane_state = SettingsPaneState::default();
+        settings_pane_state.selected_category = SettingsCategory::General;
+        settings_pane_state.selected_field_index = 0;
+        settings_pane_state.append_pending_numeric_edit_character('1');
+        settings_pane_state.append_pending_numeric_edit_character('5');
+        settings_pane_state.append_pending_numeric_edit_character('0');
+
+        let did_change_value = settings_pane_state.commit_pending_numeric_edit();
+
+        assert!(did_change_value);
+        assert_eq!(settings_pane_state.general_settings.engine_request_delay_ms, 150);
+        assert!(settings_pane_state.has_pending_changes);
+        assert!(settings_pane_state.pending_numeric_edit_buffer.is_none());
+    }
+
+    #[test]
+    fn commit_pending_numeric_edit_applies_hex_value_for_memory_address() {
+        let mut settings_pane_state = SettingsPaneState::default();
+        settings_pane_state.selected_category = SettingsCategory::Memory;
+        settings_pane_state.selected_field_index = 10;
+        for pending_character in ['0', 'x', 'A', 'B', 'C'] {
+            settings_pane_state.append_pending_numeric_edit_character(pending_character);
+        }
+
+        let did_change_value = settings_pane_state.commit_pending_numeric_edit();
+
+        assert!(did_change_value);
+        assert_eq!(settings_pane_state.memory_settings.start_address, 0xABC);
+    }
+
+    #[test]
+    fn commit_pending_numeric_edit_ignores_invalid_input() {
+        let mut settings_pane_state = SettingsPaneState::default();
+        settings_pane_state.selected_category = SettingsCategory::Scan;
+        settings_pane_state.selected_field_index = 0;
+        let original_results_page_size = settings_pane_state.scan_settings.results_page_size;
+        settings_pane_state.pending_numeric_edit_buffer = Some("bad".to_string());
+
+        let did_change_value = settings_pane_state.commit_pending_numeric_edit();
+
+        assert!(!did_change_value);
+        assert_eq!(
+            settings_pane_state.scan_settings.results_page_size,
+            original_results_page_size
+        );
+        assert!(!settings_pane_state.has_pending_changes);
+        assert!(settings_pane_state.pending_numeric_edit_buffer.is_none());
     }
 }

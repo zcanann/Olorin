@@ -14,11 +14,12 @@ pub fn build_settings_summary_lines_with_capacity(
 
     let category_lines = selected_category_lines(settings_pane_state);
     let selected_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, 1);
-    let additional_field_capacity = line_capacity.saturating_sub(6);
+    let additional_field_capacity = line_capacity.saturating_sub(7);
     let additional_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, additional_field_capacity);
-
-    let mut prioritized_lines = vec!["[ACT] [/] category | Up/Down move | Home/End jump | Space toggle | +/- step | </> enum | Enter apply.".to_string()];
+    let mut prioritized_lines =
+        vec!["[ACT] Left/Right category | Up/Down move | Home/End jump | Space toggle | +/- step | </> enum | Type number | Enter apply.".to_string()];
     prioritized_lines.extend(selected_field_lines);
+    prioritized_lines.push(format!("[TAB] {}.", render_category_tabs(settings_pane_state.selected_category)));
     prioritized_lines.push(format!(
         "[CAT] {} | field={}.",
         settings_pane_state.selected_category.title(),
@@ -57,9 +58,10 @@ fn selected_category_lines(settings_pane_state: &SettingsPaneState) -> Vec<Strin
 
 fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![format!(
-        "{} [FLD] request_delay_ms={}.",
+        "{} [FLD] request_delay_ms={}{}.",
         selection_marker(settings_pane_state.selected_field_index, 0),
-        settings_pane_state.general_settings.engine_request_delay_ms
+        settings_pane_state.general_settings.engine_request_delay_ms,
+        pending_numeric_edit_suffix(settings_pane_state, 0)
     )]
 }
 
@@ -116,14 +118,16 @@ fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> 
             settings_pane_state.memory_settings.excluded_copy_on_write
         ),
         format!(
-            "{} [FLD] start_address=0x{:X}.",
+            "{} [FLD] start_address=0x{:X}{}.",
             selection_marker(settings_pane_state.selected_field_index, 10),
-            settings_pane_state.memory_settings.start_address
+            settings_pane_state.memory_settings.start_address,
+            pending_numeric_edit_suffix(settings_pane_state, 10)
         ),
         format!(
-            "{} [FLD] end_address=0x{:X}.",
+            "{} [FLD] end_address=0x{:X}{}.",
             selection_marker(settings_pane_state.selected_field_index, 11),
-            settings_pane_state.memory_settings.end_address
+            settings_pane_state.memory_settings.end_address,
+            pending_numeric_edit_suffix(settings_pane_state, 11)
         ),
         format!(
             "{} [FLD] usermode_only={}.",
@@ -136,24 +140,28 @@ fn memory_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> 
 fn scan_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![
         format!(
-            "{} [FLD] page_size={}.",
+            "{} [FLD] page_size={}{}.",
             selection_marker(settings_pane_state.selected_field_index, 0),
-            settings_pane_state.scan_settings.results_page_size
+            settings_pane_state.scan_settings.results_page_size,
+            pending_numeric_edit_suffix(settings_pane_state, 0)
         ),
         format!(
-            "{} [FLD] freeze_ms={}.",
+            "{} [FLD] freeze_ms={}{}.",
             selection_marker(settings_pane_state.selected_field_index, 1),
-            settings_pane_state.scan_settings.freeze_interval_ms
+            settings_pane_state.scan_settings.freeze_interval_ms,
+            pending_numeric_edit_suffix(settings_pane_state, 1)
         ),
         format!(
-            "{} [FLD] project_read_ms={}.",
+            "{} [FLD] project_read_ms={}{}.",
             selection_marker(settings_pane_state.selected_field_index, 2),
-            settings_pane_state.scan_settings.project_read_interval_ms
+            settings_pane_state.scan_settings.project_read_interval_ms,
+            pending_numeric_edit_suffix(settings_pane_state, 2)
         ),
         format!(
-            "{} [FLD] result_read_ms={}.",
+            "{} [FLD] result_read_ms={}{}.",
             selection_marker(settings_pane_state.selected_field_index, 3),
-            settings_pane_state.scan_settings.results_read_interval_ms
+            settings_pane_state.scan_settings.results_read_interval_ms,
+            pending_numeric_edit_suffix(settings_pane_state, 3)
         ),
         format!(
             "{} [FLD] memory_alignment={}.",
@@ -217,4 +225,32 @@ fn floating_point_tolerance_label(floating_point_tolerance: FloatingPointToleran
         FloatingPointTolerance::Tolerance10E5 => "0.00001",
         FloatingPointTolerance::ToleranceEpsilon => "epsilon",
     }
+}
+
+fn render_category_tabs(selected_category: SettingsCategory) -> String {
+    SettingsCategory::all_categories()
+        .iter()
+        .map(|settings_category| {
+            if *settings_category == selected_category {
+                format!("[{}]", settings_category.title())
+            } else {
+                settings_category.title().to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join(" | ")
+}
+
+fn pending_numeric_edit_suffix(
+    settings_pane_state: &SettingsPaneState,
+    field_position: usize,
+) -> String {
+    if settings_pane_state.selected_field_index != field_position {
+        return String::new();
+    }
+
+    let Some(pending_numeric_edit_buffer) = settings_pane_state.pending_numeric_edit_buffer.as_ref() else {
+        return String::new();
+    };
+    format!(" | edit='{}'", pending_numeric_edit_buffer)
 }

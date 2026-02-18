@@ -18,7 +18,7 @@ impl AppShell {
             TuiPane::ProjectExplorer => self.handle_project_explorer_key_event(key_event, squalr_engine),
             TuiPane::StructViewer => self.handle_struct_viewer_key_event(key_event, squalr_engine),
             TuiPane::Output => self.handle_output_key_event(key_event.code, squalr_engine),
-            TuiPane::Settings => self.handle_settings_key_event(key_event.code, squalr_engine),
+            TuiPane::Settings => self.handle_settings_key_event(key_event, squalr_engine),
         }
     }
 
@@ -38,17 +38,29 @@ impl AppShell {
 
     pub(super) fn handle_settings_key_event(
         &mut self,
-        key_code: KeyCode,
+        key_event: KeyEvent,
         squalr_engine: &mut SqualrEngine,
     ) {
-        match key_code {
+        match key_event.code {
             KeyCode::Char('r') => self.refresh_all_settings_categories_with_feedback(squalr_engine, true),
+            KeyCode::Left => self.app_state.settings_pane_state.cycle_category_backward(),
+            KeyCode::Right => self.app_state.settings_pane_state.cycle_category_forward(),
             KeyCode::Char(']') => self.app_state.settings_pane_state.cycle_category_forward(),
             KeyCode::Char('[') => self.app_state.settings_pane_state.cycle_category_backward(),
             KeyCode::Down => self.app_state.settings_pane_state.select_next_field(),
             KeyCode::Up => self.app_state.settings_pane_state.select_previous_field(),
             KeyCode::Home => self.app_state.settings_pane_state.select_first_field(),
             KeyCode::End => self.app_state.settings_pane_state.select_last_field(),
+            KeyCode::Esc => {
+                self.app_state
+                    .settings_pane_state
+                    .cancel_pending_numeric_edit();
+            }
+            KeyCode::Backspace => {
+                self.app_state
+                    .settings_pane_state
+                    .backspace_pending_numeric_edit();
+            }
             KeyCode::Char(' ') => {
                 if self
                     .app_state
@@ -94,7 +106,21 @@ impl AppShell {
                     self.apply_selected_settings_category(squalr_engine);
                 }
             }
-            KeyCode::Enter => self.apply_selected_settings_category(squalr_engine),
+            KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.app_state.settings_pane_state.clear_pending_numeric_edit();
+            }
+            KeyCode::Enter => {
+                if self.app_state.settings_pane_state.commit_pending_numeric_edit() {
+                    self.apply_selected_settings_category(squalr_engine);
+                } else {
+                    self.apply_selected_settings_category(squalr_engine);
+                }
+            }
+            KeyCode::Char(pending_character) => {
+                self.app_state
+                    .settings_pane_state
+                    .append_pending_numeric_edit_character(pending_character);
+            }
             _ => {}
         }
     }

@@ -9,7 +9,6 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 - Toggling a project item address does not freeze the address. This works fine in gui build.
-- Settings editing UX is abysmal (inputs dont even work?)
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -39,4 +38,6 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Project Explorer summary is context-aware: project-list controls render only in list mode, hierarchy controls + `[PROJ]` render only in hierarchy mode.
 - Scan Results now mirror selected scanner data types as active client-side filters over the current page, with summary lines for active/available type ids.
 - Element Scanner removed `[LAST]`; result count/bytes now show in Scan Results summary.
-- `cargo test -p squalr-tui` currently passes (30 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
+- Settings pane now supports `Left/Right` category tabs, typed numeric input edits (`0x` hex or decimal), and edit lifecycle controls (`Backspace`/`Ctrl+U`/`Esc`/`Enter`).
+- Settings rows render inline pending edit state (`edit='...'`) for the selected numeric field to make input behavior visible.
+- `cargo test -p squalr-tui` currently passes (33 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
