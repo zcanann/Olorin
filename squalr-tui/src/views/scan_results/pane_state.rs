@@ -87,25 +87,7 @@ impl ScanResultsPaneState {
         self.results_per_page = scan_results_query_response.page_size;
         self.total_result_count = scan_results_query_response.result_count;
         self.total_size_in_bytes = scan_results_query_response.total_size_in_bytes;
-
-        let mut merged_scan_results = scan_results_query_response.scan_results;
-        for merged_scan_result in &mut merged_scan_results {
-            let merged_scan_result_global_index = merged_scan_result
-                .get_base_result()
-                .get_scan_result_ref()
-                .get_scan_result_global_index();
-
-            if let Some(previous_scan_result) = self.all_scan_results.iter().find(|existing_scan_result| {
-                existing_scan_result
-                    .get_base_result()
-                    .get_scan_result_ref()
-                    .get_scan_result_global_index()
-                    == merged_scan_result_global_index
-            }) {
-                merged_scan_result.inherit_recently_read_payload_from(previous_scan_result);
-            }
-        }
-        self.all_scan_results = merged_scan_results;
+        self.all_scan_results = scan_results_query_response.scan_results;
         self.rebuild_available_data_type_ids();
         self.rebuild_filtered_scan_results();
         self.selected_result_index = selected_scan_result_global_index_before_refresh
@@ -139,24 +121,7 @@ impl ScanResultsPaneState {
         &mut self,
         refreshed_scan_results: Vec<ScanResult>,
     ) {
-        let mut merged_scan_results = refreshed_scan_results;
-        for merged_scan_result in &mut merged_scan_results {
-            let merged_scan_result_global_index = merged_scan_result
-                .get_base_result()
-                .get_scan_result_ref()
-                .get_scan_result_global_index();
-
-            if let Some(previous_scan_result) = self.all_scan_results.iter().find(|existing_scan_result| {
-                existing_scan_result
-                    .get_base_result()
-                    .get_scan_result_ref()
-                    .get_scan_result_global_index()
-                    == merged_scan_result_global_index
-            }) {
-                merged_scan_result.inherit_recently_read_payload_from(previous_scan_result);
-            }
-        }
-        self.all_scan_results = merged_scan_results;
+        self.all_scan_results = refreshed_scan_results;
         self.rebuild_available_data_type_ids();
         self.rebuild_filtered_scan_results();
         self.clamp_selection_to_bounds();
