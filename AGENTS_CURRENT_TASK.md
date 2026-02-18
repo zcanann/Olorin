@@ -9,7 +9,7 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 
-- No remaining concrete tasks currently tracked. Audit GUI/TUI parity for additional gaps as needed.
+- Audit GUI scan-result refresh pending-operation guards against TUI (query/refresh/edit/freeze/delete parity) and add missing guards if needed.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -31,3 +31,5 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
   - `MemoryReadRequest` now carries `suppress_logging`; memory-read polling call sites can request silent reads.
   - Project-item polling reads now set `suppress_logging=true`, removing per-read info-log spam from periodic refreshes.
   - GUI scan-result rows now fall back to scan current-display/current-value text when recently-read payload is temporarily unavailable, preventing persistent `??` display gaps.
+  - GUI element-scanner scan-result polling now syncs scan settings every 1s and uses `scan_settings.results_read_interval_ms` (bounded to 50..5000ms) for both refresh loop sleep and `request_repaint_after`.
+  - `MemoryReadRequest` no longer logs `No opened process available.` when `suppress_logging=true`, preventing polling log spam when no process is open.

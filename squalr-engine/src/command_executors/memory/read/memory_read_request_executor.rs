@@ -62,7 +62,9 @@ impl PrivilegedCommandRequestExecutor for MemoryReadRequest {
                 }
             }
         } else {
-            log::error!("No opened process available.");
+            if !self.suppress_logging {
+                log::error!("No opened process available.");
+            }
 
             MemoryReadResponse {
                 valued_struct: ValuedStruct::new(SymbolicStructRef::new(String::new()), vec![]),
