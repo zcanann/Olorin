@@ -9,7 +9,7 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 
-- Freezing project items still does not actually freeze them from the TUI. Selecting the project item does nothing. Tested on a module (ie winmine+0x100579c). Either its bugged, you arent respecting modules, or something else. Again, consult gui project.
+- Verify end-to-end in GUI and TUI that activating module-backed project items both updates preview values and applies freeze behavior over time (winmine+0x100579c).
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -21,5 +21,5 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
   - Element scanner now has a single focus target (`DataTypes` or `Constraints`) so data-type hover and constraint editing are not simultaneous.
   - Scan result page/selection display is now 1-indexed in the TUI summary/status text.
   - Project-item navigation now refreshes struct-viewer project-item focus immediately.
-- Remaining blocker:
-  - Project item activation does not currently drive freeze behavior for module-backed addresses in the underlying engine path. TUI activation request is dispatched and list refreshes, but freeze-side effects are not observed.
+  - Project-item list now refreshes address preview values using privileged memory reads (removes persistent `??` when reads succeed).
+  - Project-item activation now dispatches privileged memory-freeze targets for address items (module-backed and absolute addresses).
