@@ -142,7 +142,7 @@ impl TuiAppState {
         pane_entry_row_capacity: usize,
     ) -> Option<String> {
         match pane {
-            TuiPane::ProcessSelector | TuiPane::ScanResults => Some(format!("[ROWS] visible={}.", pane_entry_row_capacity)),
+            TuiPane::ProcessSelector => Some(format!("[ROWS] visible={}.", pane_entry_row_capacity)),
             TuiPane::ProjectExplorer => {
                 let (project_entry_row_capacity, project_item_entry_row_capacity) = self.project_explorer_entry_row_capacities(pane_entry_row_capacity);
                 Some(format!(

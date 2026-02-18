@@ -286,8 +286,13 @@ impl AppShell {
 
         self.app_state.scan_results_pane_state.is_querying_scan_results = true;
         if should_update_status_message {
-            self.app_state.scan_results_pane_state.status_message =
-                format!("Querying scan results page {}.", self.app_state.scan_results_pane_state.current_page_index);
+            self.app_state.scan_results_pane_state.status_message = format!(
+                "Querying scan results page {}.",
+                self.app_state
+                    .scan_results_pane_state
+                    .current_page_index
+                    .saturating_add(1)
+            );
         }
 
         let page_index = self.app_state.scan_results_pane_state.current_page_index;
@@ -731,7 +736,7 @@ impl AppShell {
             .scan_results_pane_state
             .apply_query_response(scan_results_query_response);
         if should_update_status_message {
-            self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index, result_count);
+            self.app_state.scan_results_pane_state.status_message = format!("Loaded page {} ({} total results).", page_index.saturating_add(1), result_count);
         }
     }
 

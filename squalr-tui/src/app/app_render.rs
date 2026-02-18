@@ -99,6 +99,7 @@ impl AppShell {
                 self.app_state
                     .pane_row_telemetry_line(pane, pane_entry_row_capacity)
             });
+        let summary_lines = Self::fold_scan_results_visible_rows_into_page_line(pane, summary_lines, entry_row_capacity);
         let display_summary_lines = self.fit_summary_lines_to_width(summary_lines, pane_content_width);
         let pane_lines: Vec<Line<'static>> = display_summary_lines.into_iter().map(Line::from).collect();
         let entry_rows = self.app_state.pane_entry_rows(pane, entry_row_capacity);
@@ -397,5 +398,28 @@ impl AppShell {
 
         let kept_text: String = text.chars().take(max_width - 1).collect();
         format!("{}.", kept_text)
+    }
+
+    fn fold_scan_results_visible_rows_into_page_line(
+        pane: TuiPane,
+        mut summary_lines: Vec<String>,
+        entry_row_capacity: usize,
+    ) -> Vec<String> {
+        if pane != TuiPane::ScanResults {
+            return summary_lines;
+        }
+
+        let Some(page_summary_line_index) = summary_lines
+            .iter()
+            .position(|summary_line| summary_line.starts_with("[PAGE]"))
+        else {
+            return summary_lines;
+        };
+        let page_summary_line = summary_lines[page_summary_line_index]
+            .trim_end_matches('.')
+            .to_string();
+        summary_lines[page_summary_line_index] = format!("{} | visible_rows={}.", page_summary_line, entry_row_capacity);
+
+        summary_lines
     }
 }

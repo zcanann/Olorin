@@ -1,4 +1,4 @@
-use crate::views::element_scanner::pane_state::{ElementScannerConstraintState, ElementScannerPaneState};
+use crate::views::element_scanner::pane_state::{ElementScannerConstraintState, ElementScannerFocusTarget, ElementScannerPaneState};
 use crate::views::entry_row_viewport::build_selection_relative_viewport_range;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type::ScanCompareType;
 use squalr_engine_api::structures::scanning::comparisons::scan_compare_type_delta::ScanCompareTypeDelta;
@@ -20,7 +20,7 @@ pub fn build_element_scanner_summary_lines_with_capacity(
 
     let mut prioritized_lines = vec![
         "[ACT] s scan | n reset | c collect | a add | x remove.".to_string(),
-        "[CTRL] arrows hover-type | Space/Enter toggle-type | [/] row | m/M compare | type value.".to_string(),
+        "[CTRL] arrows move | Space/Enter toggle-type (types) | [/] row (constraints) | m/M compare | type value.".to_string(),
         format!(
             "[SCAN] constraints={} | selected_row={} | pending={} | has_results={}.",
             element_scanner_pane_state.active_constraint_count(),
@@ -48,7 +48,9 @@ fn build_data_type_grid_lines(element_scanner_pane_state: &ElementScannerPaneSta
         let mut row_cells = Vec::with_capacity(data_type_name_row.len());
         for (data_type_name_column_index, data_type_name) in data_type_name_row.iter().enumerate() {
             let data_type_index = (data_type_row_index * grid_column_count) + data_type_name_column_index;
-            let hovered_marker = if element_scanner_pane_state.is_data_type_hovered(data_type_index) {
+            let hovered_marker = if element_scanner_pane_state.focus_target == ElementScannerFocusTarget::DataTypes
+                && element_scanner_pane_state.is_data_type_hovered(data_type_index)
+            {
                 ">"
             } else {
                 " "
@@ -76,7 +78,8 @@ fn build_constraint_row_lines(element_scanner_pane_state: &ElementScannerPaneSta
             build_constraint_row_line(
                 constraint_row,
                 constraint_row_index,
-                element_scanner_pane_state.selected_constraint_row_index == constraint_row_index,
+                element_scanner_pane_state.focus_target == ElementScannerFocusTarget::Constraints
+                    && element_scanner_pane_state.selected_constraint_row_index == constraint_row_index,
             )
         })
         .collect()

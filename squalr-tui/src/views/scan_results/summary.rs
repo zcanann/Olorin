@@ -23,14 +23,18 @@ pub fn build_scan_results_summary_lines(scan_results_pane_state: &ScanResultsPan
         format!("[TYPE] active={} | available={}.", selected_type_filters, available_types),
         format!(
             "[PAGE] {}/{} | size={} | results={}.",
-            scan_results_pane_state.current_page_index,
-            scan_results_pane_state.cached_last_page_index,
+            display_page_number(scan_results_pane_state.current_page_index),
+            display_page_number(scan_results_pane_state.cached_last_page_index),
             scan_results_pane_state.results_per_page,
             scan_results_pane_state.total_result_count
         ),
         format!(
             "[SEL] index={} | selected={} | bytes={}.",
-            option_to_compact_text(scan_results_pane_state.selected_result_index),
+            option_to_compact_text(
+                scan_results_pane_state
+                    .selected_result_index
+                    .map(|selected_result_index| selected_result_index + 1)
+            ),
             scan_results_pane_state.selected_result_count(),
             scan_results_pane_state.total_size_in_bytes
         ),
@@ -42,7 +46,12 @@ pub fn build_scan_results_summary_lines(scan_results_pane_state: &ScanResultsPan
     ];
 
     if !scan_results_pane_state.pending_value_edit_text.is_empty() {
-        summary_lines.insert(5, format!("[VAL] {}.", scan_results_pane_state.pending_value_edit_text));
+        let edit_value_line = format!("[EDIT VAL] {}.", scan_results_pane_state.pending_value_edit_text);
+        let status_line_index = summary_lines
+            .iter()
+            .position(|summary_line| summary_line.starts_with("[STAT]"))
+            .unwrap_or(summary_lines.len());
+        summary_lines.insert(status_line_index, edit_value_line);
     }
 
     summary_lines
@@ -52,4 +61,8 @@ fn option_to_compact_text<T: std::fmt::Display>(option_value: Option<T>) -> Stri
     option_value
         .map(|value| value.to_string())
         .unwrap_or_else(|| "none".to_string())
+}
+
+fn display_page_number(page_index: u64) -> u64 {
+    page_index.saturating_add(1)
 }

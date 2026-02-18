@@ -23,6 +23,7 @@ pub struct ScanResultsPaneState {
     pub selected_result_index: Option<usize>,
     pub selected_range_end_index: Option<usize>,
     pub pending_value_edit_text: String,
+    pub is_pending_value_edit_dirty: bool,
     pub is_querying_scan_results: bool,
     pub is_refreshing_scan_results: bool,
     pub is_freezing_scan_results: bool,
@@ -46,6 +47,7 @@ impl ScanResultsPaneState {
         self.selected_result_index = None;
         self.selected_range_end_index = None;
         self.pending_value_edit_text = "0".to_string();
+        self.is_pending_value_edit_dirty = false;
         self.status_message = "Scan results cleared.".to_string();
         self.is_querying_scan_results = false;
         self.is_refreshing_scan_results = false;
@@ -112,7 +114,7 @@ impl ScanResultsPaneState {
             })
             .or_else(|| selected_range_end_index_before_refresh.filter(|selected_range_end_index| *selected_range_end_index < self.scan_results.len()));
         self.clamp_selection_to_bounds();
-        self.sync_pending_value_edit_from_selection();
+        self.sync_pending_value_edit_from_selection_if_clean();
     }
 
     pub fn apply_refreshed_results(
@@ -123,7 +125,7 @@ impl ScanResultsPaneState {
         self.rebuild_available_data_type_ids();
         self.rebuild_filtered_scan_results();
         self.clamp_selection_to_bounds();
-        self.sync_pending_value_edit_from_selection();
+        self.sync_pending_value_edit_from_selection_if_clean();
     }
 
     pub fn set_filtered_data_type_ids(
@@ -133,7 +135,7 @@ impl ScanResultsPaneState {
         self.filtered_data_type_ids = filtered_data_type_ids.into_iter().collect();
         self.rebuild_filtered_scan_results();
         self.clamp_selection_to_bounds();
-        self.sync_pending_value_edit_from_selection();
+        self.sync_pending_value_edit_from_selection_if_clean();
     }
 
     pub fn set_current_page_index(
@@ -277,14 +279,6 @@ impl ScanResultsPaneState {
         let selected_result_index = self.selected_result_index?;
         let selected_result = self.scan_results.get(selected_result_index)?;
 
-        if let Some(current_display_value) = selected_result.get_current_display_value(AnonymousValueStringFormat::Decimal) {
-            return Some(current_display_value.get_anonymous_value_string().to_string());
-        }
-
-        if let Some(current_display_value) = selected_result.get_current_display_values().first() {
-            return Some(current_display_value.get_anonymous_value_string().to_string());
-        }
-
         if let Some(recently_read_display_value) = selected_result.get_recently_read_display_value(AnonymousValueStringFormat::Decimal) {
             return Some(
                 recently_read_display_value
@@ -293,21 +287,37 @@ impl ScanResultsPaneState {
             );
         }
 
-        selected_result
-            .get_recently_read_display_values()
-            .first()
-            .map(|recently_read_display_value| {
+        if let Some(current_display_value) = selected_result.get_current_display_value(AnonymousValueStringFormat::Decimal) {
+            return Some(current_display_value.get_anonymous_value_string().to_string());
+        }
+
+        if let Some(recently_read_display_value) = selected_result.get_recently_read_display_values().first() {
+            return Some(
                 recently_read_display_value
                     .get_anonymous_value_string()
-                    .to_string()
-            })
+                    .to_string(),
+            );
+        }
+
+        selected_result
+            .get_current_display_values()
+            .first()
+            .map(|current_display_value| current_display_value.get_anonymous_value_string().to_string())
     }
 
     pub fn sync_pending_value_edit_from_selection(&mut self) {
         if let Some(current_value_text) = self.selected_result_current_value_text() {
             self.pending_value_edit_text = current_value_text;
+            self.is_pending_value_edit_dirty = false;
         } else if self.pending_value_edit_text.is_empty() {
             self.pending_value_edit_text = "0".to_string();
+            self.is_pending_value_edit_dirty = false;
+        }
+    }
+
+    pub fn sync_pending_value_edit_from_selection_if_clean(&mut self) {
+        if !self.is_pending_value_edit_dirty {
+            self.sync_pending_value_edit_from_selection();
         }
     }
 
@@ -324,6 +334,7 @@ impl ScanResultsPaneState {
         }
 
         self.pending_value_edit_text.push(value_character);
+        self.is_pending_value_edit_dirty = true;
     }
 
     pub fn backspace_pending_value_edit(&mut self) {
@@ -332,10 +343,12 @@ impl ScanResultsPaneState {
         if self.pending_value_edit_text.is_empty() {
             self.pending_value_edit_text = "0".to_string();
         }
+        self.is_pending_value_edit_dirty = true;
     }
 
     pub fn clear_pending_value_edit(&mut self) {
         self.pending_value_edit_text = "0".to_string();
+        self.is_pending_value_edit_dirty = true;
     }
 
     pub fn summary_lines(&self) -> Vec<String> {
@@ -423,6 +436,7 @@ impl Default for ScanResultsPaneState {
             selected_result_index: None,
             selected_range_end_index: None,
             pending_value_edit_text: "0".to_string(),
+            is_pending_value_edit_dirty: false,
             is_querying_scan_results: false,
             is_refreshing_scan_results: false,
             is_freezing_scan_results: false,

@@ -27,8 +27,16 @@ impl Default for ElementScannerConstraintState {
 }
 
 /// Stores UI state for element scanner controls.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ElementScannerFocusTarget {
+    DataTypes,
+    Constraints,
+}
+
+/// Stores UI state for element scanner controls.
 #[derive(Clone, Debug)]
 pub struct ElementScannerPaneState {
+    pub focus_target: ElementScannerFocusTarget,
     pub selected_data_type_index: usize,
     pub selected_data_type_indices: BTreeSet<usize>,
     pub constraint_rows: Vec<ElementScannerConstraintState>,
@@ -146,6 +154,32 @@ impl ElementScannerPaneState {
 
     pub fn select_data_type_up(&mut self) {
         self.select_data_type_vertical(false);
+    }
+
+    pub fn move_focus_down(&mut self) {
+        match self.focus_target {
+            ElementScannerFocusTarget::DataTypes => {
+                if self.is_selected_data_type_on_bottom_row() {
+                    self.focus_target = ElementScannerFocusTarget::Constraints;
+                } else {
+                    self.select_data_type_down();
+                }
+            }
+            ElementScannerFocusTarget::Constraints => self.select_next_constraint(),
+        }
+    }
+
+    pub fn move_focus_up(&mut self) {
+        match self.focus_target {
+            ElementScannerFocusTarget::Constraints => {
+                if self.selected_constraint_row_index == 0 {
+                    self.focus_target = ElementScannerFocusTarget::DataTypes;
+                } else {
+                    self.select_previous_constraint();
+                }
+            }
+            ElementScannerFocusTarget::DataTypes => self.select_data_type_up(),
+        }
     }
 
     pub fn select_next_constraint(&mut self) {
@@ -294,11 +328,16 @@ impl ElementScannerPaneState {
         let tentative_target_data_type_index = target_row_index * column_count + selected_column_index;
         self.selected_data_type_index = tentative_target_data_type_index.min(data_type_count - 1);
     }
+
+    fn is_selected_data_type_on_bottom_row(&self) -> bool {
+        self.selected_data_type_index + Self::DATA_TYPE_GRID_COLUMN_COUNT >= Self::SUPPORTED_DATA_TYPE_IDS.len()
+    }
 }
 
 impl Default for ElementScannerPaneState {
     fn default() -> Self {
         Self {
+            focus_target: ElementScannerFocusTarget::DataTypes,
             selected_data_type_index: 2,
             selected_data_type_indices: BTreeSet::from([2]),
             constraint_rows: vec![ElementScannerConstraintState::default()],

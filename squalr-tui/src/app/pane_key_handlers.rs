@@ -1,5 +1,6 @@
 use super::app_shell::AppShell;
 use crate::state::pane::TuiPane;
+use crate::views::element_scanner::pane_state::ElementScannerFocusTarget;
 use crate::views::process_selector::pane_state::ProcessSelectorInputMode;
 use crate::views::project_explorer::pane_state::{ProjectExplorerFocusTarget, ProjectSelectorInputMode};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -218,42 +219,62 @@ impl AppShell {
                 .app_state
                 .element_scanner_pane_state
                 .select_data_type_left(),
-            KeyCode::Down => self
-                .app_state
-                .element_scanner_pane_state
-                .select_data_type_down(),
-            KeyCode::Up => self.app_state.element_scanner_pane_state.select_data_type_up(),
+            KeyCode::Down => self.app_state.element_scanner_pane_state.move_focus_down(),
+            KeyCode::Up => self.app_state.element_scanner_pane_state.move_focus_up(),
             KeyCode::Char(' ') | KeyCode::Enter => {
-                if self
-                    .app_state
-                    .element_scanner_pane_state
-                    .toggle_hovered_data_type_selection()
+                if self.app_state.element_scanner_pane_state.focus_target == ElementScannerFocusTarget::DataTypes
+                    && self
+                        .app_state
+                        .element_scanner_pane_state
+                        .toggle_hovered_data_type_selection()
                 {
                     self.sync_scan_results_type_filters_from_element_scanner();
                 }
             }
-            KeyCode::Char(']') => self
-                .app_state
-                .element_scanner_pane_state
-                .select_next_constraint(),
-            KeyCode::Char('[') => self
-                .app_state
-                .element_scanner_pane_state
-                .select_previous_constraint(),
-            KeyCode::Char('m') => self
-                .app_state
-                .element_scanner_pane_state
-                .cycle_selected_constraint_compare_type_forward(),
-            KeyCode::Char('M') => self
-                .app_state
-                .element_scanner_pane_state
-                .cycle_selected_constraint_compare_type_backward(),
+            KeyCode::Char(']') => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
+                self.app_state
+                    .element_scanner_pane_state
+                    .select_next_constraint();
+            }
+            KeyCode::Char('[') => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
+                self.app_state
+                    .element_scanner_pane_state
+                    .select_previous_constraint();
+            }
+            KeyCode::Char('m') => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
+                self.app_state
+                    .element_scanner_pane_state
+                    .cycle_selected_constraint_compare_type_forward();
+            }
+            KeyCode::Char('M') => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
+                self.app_state
+                    .element_scanner_pane_state
+                    .cycle_selected_constraint_compare_type_backward();
+            }
             KeyCode::Char('a') => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
                 if !self.app_state.element_scanner_pane_state.add_constraint() {
                     self.app_state.element_scanner_pane_state.status_message = "Maximum of five constraints reached.".to_string();
                 }
             }
             KeyCode::Char('x') => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
                 if !self
                     .app_state
                     .element_scanner_pane_state
@@ -262,16 +283,26 @@ impl AppShell {
                     self.app_state.element_scanner_pane_state.status_message = "At least one constraint is required.".to_string();
                 }
             }
-            KeyCode::Backspace => self
-                .app_state
-                .element_scanner_pane_state
-                .backspace_selected_constraint_value(),
+            KeyCode::Backspace => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
+                self.app_state
+                    .element_scanner_pane_state
+                    .backspace_selected_constraint_value();
+            }
             KeyCode::Char('u') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
                 self.app_state
                     .element_scanner_pane_state
                     .clear_selected_constraint_value();
             }
             KeyCode::Char(scan_value_character) => {
+                if self.app_state.element_scanner_pane_state.focus_target != ElementScannerFocusTarget::Constraints {
+                    return;
+                }
                 self.app_state
                     .element_scanner_pane_state
                     .append_selected_constraint_value_character(scan_value_character);
@@ -471,20 +502,26 @@ impl AppShell {
                 self.app_state
                     .project_explorer_pane_state
                     .select_next_project_item();
+                self.sync_struct_viewer_focus_from_project_items();
             }
             KeyCode::Up => {
                 self.app_state
                     .project_explorer_pane_state
                     .select_previous_project_item();
+                self.sync_struct_viewer_focus_from_project_items();
             }
-            KeyCode::Home => self
-                .app_state
-                .project_explorer_pane_state
-                .select_first_project_item(),
-            KeyCode::End => self
-                .app_state
-                .project_explorer_pane_state
-                .select_last_project_item(),
+            KeyCode::Home => {
+                self.app_state
+                    .project_explorer_pane_state
+                    .select_first_project_item();
+                self.sync_struct_viewer_focus_from_project_items();
+            }
+            KeyCode::End => {
+                self.app_state
+                    .project_explorer_pane_state
+                    .select_last_project_item();
+                self.sync_struct_viewer_focus_from_project_items();
+            }
             KeyCode::Right | KeyCode::Char('l') => {
                 if !self
                     .app_state
@@ -493,6 +530,7 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No expandable directory is selected.".to_string();
                 }
+                self.sync_struct_viewer_focus_from_project_items();
             }
             KeyCode::Left | KeyCode::Char('h') => {
                 if !self
@@ -502,8 +540,12 @@ impl AppShell {
                 {
                     self.app_state.project_explorer_pane_state.status_message = "No collapsible directory is selected.".to_string();
                 }
+                self.sync_struct_viewer_focus_from_project_items();
             }
-            KeyCode::Char(' ') => self.toggle_selected_project_item_activation(squalr_engine),
+            KeyCode::Char(' ') => {
+                self.toggle_selected_project_item_activation(squalr_engine);
+                self.sync_struct_viewer_focus_from_project_items();
+            }
             KeyCode::Char('n') => {
                 if !self
                     .app_state
