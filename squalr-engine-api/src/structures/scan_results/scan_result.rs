@@ -111,6 +111,22 @@ impl ScanResult {
         &self.recently_read_value
     }
 
+    pub fn has_recently_read_payload(&self) -> bool {
+        self.recently_read_value.is_some() || !self.recently_read_display_values.is_empty()
+    }
+
+    pub fn inherit_recently_read_payload_from(
+        &mut self,
+        previous_scan_result: &ScanResult,
+    ) {
+        if self.has_recently_read_payload() {
+            return;
+        }
+
+        self.recently_read_value = previous_scan_result.recently_read_value.clone();
+        self.recently_read_display_values = previous_scan_result.recently_read_display_values.clone();
+    }
+
     pub fn get_recently_read_display_values(&self) -> &Vec<AnonymousValueString> {
         &self.recently_read_display_values
     }
@@ -194,6 +210,9 @@ mod tests {
     use super::ScanResult;
     use crate::structures::data_types::built_in_types::u8::data_type_u8::DataTypeU8;
     use crate::structures::data_types::data_type_ref::DataTypeRef;
+    use crate::structures::data_values::anonymous_value_string::AnonymousValueString;
+    use crate::structures::data_values::anonymous_value_string_format::AnonymousValueStringFormat;
+    use crate::structures::data_values::container_type::ContainerType;
     use crate::structures::data_values::data_value::DataValue;
     use crate::structures::scan_results::scan_result_ref::ScanResultRef;
     use crate::structures::scan_results::scan_result_valued::ScanResultValued;
@@ -271,5 +290,113 @@ mod tests {
         let expected_value: DataValue = DataTypeU8::get_value_from_primitive(25);
 
         assert_eq!(value_data_value.get_value_bytes(), expected_value.get_value_bytes());
+    }
+
+    #[test]
+    fn inherit_recently_read_payload_from_uses_previous_payload_when_missing() {
+        let current_scan_result = ScanResult::new(
+            ScanResultValued::new(
+                0x1000,
+                DataTypeRef::new("u8"),
+                String::new(),
+                Some(DataTypeU8::get_value_from_primitive(10)),
+                Vec::new(),
+                None,
+                Vec::new(),
+                ScanResultRef::new(1),
+            ),
+            String::new(),
+            0,
+            None,
+            Vec::new(),
+            false,
+        );
+        let mut merged_scan_result = current_scan_result.clone();
+        let previous_scan_result = ScanResult::new(
+            ScanResultValued::new(
+                0x1000,
+                DataTypeRef::new("u8"),
+                String::new(),
+                Some(DataTypeU8::get_value_from_primitive(10)),
+                Vec::new(),
+                None,
+                Vec::new(),
+                ScanResultRef::new(1),
+            ),
+            String::new(),
+            0,
+            Some(DataTypeU8::get_value_from_primitive(33)),
+            vec![AnonymousValueString::new(
+                "33".to_string(),
+                AnonymousValueStringFormat::Decimal,
+                ContainerType::None,
+            )],
+            false,
+        );
+
+        merged_scan_result.inherit_recently_read_payload_from(&previous_scan_result);
+
+        assert!(merged_scan_result.has_recently_read_payload());
+        assert_eq!(
+            merged_scan_result
+                .get_recently_read_display_value(AnonymousValueStringFormat::Decimal)
+                .map(|display_value| display_value.get_anonymous_value_string().to_string()),
+            Some("33".to_string())
+        );
+    }
+
+    #[test]
+    fn inherit_recently_read_payload_from_preserves_existing_payload() {
+        let mut merged_scan_result = ScanResult::new(
+            ScanResultValued::new(
+                0x1000,
+                DataTypeRef::new("u8"),
+                String::new(),
+                Some(DataTypeU8::get_value_from_primitive(10)),
+                Vec::new(),
+                None,
+                Vec::new(),
+                ScanResultRef::new(1),
+            ),
+            String::new(),
+            0,
+            Some(DataTypeU8::get_value_from_primitive(44)),
+            vec![AnonymousValueString::new(
+                "44".to_string(),
+                AnonymousValueStringFormat::Decimal,
+                ContainerType::None,
+            )],
+            false,
+        );
+        let previous_scan_result = ScanResult::new(
+            ScanResultValued::new(
+                0x1000,
+                DataTypeRef::new("u8"),
+                String::new(),
+                Some(DataTypeU8::get_value_from_primitive(10)),
+                Vec::new(),
+                None,
+                Vec::new(),
+                ScanResultRef::new(1),
+            ),
+            String::new(),
+            0,
+            Some(DataTypeU8::get_value_from_primitive(33)),
+            vec![AnonymousValueString::new(
+                "33".to_string(),
+                AnonymousValueStringFormat::Decimal,
+                ContainerType::None,
+            )],
+            false,
+        );
+
+        merged_scan_result.inherit_recently_read_payload_from(&previous_scan_result);
+
+        assert_eq!(
+            merged_scan_result
+                .get_recently_read_display_value(AnonymousValueStringFormat::Decimal)
+                .map(|display_value| display_value.get_anonymous_value_string().to_string()),
+            Some("44".to_string())
+        );
     }
 }

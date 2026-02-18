@@ -242,11 +242,33 @@ impl ElementScannerResultsViewData {
             let result_count = scan_results_query_response.result_count;
 
             if let Some(mut element_scanner_results_view_data) = element_scanner_results_view_data_for_response.write("Query scan results response") {
+                let mut merged_scan_results = scan_results_query_response.scan_results;
+                for merged_scan_result in &mut merged_scan_results {
+                    let merged_scan_result_global_index = merged_scan_result
+                        .get_base_result()
+                        .get_scan_result_ref()
+                        .get_scan_result_global_index();
+
+                    if let Some(previous_scan_result) = element_scanner_results_view_data
+                        .current_scan_results
+                        .iter()
+                        .find(|existing_scan_result| {
+                            existing_scan_result
+                                .get_base_result()
+                                .get_scan_result_ref()
+                                .get_scan_result_global_index()
+                                == merged_scan_result_global_index
+                        })
+                    {
+                        merged_scan_result.inherit_recently_read_payload_from(previous_scan_result);
+                    }
+                }
+
                 element_scanner_results_view_data.is_querying_scan_results = false;
                 element_scanner_results_view_data.cached_last_page_index = scan_results_query_response.last_page_index;
                 element_scanner_results_view_data.result_count = result_count;
                 element_scanner_results_view_data.stats_string = format!("{} (Count: {})", byte_size_in_metric, result_count);
-                element_scanner_results_view_data.current_scan_results = scan_results_query_response.scan_results;
+                element_scanner_results_view_data.current_scan_results = merged_scan_results;
             }
 
             if play_sound {
@@ -307,10 +329,31 @@ impl ElementScannerResultsViewData {
                 Some(element_scanner_results_view_data) => element_scanner_results_view_data,
                 None => return,
             };
+            let mut merged_scan_results = scan_results_refresh_response.scan_results;
+            for merged_scan_result in &mut merged_scan_results {
+                let merged_scan_result_global_index = merged_scan_result
+                    .get_base_result()
+                    .get_scan_result_ref()
+                    .get_scan_result_global_index();
+
+                if let Some(previous_scan_result) = element_scanner_results_view_data
+                    .current_scan_results
+                    .iter()
+                    .find(|existing_scan_result| {
+                        existing_scan_result
+                            .get_base_result()
+                            .get_scan_result_ref()
+                            .get_scan_result_global_index()
+                            == merged_scan_result_global_index
+                    })
+                {
+                    merged_scan_result.inherit_recently_read_payload_from(previous_scan_result);
+                }
+            }
 
             // Update UI with refreshed, full scan result values.
             element_scanner_results_view_data.is_refreshing_scan_results = false;
-            element_scanner_results_view_data.current_scan_results = scan_results_refresh_response.scan_results;
+            element_scanner_results_view_data.current_scan_results = merged_scan_results;
         });
 
         if !did_dispatch {

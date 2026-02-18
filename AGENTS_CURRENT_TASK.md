@@ -10,6 +10,8 @@ Our current task, from `README.md`, is:
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 
 - Manual runtime verification in both GUI and TUI against `winmine+0x100579c`: confirm activated module-backed project items keep preview values updated and freeze behavior persists over time.
+    - Owner: Polling refreshes of values should send a flag to not log, otherwise you get log spam...
+    - Verify client/IPC builds retain recently-read scan-result values across query/refresh cycles when a read returns no payload.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -27,3 +29,4 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
   - TUI scan-result periodic refresh now runs even when the scan-results pane is not focused (still guarded by in-flight query/refresh/edit/freeze/delete state).
   - GUI vs TUI scan-result cadence audit: GUI still runs a hardcoded 100ms background refresh loop in `ElementScannerResultsViewData::poll_scan_results`, while TUI now uses `results_read_interval_ms`.
   - GUI project hierarchy now performs periodic project-item refreshes driven by `scan_settings.project_read_interval_ms` (bounded to 50..5000ms), with a 1s scan-settings sync and pending-operation guards.
+  - TUI and GUI scan-result query/refresh merges now preserve previously-recently-read value payloads per global result index when incoming responses have no recently-read payload, preventing regressions to stale scanned defaults in client/IPC flows.
