@@ -119,6 +119,7 @@ fn dispatch_memory_read_request(
         address,
         module_name: module_name.to_string(),
         symbolic_struct_definition: symbolic_struct_definition.clone(),
+        suppress_logging: true,
     };
     let memory_read_command = memory_read_request.to_engine_command();
     let (memory_read_response_sender, memory_read_response_receiver) = mpsc::channel();
