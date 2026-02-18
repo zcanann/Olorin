@@ -36,6 +36,15 @@ impl AppShell {
             self.app_state.element_scanner_pane_state.status_message = "Scan request already in progress.".to_string();
             return;
         }
+        if self
+            .app_state
+            .element_scanner_pane_state
+            .selected_data_type_ids()
+            .is_empty()
+        {
+            self.app_state.element_scanner_pane_state.status_message = "Select at least one data type before scanning.".to_string();
+            return;
+        }
 
         let engine_unprivileged_state = match squalr_engine.get_engine_unprivileged_state().as_ref() {
             Some(engine_unprivileged_state) => engine_unprivileged_state,

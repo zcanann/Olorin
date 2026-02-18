@@ -52,9 +52,7 @@ impl AppShell {
             KeyCode::Home => self.app_state.settings_pane_state.select_first_field(),
             KeyCode::End => self.app_state.settings_pane_state.select_last_field(),
             KeyCode::Esc => {
-                self.app_state
-                    .settings_pane_state
-                    .cancel_pending_numeric_edit();
+                self.app_state.settings_pane_state.cancel_pending_numeric_edit();
             }
             KeyCode::Backspace => {
                 self.app_state
@@ -229,8 +227,6 @@ impl AppShell {
                     .toggle_hovered_data_type_selection()
                 {
                     self.sync_scan_results_type_filters_from_element_scanner();
-                } else {
-                    self.app_state.element_scanner_pane_state.status_message = "At least one data type must remain selected.".to_string();
                 }
             }
             KeyCode::Char(']') => self

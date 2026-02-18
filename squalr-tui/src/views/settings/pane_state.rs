@@ -85,7 +85,11 @@ impl SettingsPaneState {
             return;
         }
 
-        self.selected_field_index = (self.selected_field_index + 1) % field_count;
+        let last_field_index = field_count - 1;
+        self.selected_field_index = self
+            .selected_field_index
+            .saturating_add(1)
+            .min(last_field_index);
         self.cancel_pending_numeric_edit();
     }
 
@@ -96,11 +100,7 @@ impl SettingsPaneState {
             return;
         }
 
-        self.selected_field_index = if self.selected_field_index == 0 {
-            field_count - 1
-        } else {
-            self.selected_field_index - 1
-        };
+        self.selected_field_index = self.selected_field_index.saturating_sub(1);
         self.cancel_pending_numeric_edit();
     }
 
@@ -706,11 +706,34 @@ mod tests {
         let did_change_value = settings_pane_state.commit_pending_numeric_edit();
 
         assert!(!did_change_value);
-        assert_eq!(
-            settings_pane_state.scan_settings.results_page_size,
-            original_results_page_size
-        );
+        assert_eq!(settings_pane_state.scan_settings.results_page_size, original_results_page_size);
         assert!(!settings_pane_state.has_pending_changes);
         assert!(settings_pane_state.pending_numeric_edit_buffer.is_none());
+    }
+
+    #[test]
+    fn select_next_field_stops_at_end_without_looping() {
+        let mut settings_pane_state = SettingsPaneState {
+            selected_category: SettingsCategory::General,
+            selected_field_index: 0,
+            ..SettingsPaneState::default()
+        };
+
+        settings_pane_state.select_next_field();
+
+        assert_eq!(settings_pane_state.selected_field_index, 0);
+    }
+
+    #[test]
+    fn select_previous_field_stops_at_start_without_looping() {
+        let mut settings_pane_state = SettingsPaneState {
+            selected_category: SettingsCategory::Memory,
+            selected_field_index: 0,
+            ..SettingsPaneState::default()
+        };
+
+        settings_pane_state.select_previous_field();
+
+        assert_eq!(settings_pane_state.selected_field_index, 0);
     }
 }

@@ -40,4 +40,8 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Element Scanner removed `[LAST]`; result count/bytes now show in Scan Results summary.
 - Settings pane now supports `Left/Right` category tabs, typed numeric input edits (`0x` hex or decimal), and edit lifecycle controls (`Backspace`/`Ctrl+U`/`Esc`/`Enter`).
 - Settings rows render inline pending edit state (`edit='...'`) for the selected numeric field to make input behavior visible.
-- `cargo test -p squalr-tui` currently passes (33 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
+- Element Scanner now allows temporarily dropping selected data types to zero; starting a scan with zero selected types is explicitly blocked with a status message.
+- Settings summary no longer duplicates a top selected-field preview row and no longer renders `[FLD]` prefixes.
+- Settings field navigation (`Up`/`Down`) now clamps at top/bottom and does not loop.
+- Settings boolean fields now render explicit true/false markers (`[*]` / `[ ]`).
+- `cargo test -p squalr-tui` currently passes (35 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.

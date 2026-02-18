@@ -69,10 +69,6 @@ impl ElementScannerPaneState {
         ScanCompareType::Delta(ScanCompareTypeDelta::LogicalXorByX),
     ];
 
-    pub fn selected_data_type_name(&self) -> &'static str {
-        Self::SUPPORTED_DATA_TYPE_IDS[self.selected_data_type_index]
-    }
-
     pub fn selected_data_type_refs(&self) -> Vec<DataTypeRef> {
         self.selected_data_type_ids()
             .iter()
@@ -81,20 +77,14 @@ impl ElementScannerPaneState {
     }
 
     pub fn selected_data_type_ids(&self) -> Vec<&'static str> {
-        let mut selected_data_type_ids: Vec<&'static str> = self
-            .selected_data_type_indices
+        self.selected_data_type_indices
             .iter()
             .filter_map(|selected_data_type_index| {
                 Self::SUPPORTED_DATA_TYPE_IDS
                     .get(*selected_data_type_index)
                     .copied()
             })
-            .collect();
-        if selected_data_type_ids.is_empty() {
-            selected_data_type_ids.push(self.selected_data_type_name());
-        }
-
-        selected_data_type_ids
+            .collect()
     }
 
     pub fn is_data_type_selected(
@@ -116,10 +106,6 @@ impl ElementScannerPaneState {
             .selected_data_type_indices
             .contains(&self.selected_data_type_index)
         {
-            if self.selected_data_type_indices.len() == 1 {
-                return false;
-            }
-
             self.selected_data_type_indices
                 .remove(&self.selected_data_type_index);
             true
@@ -386,16 +372,12 @@ mod tests {
     }
 
     #[test]
-    fn toggling_last_selected_data_type_is_rejected() {
+    fn toggling_last_selected_data_type_allows_empty_selection() {
         let mut element_scanner_pane_state = ElementScannerPaneState::default();
         element_scanner_pane_state.selected_data_type_index = 2;
 
-        assert!(!element_scanner_pane_state.toggle_hovered_data_type_selection());
-        assert_eq!(element_scanner_pane_state.selected_data_type_indices.len(), 1);
-        assert!(
-            element_scanner_pane_state
-                .selected_data_type_indices
-                .contains(&2)
-        );
+        assert!(element_scanner_pane_state.toggle_hovered_data_type_selection());
+        assert!(element_scanner_pane_state.selected_data_type_indices.is_empty());
+        assert!(element_scanner_pane_state.selected_data_type_ids().is_empty());
     }
 }
