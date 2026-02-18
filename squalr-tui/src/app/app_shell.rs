@@ -74,6 +74,8 @@ pub struct AppShell {
 impl AppShell {
     pub(super) const MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 50;
     pub(super) const MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS: u64 = 5_000;
+    pub(super) const MIN_PROJECT_ITEMS_REFRESH_INTERVAL_MS: u64 = 50;
+    pub(super) const MAX_PROJECT_ITEMS_REFRESH_INTERVAL_MS: u64 = 5_000;
     pub(super) const MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS: u64 = 1_000;
     pub(super) const MIN_SETTINGS_AUTO_REFRESH_INTERVAL_MS: u64 = 1_000;
 

@@ -9,8 +9,8 @@ Our current task, from `README.md`, is:
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
 
-- Verify end-to-end in GUI and TUI that activating module-backed project items both updates preview values and applies freeze behavior over time (`winmine+0x100579c`).
-- Audit GUI vs TUI scan-results refresh cadence and document any remaining behavior gaps that are intentional vs bugs.
+- Manual runtime verification in both GUI and TUI against `winmine+0x100579c`: confirm activated module-backed project items keep preview values updated and freeze behavior persists over time.
+- Decide whether GUI project-hierarchy preview values should also run a periodic refresh loop driven by `project_read_interval_ms` (currently only refreshes on explicit refreshes/project-structure changes).
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -24,3 +24,7 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
   - Project-item navigation now refreshes struct-viewer project-item focus immediately.
   - Project-item list now refreshes address preview values using privileged memory reads (removes persistent `??` when reads succeed).
   - Project-item activation now dispatches privileged memory-freeze targets for address items (module-backed and absolute addresses).
+  - TUI project-item auto-refresh no longer stops after first load; tick polling now uses `scan_settings.project_read_interval_ms` (bounded to 50..5000ms).
+  - TUI scan-result periodic refresh now runs even when the scan-results pane is not focused (still guarded by in-flight query/refresh/edit/freeze/delete state).
+  - GUI vs TUI scan-result cadence audit: GUI still runs a hardcoded 100ms background refresh loop in `ElementScannerResultsViewData::poll_scan_results`, while TUI now uses `results_read_interval_ms`.
+  - GUI project hierarchy currently refreshes project items on explicit refreshes and project-structure change detection; it does not currently poll preview values by interval.

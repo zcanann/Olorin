@@ -1,5 +1,4 @@
 use super::app_shell::AppShell;
-use crate::state::pane::TuiPane;
 use squalr_engine::squalr_engine::SqualrEngine;
 use squalr_engine_api::engine::engine_execution_context::EngineExecutionContext;
 use squalr_engine_api::events::process::changed::process_changed_event::ProcessChangedEvent;
@@ -303,19 +302,15 @@ impl AppShell {
             || self
                 .app_state
                 .project_explorer_pane_state
-                .has_loaded_project_item_list_once
-            || self
-                .app_state
-                .project_explorer_pane_state
                 .is_awaiting_project_item_list_response
         {
             return false;
         }
 
+        let project_items_refresh_interval = self.project_items_periodic_refresh_interval();
         match self.last_project_items_auto_refresh_attempt_time {
             Some(last_project_items_auto_refresh_attempt_time) => {
-                current_tick_time.duration_since(last_project_items_auto_refresh_attempt_time)
-                    >= Duration::from_millis(Self::MIN_PROCESS_AND_PROJECT_AUTO_REFRESH_INTERVAL_MS)
+                current_tick_time.duration_since(last_project_items_auto_refresh_attempt_time) >= project_items_refresh_interval
             }
             None => true,
         }
@@ -325,9 +320,6 @@ impl AppShell {
         &self,
         current_tick_time: Instant,
     ) -> bool {
-        if !self.app_state.is_pane_visible(TuiPane::ScanResults) {
-            return false;
-        }
         if self
             .app_state
             .scan_results_pane_state
@@ -365,5 +357,47 @@ impl AppShell {
             configured_results_read_interval_ms.clamp(Self::MIN_SCAN_RESULTS_REFRESH_INTERVAL_MS, Self::MAX_SCAN_RESULTS_REFRESH_INTERVAL_MS);
 
         Duration::from_millis(bounded_results_read_interval_ms)
+    }
+
+    pub(super) fn project_items_periodic_refresh_interval(&self) -> Duration {
+        let configured_project_read_interval_ms = self
+            .app_state
+            .settings_pane_state
+            .scan_settings
+            .project_read_interval_ms;
+        let bounded_project_read_interval_ms =
+            configured_project_read_interval_ms.clamp(Self::MIN_PROJECT_ITEMS_REFRESH_INTERVAL_MS, Self::MAX_PROJECT_ITEMS_REFRESH_INTERVAL_MS);
+
+        Duration::from_millis(bounded_project_read_interval_ms)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AppShell;
+    use std::path::PathBuf;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn project_item_refresh_does_not_stop_after_first_load() {
+        let mut app_shell = AppShell::new(Duration::from_millis(16));
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .active_project_directory_path = Some(PathBuf::from("C:/projects/test"));
+        app_shell
+            .app_state
+            .project_explorer_pane_state
+            .has_loaded_project_item_list_once = true;
+        app_shell
+            .app_state
+            .settings_pane_state
+            .scan_settings
+            .project_read_interval_ms = 100;
+        app_shell.last_project_items_auto_refresh_attempt_time = Some(Instant::now() - Duration::from_millis(200));
+
+        let should_refresh = app_shell.should_refresh_project_items_list_on_tick(Instant::now());
+
+        assert!(should_refresh);
     }
 }
