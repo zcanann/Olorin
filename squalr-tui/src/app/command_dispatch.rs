@@ -21,6 +21,26 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 impl AppShell {
+    pub(super) fn reset_selected_settings_category_to_defaults(
+        &mut self,
+        squalr_engine: &mut SqualrEngine,
+    ) {
+        if self
+            .app_state
+            .settings_pane_state
+            .reset_selected_category_to_defaults()
+        {
+            self.apply_selected_settings_category(squalr_engine);
+            self.app_state.settings_pane_state.status_message =
+                format!("Reset {} settings to defaults.", self.app_state.settings_pane_state.selected_category.title());
+        } else {
+            self.app_state.settings_pane_state.status_message = format!(
+                "{} settings are already at defaults.",
+                self.app_state.settings_pane_state.selected_category.title()
+            );
+        }
+    }
+
     pub(super) fn refresh_output_log_history(
         &mut self,
         squalr_engine: &mut SqualrEngine,
@@ -180,7 +200,7 @@ impl AppShell {
                         self.app_state
                             .settings_pane_state
                             .general_settings
-                            .engine_request_delay_ms,
+                            .debug_engine_request_delay_ms,
                     ),
                 };
                 let (response_sender, response_receiver) = mpsc::sync_channel(1);

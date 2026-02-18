@@ -380,7 +380,7 @@ impl AppShell {
             format!("Setting activation={} for {}.", is_target_activated, selected_project_item_path.display());
 
         let project_items_activate_request = ProjectItemsActivateRequest {
-            project_item_paths: vec![selected_project_item_path.display().to_string()],
+            project_item_paths: vec![selected_project_item_path.to_string_lossy().into_owned()],
             is_activated: is_target_activated,
         };
         let (response_sender, response_receiver) = mpsc::sync_channel(1);

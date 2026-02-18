@@ -50,6 +50,63 @@ pub struct SettingsPaneState {
 }
 
 impl SettingsPaneState {
+    pub fn reset_selected_category_to_defaults(&mut self) -> bool {
+        let mut did_change_value = false;
+
+        match self.selected_category {
+            SettingsCategory::General => {
+                let default_general_settings = GeneralSettings::default();
+                if self.general_settings.debug_engine_request_delay_ms != default_general_settings.debug_engine_request_delay_ms {
+                    self.general_settings = default_general_settings;
+                    did_change_value = true;
+                }
+            }
+            SettingsCategory::Memory => {
+                let default_memory_settings = MemorySettings::default();
+                if self.memory_settings.memory_type_none != default_memory_settings.memory_type_none
+                    || self.memory_settings.memory_type_private != default_memory_settings.memory_type_private
+                    || self.memory_settings.memory_type_image != default_memory_settings.memory_type_image
+                    || self.memory_settings.memory_type_mapped != default_memory_settings.memory_type_mapped
+                    || self.memory_settings.required_write != default_memory_settings.required_write
+                    || self.memory_settings.required_execute != default_memory_settings.required_execute
+                    || self.memory_settings.required_copy_on_write != default_memory_settings.required_copy_on_write
+                    || self.memory_settings.excluded_write != default_memory_settings.excluded_write
+                    || self.memory_settings.excluded_execute != default_memory_settings.excluded_execute
+                    || self.memory_settings.excluded_copy_on_write != default_memory_settings.excluded_copy_on_write
+                    || self.memory_settings.start_address != default_memory_settings.start_address
+                    || self.memory_settings.end_address != default_memory_settings.end_address
+                    || self.memory_settings.only_query_usermode != default_memory_settings.only_query_usermode
+                {
+                    self.memory_settings = default_memory_settings;
+                    did_change_value = true;
+                }
+            }
+            SettingsCategory::Scan => {
+                let default_scan_settings = ScanSettings::default();
+                if self.scan_settings.results_page_size != default_scan_settings.results_page_size
+                    || self.scan_settings.freeze_interval_ms != default_scan_settings.freeze_interval_ms
+                    || self.scan_settings.project_read_interval_ms != default_scan_settings.project_read_interval_ms
+                    || self.scan_settings.results_read_interval_ms != default_scan_settings.results_read_interval_ms
+                    || self.scan_settings.memory_alignment != default_scan_settings.memory_alignment
+                    || self.scan_settings.memory_read_mode != default_scan_settings.memory_read_mode
+                    || self.scan_settings.floating_point_tolerance != default_scan_settings.floating_point_tolerance
+                    || self.scan_settings.is_single_threaded_scan != default_scan_settings.is_single_threaded_scan
+                    || self.scan_settings.debug_perform_validation_scan != default_scan_settings.debug_perform_validation_scan
+                {
+                    self.scan_settings = default_scan_settings;
+                    did_change_value = true;
+                }
+            }
+        }
+
+        if did_change_value {
+            self.has_pending_changes = true;
+            self.cancel_pending_numeric_edit();
+        }
+
+        did_change_value
+    }
+
     pub fn cycle_category_forward(&mut self) {
         let all_categories = SettingsCategory::all_categories();
         let selected_category_position = all_categories
@@ -197,8 +254,8 @@ impl SettingsPaneState {
         match self.selected_category {
             SettingsCategory::General => {
                 if self.selected_field_index == 0 {
-                    self.general_settings.engine_request_delay_ms =
-                        Self::step_u64_clamped(self.general_settings.engine_request_delay_ms, increase_value, 25, 0, 5_000);
+                    self.general_settings.debug_engine_request_delay_ms =
+                        Self::step_u64_clamped(self.general_settings.debug_engine_request_delay_ms, increase_value, 25, 0, 5_000);
                     did_change_value = true;
                 }
             }
@@ -369,8 +426,8 @@ impl SettingsPaneState {
                 if self.selected_field_index == 0 {
                     if let Some(parsed_value) = Self::parse_u64_numeric_edit(pending_numeric_edit_value) {
                         let clamped_value = parsed_value.clamp(0, 5_000);
-                        if self.general_settings.engine_request_delay_ms != clamped_value {
-                            self.general_settings.engine_request_delay_ms = clamped_value;
+                        if self.general_settings.debug_engine_request_delay_ms != clamped_value {
+                            self.general_settings.debug_engine_request_delay_ms = clamped_value;
                             true
                         } else {
                             false
@@ -618,7 +675,7 @@ impl SettingsPaneState {
 impl Default for SettingsPaneState {
     fn default() -> Self {
         Self {
-            selected_category: SettingsCategory::General,
+            selected_category: SettingsCategory::Memory,
             selected_field_index: 0,
             has_pending_changes: false,
             has_loaded_settings_once: false,
@@ -675,7 +732,12 @@ mod tests {
         let did_change_value = settings_pane_state.commit_pending_numeric_edit();
 
         assert!(did_change_value);
-        assert_eq!(settings_pane_state.general_settings.engine_request_delay_ms, 150);
+        assert_eq!(
+            settings_pane_state
+                .general_settings
+                .debug_engine_request_delay_ms,
+            150
+        );
         assert!(settings_pane_state.has_pending_changes);
         assert!(settings_pane_state.pending_numeric_edit_buffer.is_none());
     }
@@ -735,5 +797,30 @@ mod tests {
         settings_pane_state.select_previous_field();
 
         assert_eq!(settings_pane_state.selected_field_index, 0);
+    }
+
+    #[test]
+    fn default_settings_category_is_memory() {
+        let settings_pane_state = SettingsPaneState::default();
+
+        assert_eq!(settings_pane_state.selected_category, SettingsCategory::Memory);
+    }
+
+    #[test]
+    fn reset_selected_category_to_defaults_resets_memory_settings_and_marks_pending_changes() {
+        let mut settings_pane_state = SettingsPaneState::default();
+        settings_pane_state.selected_category = SettingsCategory::Memory;
+        settings_pane_state.memory_settings.required_write = !settings_pane_state.memory_settings.required_write;
+        settings_pane_state.pending_numeric_edit_buffer = Some("0x1234".to_string());
+        let default_memory_settings = squalr_engine_api::structures::settings::memory_settings::MemorySettings::default();
+
+        let did_change_value = settings_pane_state.reset_selected_category_to_defaults();
+
+        assert!(did_change_value);
+        assert_eq!(settings_pane_state.memory_settings.required_write, default_memory_settings.required_write);
+        assert_eq!(settings_pane_state.memory_settings.start_address, default_memory_settings.start_address);
+        assert_eq!(settings_pane_state.memory_settings.end_address, default_memory_settings.end_address);
+        assert!(settings_pane_state.has_pending_changes);
+        assert!(settings_pane_state.pending_numeric_edit_buffer.is_none());
     }
 }

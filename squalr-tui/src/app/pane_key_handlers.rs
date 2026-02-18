@@ -42,6 +42,9 @@ impl AppShell {
         squalr_engine: &mut SqualrEngine,
     ) {
         match key_event.code {
+            KeyCode::Char('r') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.reset_selected_settings_category_to_defaults(squalr_engine);
+            }
             KeyCode::Char('r') => self.refresh_all_settings_categories_with_feedback(squalr_engine, true),
             KeyCode::Left => self.app_state.settings_pane_state.cycle_category_backward(),
             KeyCode::Right => self.app_state.settings_pane_state.cycle_category_forward(),

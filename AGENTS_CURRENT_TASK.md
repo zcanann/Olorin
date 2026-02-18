@@ -8,7 +8,7 @@ Our current task, from `README.md`, is:
 
 ## Current Tasklist (ordered)
 (Remove as completed, add remaining concrete tasks. If no tasks, audit the GUI project against the TUI and look for gaps in functionality. Note that many of the mouse or drag heavy functionality are not really the primary UX, so some UX judgement calls are required).
-- Toggling a project item address does not freeze the address. This works fine in gui build.
+- Audit GUI/TUI parity for any remaining settings or project-activation behavior gaps.
 
 ## Important Information
 Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lines)
@@ -44,4 +44,7 @@ Append important discoveries. Compact regularly ( > ~40 lines, compact to 20 lin
 - Settings summary no longer duplicates a top selected-field preview row and no longer renders `[FLD]` prefixes.
 - Settings field navigation (`Up`/`Down`) now clamps at top/bottom and does not loop.
 - Settings boolean fields now render explicit true/false markers (`[*]` / `[ ]`).
-- `cargo test -p squalr-tui` currently passes (35 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.
+- TUI project-item activation now sends selected paths using `to_string_lossy().into_owned()` to preserve Windows-compatible path strings for activation/freeze commands.
+- General settings field for request delay is now explicitly debug-scoped as `debug_engine_request_delay_ms` across API, engine config, TUI, and GUI bindings.
+- Settings page now defaults to the Memory tab, splits summary instructions into `[NAV]` and `[ACT]`, and supports `Ctrl+R` for reset-to-defaults of the current category.
+- `cargo test -p squalr-tui` currently passes (37 tests); one pre-existing dead-code warning remains for dormant `TuiPane::StructViewer`.

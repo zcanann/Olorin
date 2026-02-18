@@ -13,10 +13,12 @@ pub fn build_settings_summary_lines_with_capacity(
     }
 
     let category_lines = selected_category_lines(settings_pane_state);
-    let additional_field_capacity = line_capacity.saturating_sub(6);
+    let additional_field_capacity = line_capacity.saturating_sub(7);
     let additional_field_lines = selected_field_window_lines(settings_pane_state, &category_lines, additional_field_capacity);
-    let mut prioritized_lines =
-        vec!["[ACT] Left/Right category | Up/Down move | Home/End jump | Space toggle | +/- step | </> enum | Type number | Enter apply.".to_string()];
+    let mut prioritized_lines = vec![
+        "[NAV] Left/Right category | Up/Down move | Home/End jump.".to_string(),
+        "[ACT] Space toggle | +/- step | </> enum | Type number | Enter apply | r refresh-all | Ctrl+R reset-tab.".to_string(),
+    ];
     prioritized_lines.push(format!("[TAB] {}.", render_category_tabs(settings_pane_state.selected_category)));
     prioritized_lines.push(format!(
         "[CAT] {} | field={}.",
@@ -56,9 +58,11 @@ fn selected_category_lines(settings_pane_state: &SettingsPaneState) -> Vec<Strin
 
 fn general_summary_lines(settings_pane_state: &SettingsPaneState) -> Vec<String> {
     vec![format!(
-        "{} request_delay_ms={}{}.",
+        "{} debug_engine_request_delay_ms={}{}.",
         selection_marker(settings_pane_state.selected_field_index, 0),
-        settings_pane_state.general_settings.engine_request_delay_ms,
+        settings_pane_state
+            .general_settings
+            .debug_engine_request_delay_ms,
         pending_numeric_edit_suffix(settings_pane_state, 0)
     )]
 }
